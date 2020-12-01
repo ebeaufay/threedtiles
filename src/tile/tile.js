@@ -1,3 +1,4 @@
+import {loader} from "./../loader/loader"
 function Tile(){
     var self = this;
     this.children = [];
@@ -7,6 +8,23 @@ function Tile(){
     this.content;
 
     function getTilesInView(frustum, cameraPosition, errorCoefficient){
+        if(self.content.endsWith(".json")){
+            loader(self.content).then(tile=>{
+                setContent(tile.getContent);
+                setGeometricError(tile.geometricError);
+                setRefine(tile.getRefine);
+                setVolume(tile.getVolume);
+                setChildren(tile.getChildren);
+                return traverse(frustum, cameraPosition, errorCoefficient);
+            });
+            // if the content is a json, parse it and fill this tile with the result's values
+        }else{
+            return Promise.resolve(traverse(frustum, cameraPosition, errorCoefficient));
+        }
+        
+    }
+
+    function traverse(frustum, cameraPosition, errorCoefficient){
         let tiles = [];
         if(inFrustum(frustum)){
             if((!!self.refine && self.refine.toUpperCase() === "ADD") || self.children.length == 0 || distanceToVolume(cameraPosition)*errorCoefficient > self.geometricError){
@@ -18,11 +36,14 @@ function Tile(){
         return tiles;
     }
 
+    function setChildren(children){
+        self.children = children;
+    }
     function distanceToVolume(point){
         if(!self.volume || !self.volume.type || !point){
             return Number.MAX_VALUE;
         }
-        switch (self.distanceToVolumevolume.type){
+        switch (self.volume.type){
             case "box": return self.volume.distanceToPoint(point);
             case "sphere" : return Math.max(0, point.distanceTo(self.volume.center) - self.volume.radius);
             case "region" : return self.volume.distanceToPoint(point);
@@ -89,7 +110,8 @@ function Tile(){
         "setRefine" : setRefine,
         "getRefine" : getRefine,
         "setContent" : setContent,
-        "getContent" : getContent
+        "getContent" : getContent,
+        "setChildren": setChildren
     }
 } 
 export {Tile};
