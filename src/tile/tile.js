@@ -19,21 +19,24 @@ function Tile(){
             });
             // if the content is a json, parse it and fill this tile with the result's values
         }else{
-            return Promise.resolve(traverse(frustum, cameraPosition, errorCoefficient));
+            return traverse(frustum, cameraPosition, errorCoefficient);
         }
         
     }
 
     function traverse(frustum, cameraPosition, errorCoefficient){
-        let tiles = [];
+        let tilePromises = [];
+        let distToVolume = distanceToVolume(cameraPosition)*errorCoefficient;
         if(inFrustum(frustum)){
-            if((!!self.refine && self.refine.toUpperCase() === "ADD") || self.children.length == 0 || distanceToVolume(cameraPosition)*errorCoefficient > self.geometricError){
-                tiles.push(this);
-            }else{
-                self.children.forEach(child => tiles.concat(child.getTiles(camera, errorCoefficient)));
+            if((!!self.refine && self.refine.toUpperCase() === "ADD") || self.children.length == 0 || distToVolume > self.geometricError){
+                tilePromises.push(Promise.resolve([self]));
+            }
+
+            if(self.children.length > 0 && distToVolume < self.geometricError){
+                self.children.forEach(child => tilePromises.push(child.getTilesInView(frustum, cameraPosition, errorCoefficient)));
             }
         }
-        return tiles;
+        return Promise.all(tilePromises).then(children=> children.flat());
     }
 
     function setChildren(children){

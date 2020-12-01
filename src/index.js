@@ -20,7 +20,7 @@ var scene = new THREE.Scene();
 
 // build camera
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-camera.position.z = 1017;
+camera.position.z = 136;
 
 camera.updateMatrix(); 
 camera.updateMatrixWorld(); 
