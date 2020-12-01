@@ -1,0 +1,5 @@
+function Cache(){
+
+}
+
+export {Cache};
