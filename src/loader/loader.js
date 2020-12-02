@@ -2,7 +2,12 @@ import { Tile } from "../tile/tile";
 import { OBB } from "../geometry/obb";
 import { Box3, Vector3 } from "three";
 
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 const path = require('path');
+
+
+const gltfLoader = new GLTFLoader( );
+
 
 function loader(url){
     if(!url.endsWith("b3dm") && !url.endsWith("json")){
@@ -32,13 +37,13 @@ function parseTileset(tileset, rootPath){
 		if(path.isAbsolute(tileset.content.uri)){
 			tile.setContent(tileset.content.uri);
 		}else{
-			tile.setContent(path.resolve(rootPath, tileset.content.uri))
+			tile.setContent(rootPath +path.sep+ tileset.content.uri)
 		}
 	}else if(!!tileset.content.url){
 		if(path.isAbsolute(tileset.content.url)){
 			tile.setContent(tileset.content.url);
 		}else{
-			tile.setContent(path.resolve(rootPath, tileset.content.url))
+			tile.setContent(rootPath+path.sep+ tileset.content.url)
 		}
 	}
 	
@@ -96,11 +101,24 @@ function parseB3DM(arrayBuffer){
 		const glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
 		const glbBytes = new Uint8Array( arrayBuffer, glbStart, byteLength - glbStart );
 
-		return {
-			/*version,
-			featureTable,
-			batchTable,*/
-			glbBytes,
-		};
+
+		const gltfBuffer = glbBytes.slice().buffer;
+
+		return new Promise( ( resolve, reject ) => {
+			
+			gltfLoader.parse( gltfBuffer, null, model => {
+
+				//model.batchTable = b3dm.batchTable;
+				//model.featureTable = b3dm.featureTable;
+
+				//model.scene.batchTable = b3dm.batchTable;
+				//model.scene.featureTable = b3dm.featureTable;
+
+				resolve( model );
+
+			}, reject );
+
+		} );
+		
 }
 export {loader};

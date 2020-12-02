@@ -11,7 +11,9 @@ function Cache(maxSize){
             return Promise.resolve(value.object);
         }
         else{
-            return loader(key);
+            return loader(key).then(b3dm=>{
+                
+            });
         }
     }
 }

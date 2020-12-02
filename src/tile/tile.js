@@ -26,7 +26,7 @@ function Tile(){
 
     function traverse(frustum, cameraPosition, errorCoefficient){
         let tilePromises = [];
-        let distToVolume = distanceToVolume(cameraPosition)*errorCoefficient;
+        let distToVolume = distanceToVolume(cameraPosition)/(errorCoefficient*200);
         if(inFrustum(frustum)){
             if((!!self.refine && self.refine.toUpperCase() === "ADD") || self.children.length == 0 || distToVolume > self.geometricError){
                 tilePromises.push(Promise.resolve([self]));
