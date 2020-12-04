@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {loader} from './loader/loader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { Tileset } from './tileset';
 
   
 console.log("Hello World");
@@ -57,8 +58,13 @@ function animate() {
 }
 animate();
 
+var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera, 1);
+
+setInterval(function(){
+  tileset.update();
+}, 1000);
 //console.log(loader("http://127.0.0.1:8080/tileset.json"));
-loader("http://127.0.0.1:8080/tileset.json").then(function(tileset){
+/*loader("http://127.0.0.1:8080/tileset.json").then(function(tileset){
   var frustum = new THREE.Frustum();
   var tiles = {};
   setInterval(function(){ 
@@ -76,8 +82,10 @@ loader("http://127.0.0.1:8080/tileset.json").then(function(tileset){
           tiles[tile.content] = "waiting";
           loader(tile.content).then(gltf=>{
             if(!!tiles[tile.content]){
-              tiles[tile.content] = gltf;
-              scene.add(gltf.scene);
+              if(!!gltf){
+                tiles[tile.content] = gltf.model;
+                scene.add(gltf.model.scene);
+              }
             }
           });
         }
@@ -93,7 +101,6 @@ loader("http://127.0.0.1:8080/tileset.json").then(function(tileset){
       });
     });
    }, 500);
-});
-
+});*/
 
 

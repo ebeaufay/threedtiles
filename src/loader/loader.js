@@ -18,13 +18,16 @@ function loader(url){
 			throw new Error( `couldn't load "${ url }". Request failed with status ${ result.status } : ${ result.statusText }` );
 		}
 		if(url.endsWith("b3dm")){
-			return result.arrayBuffer().then(buffer=>parseB3DM(buffer));
+			return result.arrayBuffer().then(buffer=>parseB3DM(buffer, url));
 		}else if(url.endsWith("json")){
 			return result.json().then(function(json){
 				
 				return parseTileset(json.root, path.dirname(url));
 			})
 		}
+	}).catch(error=>{
+		console.error(error);
+		return Promise.resolve();
 	});
 }
 
@@ -69,7 +72,7 @@ function parseTileset(tileset, rootPath){
 
 	return tile;
 }
-function parseB3DM(arrayBuffer){
+function parseB3DM(arrayBuffer, url){
 		const dataView = new DataView( arrayBuffer );
 
 		const magic =
@@ -114,7 +117,7 @@ function parseB3DM(arrayBuffer){
 				//model.scene.batchTable = b3dm.batchTable;
 				//model.scene.featureTable = b3dm.featureTable;
 
-				resolve( model );
+				resolve( {"model":model, "url":url} );
 
 			}, reject );
 
