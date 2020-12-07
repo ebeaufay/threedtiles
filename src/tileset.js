@@ -13,6 +13,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
     this.geometricErrorMultiplier = !!geometricErrorMultiplier?geometricErrorMultiplier:1;
     this.currentlyRenderedTiles = {};
     this.futureActionOnTiles = {};
+    this.loadAroundView = false;
 
     this.cancelCurrentUpdate;
 
@@ -21,6 +22,9 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
         update();
     });
 
+    function setLoadAroundView(loadAroundView){
+        self.loadAroundView = loadAroundView;
+    }
     function deleteFromCurrentScene(){
         self.cancelCurrentUpdate();
         if(!!self.scene){
@@ -58,7 +62,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
         if(!self.rootTile) {
             return;
         }
-        self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, controller.signal).then(tiles=>{
+        self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(tiles=>{
             let newTilesContent = tiles.map(tile=>tile.content);
             let toDelete=[];
             Object.keys(self.currentlyRenderedTiles).forEach(current=>{
@@ -95,7 +99,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                                 delete self.currentlyRenderedTiles[url];
                                 delete self.futureActionOnTiles[url];
                             }
-                        }, 10);
+                        }, 200);
                     })
                 }
                 
@@ -110,7 +114,8 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
         "setScene" : setScene,
         "update" : update,
         "setCamera" : setCamera,
-        "deleteFromCurrentScene" : deleteFromCurrentScene
+        "deleteFromCurrentScene" : deleteFromCurrentScene,
+        "setLoadAroundView": setLoadAroundView
     }
 }
 

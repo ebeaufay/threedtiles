@@ -1,32 +1,16 @@
-import _ from 'lodash';
-import {Tile} from "./tile/tile";
-import {OBB} from "./geometry/obb"
 import * as THREE from 'three';
-import {loader} from './loader/loader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Tileset } from './tileset';
-
-  
-console.log("Hello World");
-var tile = new Tile();
-tile.geometricError = 10;
-let volume = new OBB([
-  0,0,0,
-  7.0,-7.0,0,
-  7.0,7.0,0,
-  0,0,10
-]);
 
 var scene = new THREE.Scene();
 scene.background = new THREE.Color( 0xcce0ff );
 scene.fog = new THREE.Fog( 0xcce0ff, 500, 10000 );
-const light = new THREE.AmbientLight( 0x404040, 10 ); // soft white light
+const light = new THREE.AmbientLight( 0x404040, 5 ); // soft white light
 scene.add( light );
 
 // build camera
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-camera.position.z = 136;
+var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+camera.position.z = 100;
 
 var renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -58,7 +42,7 @@ function animate() {
 }
 animate();
 
-var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera, 0.5);
+var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera, 1.0);
 
 setInterval(function(){
   tileset.update();

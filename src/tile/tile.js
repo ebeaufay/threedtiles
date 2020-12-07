@@ -7,7 +7,7 @@ function Tile(){
     this.geometricError;
     this.content;
 
-    function getTilesInView(frustum, cameraPosition, errorCoefficient){
+    function getTilesInView(frustum, cameraPosition, errorCoefficient, loadAroundView){
         if(self.content.endsWith(".json")){
             loader(self.content, signal).then(tile=>{
                 setContent(tile.getContent);
@@ -15,18 +15,18 @@ function Tile(){
                 setRefine(tile.getRefine);
                 setVolume(tile.getVolume);
                 setChildren(tile.getChildren);
-                return traverse(frustum, cameraPosition, errorCoefficient);
+                return traverse(frustum, cameraPosition, errorCoefficient, loadAroundView);
             }).catch(error=>{
                 throw error;
             });
             // if the content is a json, parse it and fill this tile with the result's values
         }else{
-            return traverse(frustum, cameraPosition, errorCoefficient);
+            return traverse(frustum, cameraPosition, errorCoefficient, loadAroundView);
         }
         
     }
 
-    function traverse(frustum, cameraPosition, errorCoefficient){
+    function traverse(frustum, cameraPosition, errorCoefficient, loadAroundView){
         let tilePromises = [];
         let distToVolume = distanceToVolume(cameraPosition)/(errorCoefficient*200);
         if(inFrustum(frustum)){
@@ -37,6 +37,8 @@ function Tile(){
             if(self.children.length > 0 && distToVolume < self.geometricError){
                 self.children.forEach(child => tilePromises.push(child.getTilesInView(frustum, cameraPosition, errorCoefficient)));
             }
+        }else if (!!loadAroundView){
+            tilePromises.push(Promise.resolve([self]));
         }
         return Promise.all(tilePromises).then(children=> children.flat());
     }

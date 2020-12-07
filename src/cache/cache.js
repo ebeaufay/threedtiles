@@ -16,8 +16,6 @@ function Cache(maxSize, loadFunction){
                     self.map.set(key, {"size":sizeLocal, "value": result});
                     self.size+=sizeLocal;
                     checkSize();
-                }else{
-                    console.log("lkhg")
                 }
                 return result;
             }).catch(error=>{
