@@ -1,9 +1,10 @@
-//import {cache} from "./cache/cache";
+import {Cache} from "./cache/cache";
 import { loader } from "./loader/loader";
 import * as THREE from 'three';
 
 console.log(navigator.deviceMemory);
 
+const cache = new Cache(8e8, loader);
 function Tileset(url, scene, camera, geometricErrorMultiplier){
     var self = this;
     this.rootTile;
@@ -41,9 +42,10 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
 
     function update(){
         if(!!self.controller){
-            self.controller.abort();
+            //self.controller.abort();
         }
-        self.controller = new AbortController();
+        let controller = new AbortController();
+        self.controller = controller;
         
         var frustum = new THREE.Frustum();
         self.camera.updateMatrix(); 
@@ -56,7 +58,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
         if(!self.rootTile) {
             return;
         }
-        self.rootTile.getTilesInView(frustum, camera.position, 1, self.controller.signal).then(tiles=>{
+        self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, controller.signal).then(tiles=>{
             let newTilesContent = tiles.map(tile=>tile.content);
             let toDelete=[];
             Object.keys(self.currentlyRenderedTiles).forEach(current=>{
@@ -67,9 +69,9 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
             });
             var contentRequests=[];
             newTilesContent.forEach(content=>{
-                if(!self.currentlyRenderedTiles[content]){
+                if(!self.currentlyRenderedTiles[content] && self.futureActionOnTiles[content] !== "toUpdate"){
                     self.futureActionOnTiles[content] = "toUpdate";
-                    contentRequests.push(loader(content).then(gltf=>{
+                    contentRequests.push(cache.get(content, controller.signal).then(gltf=>{
                         if(!!gltf){
                             if(self.futureActionOnTiles[content] === "toUpdate"){
                                 self.scene.add(gltf.model.scene);
@@ -77,19 +79,26 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                                 delete self.futureActionOnTiles[content];
                             }
                         }
-                    }))
+                    }).catch(error=>{
+                        console.error( error);
+                    }));
                 }else if(!!self.futureActionOnTiles[content]){
                     delete self.futureActionOnTiles[content];
                 }
             });
             Promise.all(contentRequests).finally(()=>{
-                toDelete.forEach(url=>{
-                    if(self.futureActionOnTiles[url] === "toDelete"){
-                        self.scene.remove(self.currentlyRenderedTiles[url].scene);
-                        delete self.currentlyRenderedTiles[url];
-                        delete self.futureActionOnTiles[url];
-                    }
-                })
+                if(!controller.signal.aborted){
+                    toDelete.forEach(url=>{
+                        setTimeout(()=>{
+                            if(self.futureActionOnTiles[url] === "toDelete"){
+                                self.scene.remove(self.currentlyRenderedTiles[url].scene);
+                                delete self.currentlyRenderedTiles[url];
+                                delete self.futureActionOnTiles[url];
+                            }
+                        }, 10);
+                    })
+                }
+                
             });
         });
 

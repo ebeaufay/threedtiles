@@ -9,11 +9,11 @@ const path = require('path');
 const gltfLoader = new GLTFLoader( );
 
 
-function loader(url){
+function loader(url, signal){
     if(!url.endsWith("b3dm") && !url.endsWith("json")){
 		throw new Error("unsupported format : " + url)
 	}
-	return fetch(url, {}).then(result =>{
+	return fetch(url, {signal: signal}).then(result =>{
 		if ( ! result.ok ) {
 			throw new Error( `couldn't load "${ url }". Request failed with status ${ result.status } : ${ result.statusText }` );
 		}
@@ -26,8 +26,7 @@ function loader(url){
 			})
 		}
 	}).catch(error=>{
-		console.error(error);
-		return Promise.resolve();
+		return Promise.reject(error);
 	});
 }
 

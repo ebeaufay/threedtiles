@@ -58,11 +58,11 @@ function animate() {
 }
 animate();
 
-var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera, 1);
+var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera, 0.5);
 
 setInterval(function(){
   tileset.update();
-}, 1000);
+}, 500);
 //console.log(loader("http://127.0.0.1:8080/tileset.json"));
 /*loader("http://127.0.0.1:8080/tileset.json").then(function(tileset){
   var frustum = new THREE.Frustum();

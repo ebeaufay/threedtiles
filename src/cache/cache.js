@@ -1,21 +1,44 @@
+
 import sizeof from 'object-sizeof'
-import loader from './../loader/loader'
-function Cache(maxSize){
+function Cache(maxSize, loadFunction){
     var self = this;
     this.map = new Map();
-    this.maxSize = !!maxSize? maxSize : 8e+8;
+    this.maxSize = maxSize;
+    this.size = 0;
+    this.loadFunction = loadFunction;
 
-    function get(key){
-        let value = self.map[key];
-        if(!!value){
-            return Promise.resolve(value.object);
-        }
-        else{
-            return loader(key).then(b3dm=>{
-                
+    function get(key, signal){
+        let object = self.map.get(key);
+        if(!object){
+            return self.loadFunction(key, signal).then(result=>{
+                let sizeLocal = sizeof(result);
+                if(!self.map.has(key)){
+                    self.map.set(key, {"size":sizeLocal, "value": result});
+                    self.size+=sizeLocal;
+                    checkSize();
+                }else{
+                    console.log("lkhg")
+                }
+                return result;
+            }).catch(error=>{
+                throw error;
             });
+        }else{
+            return Promise.resolve(object.value);
         }
     }
+
+    function checkSize(){
+        for (let [key, val] of self.map){
+            if (self.size>self.maxSize){
+                self.map.delete(key);
+                self.size -= val.size;
+            }else{
+                break;
+            }
+        }
+    }
+    return{"get":get};
 }
 
 export {Cache};

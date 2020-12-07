@@ -9,13 +9,15 @@ function Tile(){
 
     function getTilesInView(frustum, cameraPosition, errorCoefficient){
         if(self.content.endsWith(".json")){
-            loader(self.content).then(tile=>{
+            loader(self.content, signal).then(tile=>{
                 setContent(tile.getContent);
                 setGeometricError(tile.geometricError);
                 setRefine(tile.getRefine);
                 setVolume(tile.getVolume);
                 setChildren(tile.getChildren);
                 return traverse(frustum, cameraPosition, errorCoefficient);
+            }).catch(error=>{
+                throw error;
             });
             // if the content is a json, parse it and fill this tile with the result's values
         }else{
@@ -35,8 +37,6 @@ function Tile(){
             if(self.children.length > 0 && distToVolume < self.geometricError){
                 self.children.forEach(child => tilePromises.push(child.getTilesInView(frustum, cameraPosition, errorCoefficient)));
             }
-        }else{
-            tilePromises.push(Promise.resolve([self]));
         }
         return Promise.all(tilePromises).then(children=> children.flat());
     }
