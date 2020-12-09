@@ -19,6 +19,11 @@ setInterval(function(){
 }, 100);
 ```
 
+This library provides several advantages over existing ones: 
+- It correctly traverses tileset trees, whatever the structure.
+- It handles nested tileset.json files which are loaded on the fly (a tileset.json may point to other tileset.json files as its children).
+
+
 ## Caching
 Caching is automatically handled. the cache size is set to one tenth of the estimated device memory.
 
@@ -34,8 +39,12 @@ A value of 1.0 is the default.
 
 ### load tiles outside of view
 By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles.
-Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles around the view so that there are no gaps in the mesh when the camera moves. 
+Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles around the view so that there are no gaps in the mesh when the camera moves or when displaying shadows.
 
 ```
 tileset.setLoadOutsideView(true);
 ```
+
+## upcomming features
+ - make a callback available for loaded meshes
+ - provide access to batch and feature tables
