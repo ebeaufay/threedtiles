@@ -48,3 +48,4 @@ tileset.setLoadOutsideView(true);
 ## upcomming features
  - make a callback available for loaded meshes
  - provide access to batch and feature tables
+ - support for i3dm, pnts,...
