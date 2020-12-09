@@ -9891,7 +9891,7 @@ function animate() {
 }
 
 animate();
-var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("aya/tileset.json", scene, camera, 1.0);
+var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("aya/tileset.json", scene, camera);
 setInterval(function () {
   tileset.update();
 }, 100); /////// options
@@ -9900,7 +9900,7 @@ var loadOutsideFrustum = document.getElementById("loadOutsideFrustum");
 
 if (loadOutsideFrustum.addEventListener) {
   loadOutsideFrustum.addEventListener("change", function (event) {
-    if (!!loadOutsideFrustum.checked) tileset.setLoadAroundView(true);else tileset.setLoadAroundView(false);
+    if (!!loadOutsideFrustum.checked) tileset.setLoadOutsideView(true);else tileset.setLoadOutsideView(false);
   }, false);
 }
 
@@ -10236,6 +10236,10 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     update();
   });
 
+  function setGeometricErrorMultiplier(geometricErrorMultiplier) {
+    self.geometricErrorMultiplier = geometricErrorMultiplier;
+  }
+
   function setLoadAroundView(loadAroundView) {
     self.loadAroundView = loadAroundView;
   }
@@ -10337,7 +10341,8 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     "update": update,
     "setCamera": setCamera,
     "deleteFromCurrentScene": deleteFromCurrentScene,
-    "setLoadAroundView": setLoadAroundView
+    "setLoadOutsideView": setLoadAroundView,
+    "setGeometricErrorMultiplier": setGeometricErrorMultiplier
   };
 }
 

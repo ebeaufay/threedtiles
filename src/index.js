@@ -44,7 +44,7 @@ function animate() {
 }
 animate();
 
-var tileset = new Tileset("aya/tileset.json", scene, camera, 1.0);
+var tileset = new Tileset("aya/tileset.json", scene, camera);
 
 setInterval(function(){
   tileset.update();
@@ -55,7 +55,7 @@ setInterval(function(){
 var loadOutsideFrustum = document.getElementById ("loadOutsideFrustum");
 if (loadOutsideFrustum.addEventListener) {
   loadOutsideFrustum.addEventListener ("change", function(event){
-    if(!!loadOutsideFrustum.checked) tileset.setLoadAroundView(true);
-    else tileset.setLoadAroundView(false);
+    if(!!loadOutsideFrustum.checked) tileset.setLoadOutsideView(true);
+    else tileset.setLoadOutsideView(false);
   }, false);
 }

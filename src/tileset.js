@@ -20,6 +20,9 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
         update();
     });
 
+    function setGeometricErrorMultiplier(geometricErrorMultiplier){
+        self.geometricErrorMultiplier = geometricErrorMultiplier;
+    }
     function setLoadAroundView(loadAroundView){
         self.loadAroundView = loadAroundView;
     }
@@ -124,7 +127,8 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
         "update" : update,
         "setCamera" : setCamera,
         "deleteFromCurrentScene" : deleteFromCurrentScene,
-        "setLoadAroundView": setLoadAroundView
+        "setLoadOutsideView": setLoadAroundView,
+        "setGeometricErrorMultiplier":setGeometricErrorMultiplier
     }
 }
 
