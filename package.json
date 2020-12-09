@@ -11,6 +11,7 @@
     },
     "author": "Emeric Beaufays",
     "dependencies": {
+        "gltf-validator": "^2.0.0-dev.3.3",
         "lodash": "^4.17.20",
         "object-sizeof": "^1.6.1",
         "three": "^0.123.0"

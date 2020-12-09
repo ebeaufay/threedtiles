@@ -11,6 +11,11 @@
 *.zip
 *.tar.gz
 *.rar
+*.b3dm
+*.obj
+*.glb
+*.mtl
+*.jpg
 
 # external modules
 node_modules/*

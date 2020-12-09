@@ -1,6 +1,6 @@
 import { Tile } from "../tile/tile";
 import { OBB } from "../geometry/obb";
-import { Box3, Vector3 } from "three";
+import { Box3, MeshBasicMaterial, Vector3, DoubleSide } from "three";
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 const path = require('path');
@@ -71,6 +71,7 @@ function parseTileset(tileset, rootPath){
 
 	return tile;
 }
+
 function parseB3DM(arrayBuffer, url){
 		const dataView = new DataView( arrayBuffer );
 
@@ -105,6 +106,7 @@ function parseB3DM(arrayBuffer, url){
 
 
 		const gltfBuffer = glbBytes.slice().buffer;
+		
 
 		return new Promise( ( resolve, reject ) => {
 			
@@ -115,7 +117,11 @@ function parseB3DM(arrayBuffer, url){
 
 				//model.scene.batchTable = b3dm.batchTable;
 				//model.scene.featureTable = b3dm.featureTable;
-
+				model.scene.traverse((o) => {
+					if (o.isMesh) {
+					  o.material.side = DoubleSide;
+					}
+				  });
 				resolve( {"model":model, "url":url} );
 
 			}, reject );

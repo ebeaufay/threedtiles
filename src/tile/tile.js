@@ -35,7 +35,7 @@ function Tile(){
             }
 
             if(self.children.length > 0 && distToVolume < self.geometricError){
-                self.children.forEach(child => tilePromises.push(child.getTilesInView(frustum, cameraPosition, errorCoefficient)));
+                self.children.forEach(child => tilePromises.push(child.getTilesInView(frustum, cameraPosition, errorCoefficient, loadAroundView)));
             }
         }else if (!!loadAroundView){
             tilePromises.push(Promise.resolve([self]));
