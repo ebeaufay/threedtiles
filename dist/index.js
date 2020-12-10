@@ -9884,17 +9884,19 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("http://127.0.0.1:8080/tileset.json", scene, camera);
+/*setInterval(function(){
+  
+}, 100);*/
+
 function animate() {
+  tileset.update();
   requestAnimationFrame(animate);
   camera.updateMatrixWorld();
   renderer.render(scene, camera);
 }
 
-animate();
-var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("aya/tileset.json", scene, camera);
-setInterval(function () {
-  tileset.update();
-}, 100); /////// options
+animate(); /////// options
 
 var loadOutsideFrustum = document.getElementById("loadOutsideFrustum");
 

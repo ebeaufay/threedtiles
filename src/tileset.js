@@ -13,6 +13,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
     this.currentlyRenderedTiles = {};
     this.futureActionOnTiles = {};
     this.loadAroundView = false;
+    
 
 
     loader(url).then(rootTile => {
@@ -68,19 +69,22 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                 });
                 var contentRequests=[];
                 newTilesContent.forEach(content=>{
-                    if(!self.currentlyRenderedTiles[content] && self.futureActionOnTiles[content] !== "toUpdate"){
-                        self.futureActionOnTiles[content] = "toUpdate";
-                        contentRequests.push(cache.get(content/*, controller.signal*/).then(gltf=>{
-                            if(!!gltf){
-                                if(self.futureActionOnTiles[content] === "toUpdate"){
-                                    self.scene.add(gltf.model.scene);
-                                    self.currentlyRenderedTiles[content] = gltf.model;
-                                    delete self.futureActionOnTiles[content];
+                    if(!self.currentlyRenderedTiles[content] ){
+                        if(self.futureActionOnTiles[content] !== "toUpdate"){
+                            self.futureActionOnTiles[content] = "toUpdate";
+                            contentRequests.push(cache.get(content/*, controller.signal*/).then(gltf=>{
+                                if(!!gltf){
+                                    if(self.futureActionOnTiles[content] === "toUpdate"){
+                                        self.scene.add(gltf.model.scene);
+                                        self.currentlyRenderedTiles[content] = gltf.model;
+                                        delete self.futureActionOnTiles[content];
+                                    }
                                 }
-                            }
-                        }).catch(error=>{
-                            console.error( error);
-                        }));
+                            }).catch(error=>{
+                                console.error( error);
+                            }));
+                        };
+                        
                     }else if(!!self.futureActionOnTiles[content]){
                         delete self.futureActionOnTiles[content];
                     }
@@ -91,7 +95,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                     }
                     let controller = new AbortController();
                     self.controller = controller;
-                    
+
                     Promise.all(contentRequests).catch(error=>{
                         console.log(error);
                     }).finally(()=>{

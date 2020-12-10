@@ -44,7 +44,7 @@ function animate() {
 }
 animate();
 
-var tileset = new Tileset("aya/tileset.json", scene, camera);
+var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera);
 
 setInterval(function(){
   tileset.update();
