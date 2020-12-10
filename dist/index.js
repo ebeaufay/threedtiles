@@ -9904,6 +9904,14 @@ if (loadOutsideFrustum.addEventListener) {
   }, false);
 }
 
+var geometricErrorMultiplier = document.getElementById("GEM_range");
+
+if (geometricErrorMultiplier.addEventListener) {
+  geometricErrorMultiplier.addEventListener("change", function (event) {
+    tileset.setGeometricErrorMultiplier(geometricErrorMultiplier.value / 100);
+  }, false);
+}
+
 /***/ }),
 
 /***/ "./src/loader/loader.js":
@@ -10270,19 +10278,13 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     }
 
     var frustum = new three__WEBPACK_IMPORTED_MODULE_2__["Frustum"]();
+    self.camera.updateMatrix();
+    self.camera.updateMatrixWorld();
     var projScreenMatrix = new three__WEBPACK_IMPORTED_MODULE_2__["Matrix4"]();
     projScreenMatrix.multiplyMatrices(self.camera.projectionMatrix, self.camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(new three__WEBPACK_IMPORTED_MODULE_2__["Matrix4"]().multiplyMatrices(self.camera.projectionMatrix, self.camera.matrixWorldInverse));
     self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(function (tiles) {
       if (tiles.length > 0) {
-        if (!!self.controller) {
-          self.controller.abort();
-        }
-
-        var controller = new AbortController();
-        self.controller = controller;
-        self.camera.updateMatrix();
-        self.camera.updateMatrixWorld();
         var newTilesContent = tiles.map(function (tile) {
           return tile.content;
         });
@@ -10316,6 +10318,12 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
         });
 
         if (contentRequests.length > 0) {
+          if (!!self.controller) {
+            self.controller.abort();
+          }
+
+          var controller = new AbortController();
+          self.controller = controller;
           Promise.all(contentRequests)["catch"](function (error) {
             console.log(error);
           })["finally"](function () {

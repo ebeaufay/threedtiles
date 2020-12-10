@@ -45,29 +45,18 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
     }
 
     function update(){
-        
-
-        
         if(!self.rootTile) {
             return;
         }
         var frustum = new THREE.Frustum();
+        self.camera.updateMatrix(); 
+                self.camera.updateMatrixWorld();
         var projScreenMatrix = new THREE.Matrix4();
                 projScreenMatrix.multiplyMatrices( self.camera.projectionMatrix, self.camera.matrixWorldInverse );
                 frustum.setFromProjectionMatrix( new THREE.Matrix4().multiplyMatrices( self.camera.projectionMatrix, self.camera.matrixWorldInverse ) );
 
         self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(tiles=>{
             if(tiles.length>0){
-                if(!!self.controller){
-                    self.controller.abort();
-                }
-                let controller = new AbortController();
-                self.controller = controller;
-                
-                
-                self.camera.updateMatrix(); 
-                self.camera.updateMatrixWorld();
-                
 
                 let newTilesContent = tiles.map(tile=>tile.content);
                 let toDelete=[];
@@ -97,6 +86,12 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                     }
                 });
                 if(contentRequests.length>0){
+                    if(!!self.controller){
+                        self.controller.abort();
+                    }
+                    let controller = new AbortController();
+                    self.controller = controller;
+                    
                     Promise.all(contentRequests).catch(error=>{
                         console.log(error);
                     }).finally(()=>{

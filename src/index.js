@@ -59,3 +59,10 @@ if (loadOutsideFrustum.addEventListener) {
     else tileset.setLoadOutsideView(false);
   }, false);
 }
+
+var geometricErrorMultiplier = document.getElementById ("GEM_range");
+if (geometricErrorMultiplier.addEventListener) {
+  geometricErrorMultiplier.addEventListener ("change", function(event){
+    tileset.setGeometricErrorMultiplier(geometricErrorMultiplier.value / 100);
+  }, false);
+}
