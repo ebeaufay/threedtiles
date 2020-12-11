@@ -80,7 +80,7 @@ if (modelDropDown.addEventListener) {
 
 function setVillageModel(){
   if(!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new Tileset("http://127.0.0.1:8080/frenchVillage/tileset.json", scene, camera);
+  tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/frenchVillage/tileset.json", scene, camera);
   camera.position.x = 0;
   camera.position.y = 0;
   camera.position.z = 100;
@@ -94,7 +94,7 @@ function setVillageModel(){
 
 function setAyaModel(){
   if(!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new Tileset("http://127.0.0.1:8080/aya/tileset.json", scene, camera);
+  tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/aya/tileset.json", scene, camera);
   camera.position.x = 2000;
   camera.position.y = 2000;
   camera.position.z = 2400;
