@@ -26,3 +26,5 @@ dist/*
 # package-lock
 *package-lock.json
 
+dist/index.js
+dist/index.js.map

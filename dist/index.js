@@ -86,282 +86,6 @@
 /************************************************************************/
 /******/ ({
 
-/***/ "./node_modules/normalize-url/index.js":
-/*!*********************************************!*\
-  !*** ./node_modules/normalize-url/index.js ***!
-  \*********************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
- // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs
-
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
-
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
-
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
-
-function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
-
-function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
-
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
-function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
-
-function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
-function _wrapRegExp(re, groups) { _wrapRegExp = function _wrapRegExp(re, groups) { return new BabelRegExp(re, undefined, groups); }; var _RegExp = _wrapNativeSuper(RegExp); var _super = RegExp.prototype; var _groups = new WeakMap(); function BabelRegExp(re, flags, groups) { var _this = _RegExp.call(this, re, flags); _groups.set(_this, groups || _groups.get(re)); return _this; } _inherits(BabelRegExp, _RegExp); BabelRegExp.prototype.exec = function (str) { var result = _super.exec.call(this, str); if (result) result.groups = buildGroups(result, this); return result; }; BabelRegExp.prototype[Symbol.replace] = function (str, substitution) { if (typeof substitution === "string") { var groups = _groups.get(this); return _super[Symbol.replace].call(this, str, substitution.replace(/\$<([^>]+)>/g, function (_, name) { return "$" + groups[name]; })); } else if (typeof substitution === "function") { var _this = this; return _super[Symbol.replace].call(this, str, function () { var args = []; args.push.apply(args, arguments); if (_typeof(args[args.length - 1]) !== "object") { args.push(buildGroups(args, _this)); } return substitution.apply(this, args); }); } else { return _super[Symbol.replace].call(this, str, substitution); } }; function buildGroups(result, re) { var g = _groups.get(re); return Object.keys(g).reduce(function (groups, name) { groups[name] = result[g[name]]; return groups; }, Object.create(null)); } return _wrapRegExp.apply(this, arguments); }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
-
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
-function _wrapNativeSuper(Class) { var _cache = typeof Map === "function" ? new Map() : undefined; _wrapNativeSuper = function _wrapNativeSuper(Class) { if (Class === null || !_isNativeFunction(Class)) return Class; if (typeof Class !== "function") { throw new TypeError("Super expression must either be null or a function"); } if (typeof _cache !== "undefined") { if (_cache.has(Class)) return _cache.get(Class); _cache.set(Class, Wrapper); } function Wrapper() { return _construct(Class, arguments, _getPrototypeOf(this).constructor); } Wrapper.prototype = Object.create(Class.prototype, { constructor: { value: Wrapper, enumerable: false, writable: true, configurable: true } }); return _setPrototypeOf(Wrapper, Class); }; return _wrapNativeSuper(Class); }
-
-function _construct(Parent, args, Class) { if (_isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
-
-function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
-
-function _isNativeFunction(fn) { return Function.toString.call(fn).indexOf("[native code]") !== -1; }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
-var DATA_URL_DEFAULT_MIME_TYPE = 'text/plain';
-var DATA_URL_DEFAULT_CHARSET = 'us-ascii';
-
-var testParameter = function testParameter(name, filters) {
-  return filters.some(function (filter) {
-    return filter instanceof RegExp ? filter.test(name) : filter === name;
-  });
-};
-
-var normalizeDataURL = function normalizeDataURL(urlString, _ref) {
-  var stripHash = _ref.stripHash;
-
-  var match = /*#__PURE__*/_wrapRegExp(/^data:(.*?),(.*?)(?:#(.*))?$/, {
-    type: 1,
-    data: 2,
-    hash: 3
-  }).exec(urlString);
-
-  if (!match) {
-    throw new Error("Invalid URL: ".concat(urlString));
-  }
-
-  var _match$groups = match.groups,
-      type = _match$groups.type,
-      data = _match$groups.data,
-      hash = _match$groups.hash;
-  var mediaType = type.split(';');
-  hash = stripHash ? '' : hash;
-  var isBase64 = false;
-
-  if (mediaType[mediaType.length - 1] === 'base64') {
-    mediaType.pop();
-    isBase64 = true;
-  } // Lowercase MIME type
-
-
-  var mimeType = (mediaType.shift() || '').toLowerCase();
-  var attributes = mediaType.map(function (attribute) {
-    var _attribute$split$map = attribute.split('=').map(function (string) {
-      return string.trim();
-    }),
-        _attribute$split$map2 = _slicedToArray(_attribute$split$map, 2),
-        key = _attribute$split$map2[0],
-        _attribute$split$map3 = _attribute$split$map2[1],
-        value = _attribute$split$map3 === void 0 ? '' : _attribute$split$map3; // Lowercase `charset`
-
-
-    if (key === 'charset') {
-      value = value.toLowerCase();
-
-      if (value === DATA_URL_DEFAULT_CHARSET) {
-        return '';
-      }
-    }
-
-    return "".concat(key).concat(value ? "=".concat(value) : '');
-  }).filter(Boolean);
-
-  var normalizedMediaType = _toConsumableArray(attributes);
-
-  if (isBase64) {
-    normalizedMediaType.push('base64');
-  }
-
-  if (normalizedMediaType.length !== 0 || mimeType && mimeType !== DATA_URL_DEFAULT_MIME_TYPE) {
-    normalizedMediaType.unshift(mimeType);
-  }
-
-  return "data:".concat(normalizedMediaType.join(';'), ",").concat(isBase64 ? data.trim() : data).concat(hash ? "#".concat(hash) : '');
-};
-
-var normalizeUrl = function normalizeUrl(urlString, options) {
-  options = _objectSpread({
-    defaultProtocol: 'http:',
-    normalizeProtocol: true,
-    forceHttp: false,
-    forceHttps: false,
-    stripAuthentication: true,
-    stripHash: false,
-    stripWWW: true,
-    removeQueryParameters: [/^utm_\w+/i],
-    removeTrailingSlash: true,
-    removeSingleSlash: true,
-    removeDirectoryIndex: false,
-    sortQueryParameters: true
-  }, options);
-  urlString = urlString.trim(); // Data URL
-
-  if (/^data:/i.test(urlString)) {
-    return normalizeDataURL(urlString, options);
-  }
-
-  if (/^view-source:/i.test(urlString)) {
-    throw new Error('`view-source:` is not supported as it is a non-standard protocol');
-  }
-
-  var hasRelativeProtocol = urlString.startsWith('//');
-  var isRelativeUrl = !hasRelativeProtocol && /^\.*\//.test(urlString); // Prepend protocol
-
-  if (!isRelativeUrl) {
-    urlString = urlString.replace(/^(?!(?:\w+:)?\/\/)|^\/\//, options.defaultProtocol);
-  }
-
-  var urlObj = new URL(urlString);
-
-  if (options.forceHttp && options.forceHttps) {
-    throw new Error('The `forceHttp` and `forceHttps` options cannot be used together');
-  }
-
-  if (options.forceHttp && urlObj.protocol === 'https:') {
-    urlObj.protocol = 'http:';
-  }
-
-  if (options.forceHttps && urlObj.protocol === 'http:') {
-    urlObj.protocol = 'https:';
-  } // Remove auth
-
-
-  if (options.stripAuthentication) {
-    urlObj.username = '';
-    urlObj.password = '';
-  } // Remove hash
-
-
-  if (options.stripHash) {
-    urlObj.hash = '';
-  } // Remove duplicate slashes if not preceded by a protocol
-
-
-  if (urlObj.pathname) {
-    urlObj.pathname = urlObj.pathname.replace(/(?<!\b(?:[a-z][a-z\d+\-.]{1,50}:))\/{2,}/g, '/');
-  } // Decode URI octets
-
-
-  if (urlObj.pathname) {
-    try {
-      urlObj.pathname = decodeURI(urlObj.pathname);
-    } catch (_) {}
-  } // Remove directory index
-
-
-  if (options.removeDirectoryIndex === true) {
-    options.removeDirectoryIndex = [/^index\.[a-z]+$/];
-  }
-
-  if (Array.isArray(options.removeDirectoryIndex) && options.removeDirectoryIndex.length > 0) {
-    var pathComponents = urlObj.pathname.split('/');
-    var lastComponent = pathComponents[pathComponents.length - 1];
-
-    if (testParameter(lastComponent, options.removeDirectoryIndex)) {
-      pathComponents = pathComponents.slice(0, pathComponents.length - 1);
-      urlObj.pathname = pathComponents.slice(1).join('/') + '/';
-    }
-  }
-
-  if (urlObj.hostname) {
-    // Remove trailing dot
-    urlObj.hostname = urlObj.hostname.replace(/\.$/, ''); // Remove `www.`
-
-    if (options.stripWWW && /^www\.(?!www\.)(?:[a-z\-\d]{1,63})\.(?:[a-z.\-\d]{2,63})$/.test(urlObj.hostname)) {
-      // Each label should be max 63 at length (min: 1).
-      // Source: https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
-      // Each TLD should be up to 63 characters long (min: 2).
-      // It is technically possible to have a single character TLD, but none currently exist.
-      urlObj.hostname = urlObj.hostname.replace(/^www\./, '');
-    }
-  } // Remove query unwanted parameters
-
-
-  if (Array.isArray(options.removeQueryParameters)) {
-    for (var _i2 = 0, _arr2 = _toConsumableArray(urlObj.searchParams.keys()); _i2 < _arr2.length; _i2++) {
-      var key = _arr2[_i2];
-
-      if (testParameter(key, options.removeQueryParameters)) {
-        urlObj.searchParams["delete"](key);
-      }
-    }
-  } // Sort query parameters
-
-
-  if (options.sortQueryParameters) {
-    urlObj.searchParams.sort();
-  }
-
-  if (options.removeTrailingSlash) {
-    urlObj.pathname = urlObj.pathname.replace(/\/$/, '');
-  }
-
-  var oldUrlString = urlString; // Take advantage of many of the Node `url` normalizations
-
-  urlString = urlObj.toString();
-
-  if (!options.removeSingleSlash && urlObj.pathname === '/' && !oldUrlString.endsWith('/') && urlObj.hash === '') {
-    urlString = urlString.replace(/\/$/, '');
-  } // Remove ending `/` unless removeSingleSlash is false
-
-
-  if ((options.removeTrailingSlash || urlObj.pathname === '/') && urlObj.hash === '' && options.removeSingleSlash) {
-    urlString = urlString.replace(/\/$/, '');
-  } // Restore relative protocol, if applicable
-
-
-  if (hasRelativeProtocol && !options.normalizeProtocol) {
-    urlString = urlString.replace(/^http:\/\//, '//');
-  } // Remove http/https
-
-
-  if (options.stripProtocol) {
-    urlString = urlString.replace(/^(?:https?:)?\/\//, '');
-  }
-
-  return urlString;
-};
-
-module.exports = normalizeUrl;
-
-/***/ }),
-
 /***/ "./node_modules/path-browserify/index.js":
 /*!***********************************************!*\
   !*** ./node_modules/path-browserify/index.js ***!
@@ -7972,8 +7696,6 @@ __webpack_require__.r(__webpack_exports__);
 
 var path = __webpack_require__(/*! path */ "./node_modules/path-browserify/index.js");
 
-var normalizeUrl = __webpack_require__(/*! normalize-url */ "./node_modules/normalize-url/index.js");
-
 var gltfLoader = new three_examples_jsm_loaders_GLTFLoader_js__WEBPACK_IMPORTED_MODULE_3__["GLTFLoader"]();
 
 function loader(url, signal) {
@@ -7981,7 +7703,6 @@ function loader(url, signal) {
     throw new Error("unsupported format : " + url);
   }
 
-  url = normalizeUrl(url);
   return fetch(url, !!signal ? {
     signal: signal
   } : {}).then(function (result) {
@@ -8304,6 +8025,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     }
 
     self.currentlyRenderedTiles = {};
+    self.scene = null;
   }
 
   function setScene(scene) {
@@ -8317,7 +8039,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
   }
 
   function update() {
-    if (!self.rootTile) {
+    if (!self.rootTile || !self.scene) {
       return;
     }
 
@@ -8328,7 +8050,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     projScreenMatrix.multiplyMatrices(self.camera.projectionMatrix, self.camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(new three__WEBPACK_IMPORTED_MODULE_2__["Matrix4"]().multiplyMatrices(self.camera.projectionMatrix, self.camera.matrixWorldInverse));
     self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(function (tiles) {
-      if (tiles.length > 0) {
+      if (tiles.length > 0 && !!self.scene) {
         var newTilesContent = tiles.map(function (tile) {
           return tile.content;
         });
@@ -8347,7 +8069,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
               contentRequests.push(cache.get(content
               /*, controller.signal*/
               ).then(function (gltf) {
-                if (!!gltf) {
+                if (!!gltf && !!self.scene) {
                   if (self.futureActionOnTiles[content] === "toUpdate") {
                     self.scene.add(gltf.model.scene);
                     self.currentlyRenderedTiles[content] = gltf.model;
@@ -8375,7 +8097,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
           Promise.all(contentRequests)["catch"](function (error) {
             console.log(error);
           })["finally"](function () {
-            if (!controller.signal.aborted) {
+            if (!controller.signal.aborted && !!self.scene) {
               toDelete.forEach(function (url) {
                 setTimeout(function () {
                   if (self.futureActionOnTiles[url] === "toDelete") {
