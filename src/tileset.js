@@ -32,6 +32,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
             });
         }
         self.currentlyRenderedTiles = {}
+        self.scene = null;
     }
     function setScene(scene){
         deleteFromCurrentScene();
@@ -44,7 +45,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
     }
 
     function update(){
-        if(!self.rootTile) {
+        if(!self.rootTile || !self.scene) {
             return;
         }
         var frustum = new THREE.Frustum();
@@ -55,7 +56,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                 frustum.setFromProjectionMatrix( new THREE.Matrix4().multiplyMatrices( self.camera.projectionMatrix, self.camera.matrixWorldInverse ) );
 
         self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(tiles=>{
-            if(tiles.length>0){
+            if(tiles.length>0 && !!self.scene){
                 let newTilesContent = tiles.map(tile=>tile.content);
                 let toDelete=[];
                 Object.keys(self.currentlyRenderedTiles).forEach(current=>{
@@ -70,7 +71,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                         if(self.futureActionOnTiles[content] !== "toUpdate"){
                             self.futureActionOnTiles[content] = "toUpdate";
                             contentRequests.push(cache.get(content/*, controller.signal*/).then(gltf=>{
-                                if(!!gltf){
+                                if(!!gltf && !!self.scene){
                                     if(self.futureActionOnTiles[content] === "toUpdate"){
                                         self.scene.add(gltf.model.scene);
                                         self.currentlyRenderedTiles[content] = gltf.model;
@@ -96,7 +97,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                     Promise.all(contentRequests).catch(error=>{
                         console.log(error);
                     }).finally(()=>{
-                        if(!controller.signal.aborted){
+                        if(!controller.signal.aborted && !!self.scene){
                             toDelete.forEach(url=>{
                                 setTimeout(()=>{
                                     if(self.futureActionOnTiles[url] === "toDelete"){
