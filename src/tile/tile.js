@@ -9,12 +9,12 @@ function Tile(){
 
     function getTilesInView(frustum, cameraPosition, errorCoefficient, loadAroundView){
         if(self.content.endsWith(".json")){
-            loader(self.content, signal).then(tile=>{
-                setContent(tile.getContent);
-                setGeometricError(tile.geometricError);
-                setRefine(tile.getRefine);
-                setVolume(tile.getVolume);
-                setChildren(tile.getChildren);
+            return loader(self.content).then(tile=>{
+                setContent(tile.getContent());
+                setGeometricError(tile.getGeometricError());
+                setRefine(tile.getRefine());
+                setVolume(tile.getVolume(), tile.getVolume().type);
+                setChildren(tile.getChildren());
                 return traverse(frustum, cameraPosition, errorCoefficient, loadAroundView);
             }).catch(error=>{
                 throw error;
@@ -40,7 +40,11 @@ function Tile(){
         }else if (!!loadAroundView){
             tilePromises.push(Promise.resolve([self]));
         }
-        return Promise.all(tilePromises).then(children=> children.flat());
+        return Promise.all(tilePromises).then(children=> {
+            return children.flat();
+        }).catch(error=>{
+            console.log(error);
+        });
     }
 
     function setChildren(children){
@@ -69,7 +73,7 @@ function Tile(){
 
     function setVolume(volume, type){
         if(type != "box" && type != "sphere" && type != "region"){
-            throw "volume type should be box, sphere or region";
+            throw "volume type should be box, sphere or region but was : "+type;
         }
         self.volume = volume;
         self.volume.type = type;
@@ -103,7 +107,7 @@ function Tile(){
         self.content = content;
     }
     function getContent(){
-        return content.content;
+        return self.content;
     }
 
     return{

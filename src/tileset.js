@@ -3,7 +3,7 @@ import { loader } from "./loader/loader";
 import * as THREE from 'three';
 
 
-const cache = new Cache((navigator.deviceMemory / 10)*8e9, loader);
+const cache = new Cache(1000, loader);
 function Tileset(url, scene, camera, geometricErrorMultiplier){
     var self = this;
     this.rootTile;
@@ -14,8 +14,6 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
     this.futureActionOnTiles = {};
     this.loadAroundView = false;
     
-
-
     loader(url).then(rootTile => {
         self.rootTile = rootTile;
         update();
@@ -29,7 +27,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
     }
     function deleteFromCurrentScene(){
         if(!!self.scene){
-            self.currentlyRenderedTiles.values().forEach(element => {
+            Object.values(self.currentlyRenderedTiles).forEach(element => {
                 self.scene.remove(element.scene);
             });
         }
@@ -58,7 +56,6 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
 
         self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(tiles=>{
             if(tiles.length>0){
-
                 let newTilesContent = tiles.map(tile=>tile.content);
                 let toDelete=[];
                 Object.keys(self.currentlyRenderedTiles).forEach(current=>{
@@ -116,11 +113,8 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
             }
             
         });
-
-        
     }
 
-    
     return{
         "setScene" : setScene,
         "update" : update,

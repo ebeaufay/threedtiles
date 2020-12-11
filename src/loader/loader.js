@@ -4,7 +4,7 @@ import { Box3, MeshBasicMaterial, Vector3, DoubleSide } from "three";
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 const path = require('path');
-
+const normalizeUrl = require('normalize-url');
 
 const gltfLoader = new GLTFLoader( );
 
@@ -13,12 +13,14 @@ function loader(url, signal){
     if(!url.endsWith("b3dm") && !url.endsWith("json")){
 		throw new Error("unsupported format : " + url)
 	}
-	return fetch(url, {signal: signal}).then(result =>{
+	url = normalizeUrl(url);
+	
+	return fetch(url, !!signal?{signal: signal}:{}).then(result =>{
 		if ( ! result.ok ) {
 			throw new Error( `couldn't load "${ url }". Request failed with status ${ result.status } : ${ result.statusText }` );
 		}
 		if(url.endsWith("b3dm")){
-			return result.arrayBuffer().then(buffer=>parseB3DM(buffer, url));
+			return result.arrayBuffer().then(buffer=>parseB3DM(buffer, url)).catch(error=>console.log(error));
 		}else if(url.endsWith("json")){
 			return result.json().then(function(json){
 				

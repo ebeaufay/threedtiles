@@ -20,6 +20,9 @@
 # external modules
 node_modules/*
 
+#build folder
+dist/*
+
 # package-lock
 *package-lock.json
 

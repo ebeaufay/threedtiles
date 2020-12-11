@@ -1,5 +1,5 @@
 
-import sizeof from 'object-sizeof'
+//import sizeof from 'object-sizeof'
 function Cache(maxSize, loadFunction){
     var self = this;
     this.map = new Map();
@@ -11,7 +11,7 @@ function Cache(maxSize, loadFunction){
         let object = self.map.get(key);
         if(!object){
             return self.loadFunction(key, signal).then(result=>{
-                let sizeLocal = sizeof(result);
+                let sizeLocal = 1;
                 if(!self.map.has(key)){
                     self.map.set(key, {"size":sizeLocal, "value": result});
                     self.size+=sizeLocal;
