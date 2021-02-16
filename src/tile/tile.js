@@ -122,7 +122,8 @@ function Tile(){
         "getRefine" : getRefine,
         "setContent" : setContent,
         "getContent" : getContent,
-        "setChildren": setChildren
+        "setChildren": setChildren,
+        "inFrustum" : inFrustum
     }
 } 
 export {Tile};

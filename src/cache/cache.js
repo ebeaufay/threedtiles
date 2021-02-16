@@ -8,22 +8,28 @@ function Cache(maxSize, loadFunction){
     this.loadFunction = loadFunction;
 
     function get(key, signal){
-        let object = self.map.get(key);
-        if(!object){
-            return self.loadFunction(key, signal).then(result=>{
-                let sizeLocal = 1;
-                if(!self.map.has(key)){
-                    self.map.set(key, {"size":sizeLocal, "value": result});
-                    self.size+=sizeLocal;
-                    checkSize();
-                }
-                return result;
-            }).catch(error=>{
-                throw error;
-            });
-        }else{
-            return Promise.resolve(object.value);
-        }
+        return self.loadFunction(key, signal);
+        /*return new Promise((resolve, reject)=>{
+            let object = self.map.get(key);
+            if(!object){
+                resolve(self.loadFunction(key, signal).then(result=>{
+                    let sizeLocal = 1;
+                    if(!self.map.has(key)){
+                        self.map.set(key, {"size":sizeLocal, "value": result});
+                        self.size+=sizeLocal;
+                        checkSize();
+                    }
+                    return result;
+                }).catch(error=>{
+                    throw error;
+                }));
+            }else{
+                resolve(object.value);
+            }
+        })*/
+
+        //return self.loadFunction(key, signal);
+        
     }
 
     function checkSize(){

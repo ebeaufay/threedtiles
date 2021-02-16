@@ -3,7 +3,7 @@ import { loader } from "./loader/loader";
 import * as THREE from 'three';
 
 
-const cache = new Cache(1000, loader);
+const cache = new Cache(100, loader);
 function Tileset(url, scene, camera, geometricErrorMultiplier){
     var self = this;
     this.rootTile;
@@ -107,6 +107,10 @@ function Tileset(url, scene, camera, geometricErrorMultiplier){
                                     }
                                 }, 0);
                             })
+                            if(Object.keys(self.currentlyRenderedTiles).length != scene.children.length-1){
+                                console.log(Object.keys(self.currentlyRenderedTiles).length);
+                                console.log(scene.children.length);
+                            }
                         }
                         
                     });

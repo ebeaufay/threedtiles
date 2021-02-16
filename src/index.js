@@ -81,6 +81,8 @@ if (modelDropDown.addEventListener) {
 function setVillageModel(){
   if(!!tileset) tileset.deleteFromCurrentScene();
   tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/frenchVillage/tileset.json", scene, camera);
+  if(!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
+  if(!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
   camera.position.x = 0;
   camera.position.y = 0;
   camera.position.z = 100;
@@ -95,6 +97,8 @@ function setVillageModel(){
 function setAyaModel(){
   if(!!tileset) tileset.deleteFromCurrentScene();
   tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/aya/tileset.json", scene, camera);
+  if(!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
+  if(!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
   camera.position.x = 2000;
   camera.position.y = 2000;
   camera.position.z = 2400;

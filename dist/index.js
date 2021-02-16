@@ -7447,28 +7447,26 @@ function Cache(maxSize, loadFunction) {
   this.loadFunction = loadFunction;
 
   function get(key, signal) {
-    var object = self.map.get(key);
-
-    if (!object) {
-      return self.loadFunction(key, signal).then(function (result) {
-        var sizeLocal = 1;
-
-        if (!self.map.has(key)) {
-          self.map.set(key, {
-            "size": sizeLocal,
-            "value": result
-          });
-          self.size += sizeLocal;
-          checkSize();
+    return self.loadFunction(key, signal);
+    /*return new Promise((resolve, reject)=>{
+        let object = self.map.get(key);
+        if(!object){
+            resolve(self.loadFunction(key, signal).then(result=>{
+                let sizeLocal = 1;
+                if(!self.map.has(key)){
+                    self.map.set(key, {"size":sizeLocal, "value": result});
+                    self.size+=sizeLocal;
+                    checkSize();
+                }
+                return result;
+            }).catch(error=>{
+                throw error;
+            }));
+        }else{
+            resolve(object.value);
         }
-
-        return result;
-      })["catch"](function (error) {
-        throw error;
-      });
-    } else {
-      return Promise.resolve(object.value);
-    }
+    })*/
+    //return self.loadFunction(key, signal);
   }
 
   function checkSize() {
@@ -7648,6 +7646,8 @@ if (modelDropDown.addEventListener) {
 function setVillageModel() {
   if (!!tileset) tileset.deleteFromCurrentScene();
   tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("https://ebeaufay.github.io/ThreedTilesViewer.github.io/frenchVillage/tileset.json", scene, camera);
+  if (!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
+  if (!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
   camera.position.x = 0;
   camera.position.y = 0;
   camera.position.z = 100;
@@ -7662,6 +7662,8 @@ function setVillageModel() {
 function setAyaModel() {
   if (!!tileset) tileset.deleteFromCurrentScene();
   tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("https://ebeaufay.github.io/ThreedTilesViewer.github.io/aya/tileset.json", scene, camera);
+  if (!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
+  if (!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
   camera.position.x = 2000;
   camera.position.y = 2000;
   camera.position.z = 2400;
@@ -7969,7 +7971,8 @@ function Tile() {
     "getRefine": getRefine,
     "setContent": setContent,
     "getContent": getContent,
-    "setChildren": setChildren
+    "setChildren": setChildren,
+    "inFrustum": inFrustum
   };
 }
 
@@ -7993,7 +7996,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-var cache = new _cache_cache__WEBPACK_IMPORTED_MODULE_0__["Cache"](1000, _loader_loader__WEBPACK_IMPORTED_MODULE_1__["loader"]);
+var cache = new _cache_cache__WEBPACK_IMPORTED_MODULE_0__["Cache"](100, _loader_loader__WEBPACK_IMPORTED_MODULE_1__["loader"]);
 
 function Tileset(url, scene, camera, geometricErrorMultiplier) {
   var self = this;
@@ -8107,6 +8110,11 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
                   }
                 }, 0);
               });
+
+              if (Object.keys(self.currentlyRenderedTiles).length != scene.children.length - 1) {
+                console.log(Object.keys(self.currentlyRenderedTiles).length);
+                console.log(scene.children.length);
+              }
             }
           });
         }
