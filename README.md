@@ -25,7 +25,7 @@ This library provides several advantages over existing ones:
 
 
 ## Caching
-Caching is automatically handled. the cache size is set to one tenth of the estimated device memory.
+Caching of B3DMs is not implemented yet. The current code relies on simple browser caching.
 
 ## Options
 
