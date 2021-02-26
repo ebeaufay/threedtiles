@@ -4,7 +4,7 @@ import { Tileset } from './tileset';
 
 var tileset;
 var scene = new THREE.Scene();
-scene.background = new THREE.Color( 0x283860 );
+scene.background = new THREE.Color( 0x49362A );
 const light = new THREE.AmbientLight( 0xeeeeee, 1 ); // soft white light
 scene.add( light );
 
@@ -74,6 +74,10 @@ if (modelDropDown.addEventListener) {
         setAyaModel();
         return;
       }
+      case "Interior":{
+        setInteriorModel();
+        return;
+      }
     }
   }, false);
 }
@@ -107,5 +111,22 @@ function setAyaModel(){
   controls.target.x = 0;
   controls.target.y = 1000;
   controls.target.z = 0;
+  controls.update();
+}
+
+function setInteriorModel(){
+  if(!!tileset) tileset.deleteFromCurrentScene();
+  tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/interior/tileset.json", scene, camera);
+  if(!!geometricErrorMultiplier) geometricErrorMultiplier.value = 20;
+  tileset.setGeometricErrorMultiplier(0.1)
+  if(!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
+  camera.position.x = -1.18;
+  camera.position.y = 6.77515;
+  camera.position.z = -1.7;
+  controls.minDistance = 0.1;
+  controls.maxDistance = 1000;
+  controls.target.x = 0;
+  controls.target.y = 0;
+  controls.target.z = -25;
   controls.update();
 }
