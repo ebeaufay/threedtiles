@@ -1,4 +1,7 @@
 # 3DTilesViewer
+
+contact me at : emericbeaufays@gmail.com
+
 3DTiles viewer for three.js
 
 demo : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
@@ -49,3 +52,8 @@ tileset.setLoadOutsideView(true);
  - make a callback available for loaded meshes
  - provide access to batch and feature tables
  - support for i3dm, pnts,...
+
+# EXTRA Mesh to 3DTiles Converter
+
+I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
+For more info, contact me at emericbeaufays@gmail.com
