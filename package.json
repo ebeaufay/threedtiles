@@ -1,5 +1,5 @@
 {
-    "name": "3DTilesViewer",
+    "name": "ThreeDTilesViewer",
     "version": "0.0.1",
     "private": true,
     "description": "A 3D Tiles Viewer for THREE.js",

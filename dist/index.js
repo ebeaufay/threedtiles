@@ -3826,6 +3826,331 @@ function LensFlare(){console.error('THREE.LensFlare has been moved to /examples/
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/controls/FirstPersonControls.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/controls/FirstPersonControls.js ***!
+  \*************************************************************************/
+/*! exports provided: FirstPersonControls */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FirstPersonControls", function() { return FirstPersonControls; });
+/* harmony import */ var _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../build/three.module.js */ "./node_modules/three/build/three.module.js");
+
+
+var FirstPersonControls = function FirstPersonControls(object, domElement) {
+  if (domElement === undefined) {
+    console.warn('THREE.FirstPersonControls: The second parameter "domElement" is now mandatory.');
+    domElement = document;
+  }
+
+  this.object = object;
+  this.domElement = domElement; // API
+
+  this.enabled = true;
+  this.movementSpeed = 1.0;
+  this.lookSpeed = 0.005;
+  this.lookVertical = true;
+  this.autoForward = false;
+  this.activeLook = true;
+  this.heightSpeed = false;
+  this.heightCoef = 1.0;
+  this.heightMin = 0.0;
+  this.heightMax = 1.0;
+  this.constrainVertical = false;
+  this.verticalMin = 0;
+  this.verticalMax = Math.PI;
+  this.mouseDragOn = false; // internals
+
+  this.autoSpeedFactor = 0.0;
+  this.mouseX = 0;
+  this.mouseY = 0;
+  this.moveForward = false;
+  this.moveBackward = false;
+  this.moveLeft = false;
+  this.moveRight = false;
+  this.viewHalfX = 0;
+  this.viewHalfY = 0; // private variables
+
+  var lat = 0;
+  var lon = 0;
+  var lookDirection = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+  var spherical = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Spherical"]();
+  var target = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"](); //
+
+  if (this.domElement !== document) {
+    this.domElement.setAttribute('tabindex', -1);
+  } //
+
+
+  this.handleResize = function () {
+    if (this.domElement === document) {
+      this.viewHalfX = window.innerWidth / 2;
+      this.viewHalfY = window.innerHeight / 2;
+    } else {
+      this.viewHalfX = this.domElement.offsetWidth / 2;
+      this.viewHalfY = this.domElement.offsetHeight / 2;
+    }
+  };
+
+  this.onMouseDown = function (event) {
+    if (this.domElement !== document) {
+      this.domElement.focus();
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.activeLook) {
+      switch (event.button) {
+        case 0:
+          this.moveForward = true;
+          break;
+
+        case 2:
+          this.moveBackward = true;
+          break;
+      }
+    }
+
+    this.mouseDragOn = true;
+  };
+
+  this.onMouseUp = function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.activeLook) {
+      switch (event.button) {
+        case 0:
+          this.moveForward = false;
+          break;
+
+        case 2:
+          this.moveBackward = false;
+          break;
+      }
+    }
+
+    this.mouseDragOn = false;
+  };
+
+  this.onMouseMove = function (event) {
+    if (this.domElement === document) {
+      this.mouseX = event.pageX - this.viewHalfX;
+      this.mouseY = event.pageY - this.viewHalfY;
+    } else {
+      this.mouseX = event.pageX - this.domElement.offsetLeft - this.viewHalfX;
+      this.mouseY = event.pageY - this.domElement.offsetTop - this.viewHalfY;
+    }
+  };
+
+  this.onKeyDown = function (event) {
+    //event.preventDefault();
+    switch (event.keyCode) {
+      case 38:
+      /*up*/
+
+      case 87:
+        /*W*/
+        this.moveForward = true;
+        break;
+
+      case 37:
+      /*left*/
+
+      case 65:
+        /*A*/
+        this.moveLeft = true;
+        break;
+
+      case 40:
+      /*down*/
+
+      case 83:
+        /*S*/
+        this.moveBackward = true;
+        break;
+
+      case 39:
+      /*right*/
+
+      case 68:
+        /*D*/
+        this.moveRight = true;
+        break;
+
+      case 82:
+        /*R*/
+        this.moveUp = true;
+        break;
+
+      case 70:
+        /*F*/
+        this.moveDown = true;
+        break;
+    }
+  };
+
+  this.onKeyUp = function (event) {
+    switch (event.keyCode) {
+      case 38:
+      /*up*/
+
+      case 87:
+        /*W*/
+        this.moveForward = false;
+        break;
+
+      case 37:
+      /*left*/
+
+      case 65:
+        /*A*/
+        this.moveLeft = false;
+        break;
+
+      case 40:
+      /*down*/
+
+      case 83:
+        /*S*/
+        this.moveBackward = false;
+        break;
+
+      case 39:
+      /*right*/
+
+      case 68:
+        /*D*/
+        this.moveRight = false;
+        break;
+
+      case 82:
+        /*R*/
+        this.moveUp = false;
+        break;
+
+      case 70:
+        /*F*/
+        this.moveDown = false;
+        break;
+    }
+  };
+
+  this.lookAt = function (x, y, z) {
+    if (x.isVector3) {
+      target.copy(x);
+    } else {
+      target.set(x, y, z);
+    }
+
+    this.object.lookAt(target);
+    setOrientation(this);
+    return this;
+  };
+
+  this.update = function () {
+    var targetPosition = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    return function update(delta) {
+      if (this.enabled === false) return;
+
+      if (this.heightSpeed) {
+        var y = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].clamp(this.object.position.y, this.heightMin, this.heightMax);
+        var heightDelta = y - this.heightMin;
+        this.autoSpeedFactor = delta * (heightDelta * this.heightCoef);
+      } else {
+        this.autoSpeedFactor = 0.0;
+      }
+
+      var actualMoveSpeed = delta * this.movementSpeed;
+      if (this.moveForward || this.autoForward && !this.moveBackward) this.object.translateZ(-(actualMoveSpeed + this.autoSpeedFactor));
+      if (this.moveBackward) this.object.translateZ(actualMoveSpeed);
+      if (this.moveLeft) this.object.translateX(-actualMoveSpeed);
+      if (this.moveRight) this.object.translateX(actualMoveSpeed);
+      if (this.moveUp) this.object.translateY(actualMoveSpeed);
+      if (this.moveDown) this.object.translateY(-actualMoveSpeed);
+      var actualLookSpeed = delta * this.lookSpeed;
+
+      if (!this.activeLook) {
+        actualLookSpeed = 0;
+      }
+
+      var verticalLookRatio = 1;
+
+      if (this.constrainVertical) {
+        verticalLookRatio = Math.PI / (this.verticalMax - this.verticalMin);
+      }
+
+      lon -= this.mouseX * actualLookSpeed;
+      if (this.lookVertical) lat -= this.mouseY * actualLookSpeed * verticalLookRatio;
+      lat = Math.max(-85, Math.min(85, lat));
+      var phi = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].degToRad(90 - lat);
+      var theta = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].degToRad(lon);
+
+      if (this.constrainVertical) {
+        phi = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].mapLinear(phi, 0, Math.PI, this.verticalMin, this.verticalMax);
+      }
+
+      var position = this.object.position;
+      targetPosition.setFromSphericalCoords(1, phi, theta).add(position);
+      this.object.lookAt(targetPosition);
+    };
+  }();
+
+  function contextmenu(event) {
+    event.preventDefault();
+  }
+
+  this.dispose = function () {
+    this.domElement.removeEventListener('contextmenu', contextmenu, false);
+    this.domElement.removeEventListener('mousedown', _onMouseDown, false);
+    this.domElement.removeEventListener('mousemove', _onMouseMove, false);
+    this.domElement.removeEventListener('mouseup', _onMouseUp, false);
+    window.removeEventListener('keydown', _onKeyDown, false);
+    window.removeEventListener('keyup', _onKeyUp, false);
+  };
+
+  var _onMouseMove = bind(this, this.onMouseMove);
+
+  var _onMouseDown = bind(this, this.onMouseDown);
+
+  var _onMouseUp = bind(this, this.onMouseUp);
+
+  var _onKeyDown = bind(this, this.onKeyDown);
+
+  var _onKeyUp = bind(this, this.onKeyUp);
+
+  this.domElement.addEventListener('contextmenu', contextmenu, false);
+  this.domElement.addEventListener('mousemove', _onMouseMove, false);
+  this.domElement.addEventListener('mousedown', _onMouseDown, false);
+  this.domElement.addEventListener('mouseup', _onMouseUp, false);
+  window.addEventListener('keydown', _onKeyDown, false);
+  window.addEventListener('keyup', _onKeyUp, false);
+
+  function bind(scope, fn) {
+    return function () {
+      fn.apply(scope, arguments);
+    };
+  }
+
+  function setOrientation(controls) {
+    var quaternion = controls.object.quaternion;
+    lookDirection.set(0, 0, -1).applyQuaternion(quaternion);
+    spherical.setFromVector3(lookDirection);
+    lat = 90 - _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].radToDeg(spherical.phi);
+    lon = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].radToDeg(spherical.theta);
+  }
+
+  this.handleResize();
+  setOrientation(this);
+};
+
+
+
+/***/ }),
+
 /***/ "./node_modules/three/examples/jsm/controls/OrbitControls.js":
 /*!*******************************************************************!*\
   !*** ./node_modules/three/examples/jsm/controls/OrbitControls.js ***!
@@ -4657,6 +4982,135 @@ var MapControls = function MapControls(object, domElement) {
 MapControls.prototype = Object.create(_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["EventDispatcher"].prototype);
 MapControls.prototype.constructor = MapControls;
 
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/libs/stats.module.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/libs/stats.module.js ***!
+  \**************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+var Stats = function Stats() {
+  var mode = 0;
+  var container = document.createElement('div');
+  container.style.cssText = 'position:fixed;top:0;left:0;cursor:pointer;opacity:0.9;z-index:10000';
+  container.addEventListener('click', function (event) {
+    event.preventDefault();
+    showPanel(++mode % container.children.length);
+  }, false); //
+
+  function addPanel(panel) {
+    container.appendChild(panel.dom);
+    return panel;
+  }
+
+  function showPanel(id) {
+    for (var i = 0; i < container.children.length; i++) {
+      container.children[i].style.display = i === id ? 'block' : 'none';
+    }
+
+    mode = id;
+  } //
+
+
+  var beginTime = (performance || Date).now(),
+      prevTime = beginTime,
+      frames = 0;
+  var fpsPanel = addPanel(new Stats.Panel('FPS', '#0ff', '#002'));
+  var msPanel = addPanel(new Stats.Panel('MS', '#0f0', '#020'));
+
+  if (self.performance && self.performance.memory) {
+    var memPanel = addPanel(new Stats.Panel('MB', '#f08', '#201'));
+  }
+
+  showPanel(0);
+  return {
+    REVISION: 16,
+    dom: container,
+    addPanel: addPanel,
+    showPanel: showPanel,
+    begin: function begin() {
+      beginTime = (performance || Date).now();
+    },
+    end: function end() {
+      frames++;
+      var time = (performance || Date).now();
+      msPanel.update(time - beginTime, 200);
+
+      if (time >= prevTime + 1000) {
+        fpsPanel.update(frames * 1000 / (time - prevTime), 100);
+        prevTime = time;
+        frames = 0;
+
+        if (memPanel) {
+          var memory = performance.memory;
+          memPanel.update(memory.usedJSHeapSize / 1048576, memory.jsHeapSizeLimit / 1048576);
+        }
+      }
+
+      return time;
+    },
+    update: function update() {
+      beginTime = this.end();
+    },
+    // Backwards Compatibility
+    domElement: container,
+    setMode: showPanel
+  };
+};
+
+Stats.Panel = function (name, fg, bg) {
+  var min = Infinity,
+      max = 0,
+      round = Math.round;
+  var PR = round(window.devicePixelRatio || 1);
+  var WIDTH = 80 * PR,
+      HEIGHT = 48 * PR,
+      TEXT_X = 3 * PR,
+      TEXT_Y = 2 * PR,
+      GRAPH_X = 3 * PR,
+      GRAPH_Y = 15 * PR,
+      GRAPH_WIDTH = 74 * PR,
+      GRAPH_HEIGHT = 30 * PR;
+  var canvas = document.createElement('canvas');
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+  canvas.style.cssText = 'width:80px;height:48px';
+  var context = canvas.getContext('2d');
+  context.font = 'bold ' + 9 * PR + 'px Helvetica,Arial,sans-serif';
+  context.textBaseline = 'top';
+  context.fillStyle = bg;
+  context.fillRect(0, 0, WIDTH, HEIGHT);
+  context.fillStyle = fg;
+  context.fillText(name, TEXT_X, TEXT_Y);
+  context.fillRect(GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT);
+  context.fillStyle = bg;
+  context.globalAlpha = 0.9;
+  context.fillRect(GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT);
+  return {
+    dom: canvas,
+    update: function update(value, maxValue) {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+      context.fillStyle = bg;
+      context.globalAlpha = 1;
+      context.fillRect(0, 0, WIDTH, GRAPH_Y);
+      context.fillStyle = fg;
+      context.fillText(round(value) + ' ' + name + ' (' + round(min) + '-' + round(max) + ')', TEXT_X, TEXT_Y);
+      context.drawImage(canvas, GRAPH_X + PR, GRAPH_Y, GRAPH_WIDTH - PR, GRAPH_HEIGHT, GRAPH_X, GRAPH_Y, GRAPH_WIDTH - PR, GRAPH_HEIGHT);
+      context.fillRect(GRAPH_X + GRAPH_WIDTH - PR, GRAPH_Y, PR, GRAPH_HEIGHT);
+      context.fillStyle = bg;
+      context.globalAlpha = 0.9;
+      context.fillRect(GRAPH_X + GRAPH_WIDTH - PR, GRAPH_Y, PR, round((1 - value / maxValue) * GRAPH_HEIGHT));
+    }
+  };
+};
+
+/* harmony default export */ __webpack_exports__["default"] = (Stats);
 
 /***/ }),
 
@@ -7414,6 +7868,1144 @@ var GLTFLoader = function () {
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/math/SimplexNoise.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/math/SimplexNoise.js ***!
+  \**************************************************************/
+/*! exports provided: SimplexNoise */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimplexNoise", function() { return SimplexNoise; });
+// Ported from Stefan Gustavson's java implementation
+// http://staffwww.itn.liu.se/~stegu/simplexnoise/simplexnoise.pdf
+// Read Stefan's excellent paper for details on how this code works.
+//
+// Sean McCullough banksean@gmail.com
+//
+// Added 4D noise
+
+/**
+ * You can pass in a random number generator object if you like.
+ * It is assumed to have a random() method.
+ */
+var SimplexNoise = function SimplexNoise(r) {
+  if (r == undefined) r = Math;
+  this.grad3 = [[1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0], [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1], [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]];
+  this.grad4 = [[0, 1, 1, 1], [0, 1, 1, -1], [0, 1, -1, 1], [0, 1, -1, -1], [0, -1, 1, 1], [0, -1, 1, -1], [0, -1, -1, 1], [0, -1, -1, -1], [1, 0, 1, 1], [1, 0, 1, -1], [1, 0, -1, 1], [1, 0, -1, -1], [-1, 0, 1, 1], [-1, 0, 1, -1], [-1, 0, -1, 1], [-1, 0, -1, -1], [1, 1, 0, 1], [1, 1, 0, -1], [1, -1, 0, 1], [1, -1, 0, -1], [-1, 1, 0, 1], [-1, 1, 0, -1], [-1, -1, 0, 1], [-1, -1, 0, -1], [1, 1, 1, 0], [1, 1, -1, 0], [1, -1, 1, 0], [1, -1, -1, 0], [-1, 1, 1, 0], [-1, 1, -1, 0], [-1, -1, 1, 0], [-1, -1, -1, 0]];
+  this.p = [];
+
+  for (var i = 0; i < 256; i++) {
+    this.p[i] = Math.floor(r.random() * 256);
+  } // To remove the need for index wrapping, double the permutation table length
+
+
+  this.perm = [];
+
+  for (var i = 0; i < 512; i++) {
+    this.perm[i] = this.p[i & 255];
+  } // A lookup table to traverse the simplex around a given point in 4D.
+  // Details can be found where this table is used, in the 4D noise method.
+
+
+  this.simplex = [[0, 1, 2, 3], [0, 1, 3, 2], [0, 0, 0, 0], [0, 2, 3, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 2, 3, 0], [0, 2, 1, 3], [0, 0, 0, 0], [0, 3, 1, 2], [0, 3, 2, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 3, 2, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 2, 0, 3], [0, 0, 0, 0], [1, 3, 0, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 3, 0, 1], [2, 3, 1, 0], [1, 0, 2, 3], [1, 0, 3, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 3, 1], [0, 0, 0, 0], [2, 1, 3, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 1, 3], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 0, 1, 2], [3, 0, 2, 1], [0, 0, 0, 0], [3, 1, 2, 0], [2, 1, 0, 3], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 1, 0, 2], [0, 0, 0, 0], [3, 2, 0, 1], [3, 2, 1, 0]];
+};
+
+SimplexNoise.prototype.dot = function (g, x, y) {
+  return g[0] * x + g[1] * y;
+};
+
+SimplexNoise.prototype.dot3 = function (g, x, y, z) {
+  return g[0] * x + g[1] * y + g[2] * z;
+};
+
+SimplexNoise.prototype.dot4 = function (g, x, y, z, w) {
+  return g[0] * x + g[1] * y + g[2] * z + g[3] * w;
+};
+
+SimplexNoise.prototype.noise = function (xin, yin) {
+  var n0, n1, n2; // Noise contributions from the three corners
+  // Skew the input space to determine which simplex cell we're in
+
+  var F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
+  var s = (xin + yin) * F2; // Hairy factor for 2D
+
+  var i = Math.floor(xin + s);
+  var j = Math.floor(yin + s);
+  var G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
+  var t = (i + j) * G2;
+  var X0 = i - t; // Unskew the cell origin back to (x,y) space
+
+  var Y0 = j - t;
+  var x0 = xin - X0; // The x,y distances from the cell origin
+
+  var y0 = yin - Y0; // For the 2D case, the simplex shape is an equilateral triangle.
+  // Determine which simplex we are in.
+
+  var i1, j1; // Offsets for second (middle) corner of simplex in (i,j) coords
+
+  if (x0 > y0) {
+    i1 = 1;
+    j1 = 0; // lower triangle, XY order: (0,0)->(1,0)->(1,1)
+  } else {
+    i1 = 0;
+    j1 = 1;
+  } // upper triangle, YX order: (0,0)->(0,1)->(1,1)
+  // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
+  // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
+  // c = (3-sqrt(3))/6
+
+
+  var x1 = x0 - i1 + G2; // Offsets for middle corner in (x,y) unskewed coords
+
+  var y1 = y0 - j1 + G2;
+  var x2 = x0 - 1.0 + 2.0 * G2; // Offsets for last corner in (x,y) unskewed coords
+
+  var y2 = y0 - 1.0 + 2.0 * G2; // Work out the hashed gradient indices of the three simplex corners
+
+  var ii = i & 255;
+  var jj = j & 255;
+  var gi0 = this.perm[ii + this.perm[jj]] % 12;
+  var gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
+  var gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12; // Calculate the contribution from the three corners
+
+  var t0 = 0.5 - x0 * x0 - y0 * y0;
+  if (t0 < 0) n0 = 0.0;else {
+    t0 *= t0;
+    n0 = t0 * t0 * this.dot(this.grad3[gi0], x0, y0); // (x,y) of grad3 used for 2D gradient
+  }
+  var t1 = 0.5 - x1 * x1 - y1 * y1;
+  if (t1 < 0) n1 = 0.0;else {
+    t1 *= t1;
+    n1 = t1 * t1 * this.dot(this.grad3[gi1], x1, y1);
+  }
+  var t2 = 0.5 - x2 * x2 - y2 * y2;
+  if (t2 < 0) n2 = 0.0;else {
+    t2 *= t2;
+    n2 = t2 * t2 * this.dot(this.grad3[gi2], x2, y2);
+  } // Add contributions from each corner to get the final noise value.
+  // The result is scaled to return values in the interval [-1,1].
+
+  return 70.0 * (n0 + n1 + n2);
+}; // 3D simplex noise
+
+
+SimplexNoise.prototype.noise3d = function (xin, yin, zin) {
+  var n0, n1, n2, n3; // Noise contributions from the four corners
+  // Skew the input space to determine which simplex cell we're in
+
+  var F3 = 1.0 / 3.0;
+  var s = (xin + yin + zin) * F3; // Very nice and simple skew factor for 3D
+
+  var i = Math.floor(xin + s);
+  var j = Math.floor(yin + s);
+  var k = Math.floor(zin + s);
+  var G3 = 1.0 / 6.0; // Very nice and simple unskew factor, too
+
+  var t = (i + j + k) * G3;
+  var X0 = i - t; // Unskew the cell origin back to (x,y,z) space
+
+  var Y0 = j - t;
+  var Z0 = k - t;
+  var x0 = xin - X0; // The x,y,z distances from the cell origin
+
+  var y0 = yin - Y0;
+  var z0 = zin - Z0; // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
+  // Determine which simplex we are in.
+
+  var i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
+
+  var i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
+
+  if (x0 >= y0) {
+    if (y0 >= z0) {
+      i1 = 1;
+      j1 = 0;
+      k1 = 0;
+      i2 = 1;
+      j2 = 1;
+      k2 = 0; // X Y Z order
+    } else if (x0 >= z0) {
+      i1 = 1;
+      j1 = 0;
+      k1 = 0;
+      i2 = 1;
+      j2 = 0;
+      k2 = 1; // X Z Y order
+    } else {
+      i1 = 0;
+      j1 = 0;
+      k1 = 1;
+      i2 = 1;
+      j2 = 0;
+      k2 = 1;
+    } // Z X Y order
+
+  } else {
+    // x0<y0
+    if (y0 < z0) {
+      i1 = 0;
+      j1 = 0;
+      k1 = 1;
+      i2 = 0;
+      j2 = 1;
+      k2 = 1; // Z Y X order
+    } else if (x0 < z0) {
+      i1 = 0;
+      j1 = 1;
+      k1 = 0;
+      i2 = 0;
+      j2 = 1;
+      k2 = 1; // Y Z X order
+    } else {
+      i1 = 0;
+      j1 = 1;
+      k1 = 0;
+      i2 = 1;
+      j2 = 1;
+      k2 = 0;
+    } // Y X Z order
+
+  } // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
+  // a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
+  // a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
+  // c = 1/6.
+
+
+  var x1 = x0 - i1 + G3; // Offsets for second corner in (x,y,z) coords
+
+  var y1 = y0 - j1 + G3;
+  var z1 = z0 - k1 + G3;
+  var x2 = x0 - i2 + 2.0 * G3; // Offsets for third corner in (x,y,z) coords
+
+  var y2 = y0 - j2 + 2.0 * G3;
+  var z2 = z0 - k2 + 2.0 * G3;
+  var x3 = x0 - 1.0 + 3.0 * G3; // Offsets for last corner in (x,y,z) coords
+
+  var y3 = y0 - 1.0 + 3.0 * G3;
+  var z3 = z0 - 1.0 + 3.0 * G3; // Work out the hashed gradient indices of the four simplex corners
+
+  var ii = i & 255;
+  var jj = j & 255;
+  var kk = k & 255;
+  var gi0 = this.perm[ii + this.perm[jj + this.perm[kk]]] % 12;
+  var gi1 = this.perm[ii + i1 + this.perm[jj + j1 + this.perm[kk + k1]]] % 12;
+  var gi2 = this.perm[ii + i2 + this.perm[jj + j2 + this.perm[kk + k2]]] % 12;
+  var gi3 = this.perm[ii + 1 + this.perm[jj + 1 + this.perm[kk + 1]]] % 12; // Calculate the contribution from the four corners
+
+  var t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
+  if (t0 < 0) n0 = 0.0;else {
+    t0 *= t0;
+    n0 = t0 * t0 * this.dot3(this.grad3[gi0], x0, y0, z0);
+  }
+  var t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
+  if (t1 < 0) n1 = 0.0;else {
+    t1 *= t1;
+    n1 = t1 * t1 * this.dot3(this.grad3[gi1], x1, y1, z1);
+  }
+  var t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
+  if (t2 < 0) n2 = 0.0;else {
+    t2 *= t2;
+    n2 = t2 * t2 * this.dot3(this.grad3[gi2], x2, y2, z2);
+  }
+  var t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
+  if (t3 < 0) n3 = 0.0;else {
+    t3 *= t3;
+    n3 = t3 * t3 * this.dot3(this.grad3[gi3], x3, y3, z3);
+  } // Add contributions from each corner to get the final noise value.
+  // The result is scaled to stay just inside [-1,1]
+
+  return 32.0 * (n0 + n1 + n2 + n3);
+}; // 4D simplex noise
+
+
+SimplexNoise.prototype.noise4d = function (x, y, z, w) {
+  // For faster and easier lookups
+  var grad4 = this.grad4;
+  var simplex = this.simplex;
+  var perm = this.perm; // The skewing and unskewing factors are hairy again for the 4D case
+
+  var F4 = (Math.sqrt(5.0) - 1.0) / 4.0;
+  var G4 = (5.0 - Math.sqrt(5.0)) / 20.0;
+  var n0, n1, n2, n3, n4; // Noise contributions from the five corners
+  // Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
+
+  var s = (x + y + z + w) * F4; // Factor for 4D skewing
+
+  var i = Math.floor(x + s);
+  var j = Math.floor(y + s);
+  var k = Math.floor(z + s);
+  var l = Math.floor(w + s);
+  var t = (i + j + k + l) * G4; // Factor for 4D unskewing
+
+  var X0 = i - t; // Unskew the cell origin back to (x,y,z,w) space
+
+  var Y0 = j - t;
+  var Z0 = k - t;
+  var W0 = l - t;
+  var x0 = x - X0; // The x,y,z,w distances from the cell origin
+
+  var y0 = y - Y0;
+  var z0 = z - Z0;
+  var w0 = w - W0; // For the 4D case, the simplex is a 4D shape I won't even try to describe.
+  // To find out which of the 24 possible simplices we're in, we need to
+  // determine the magnitude ordering of x0, y0, z0 and w0.
+  // The method below is a good way of finding the ordering of x,y,z,w and
+  // then find the correct traversal order for the simplex we’re in.
+  // First, six pair-wise comparisons are performed between each possible pair
+  // of the four coordinates, and the results are used to add up binary bits
+  // for an integer index.
+
+  var c1 = x0 > y0 ? 32 : 0;
+  var c2 = x0 > z0 ? 16 : 0;
+  var c3 = y0 > z0 ? 8 : 0;
+  var c4 = x0 > w0 ? 4 : 0;
+  var c5 = y0 > w0 ? 2 : 0;
+  var c6 = z0 > w0 ? 1 : 0;
+  var c = c1 + c2 + c3 + c4 + c5 + c6;
+  var i1, j1, k1, l1; // The integer offsets for the second simplex corner
+
+  var i2, j2, k2, l2; // The integer offsets for the third simplex corner
+
+  var i3, j3, k3, l3; // The integer offsets for the fourth simplex corner
+  // simplex[c] is a 4-vector with the numbers 0, 1, 2 and 3 in some order.
+  // Many values of c will never occur, since e.g. x>y>z>w makes x<z, y<w and x<w
+  // impossible. Only the 24 indices which have non-zero entries make any sense.
+  // We use a thresholding to set the coordinates in turn from the largest magnitude.
+  // The number 3 in the "simplex" array is at the position of the largest coordinate.
+
+  i1 = simplex[c][0] >= 3 ? 1 : 0;
+  j1 = simplex[c][1] >= 3 ? 1 : 0;
+  k1 = simplex[c][2] >= 3 ? 1 : 0;
+  l1 = simplex[c][3] >= 3 ? 1 : 0; // The number 2 in the "simplex" array is at the second largest coordinate.
+
+  i2 = simplex[c][0] >= 2 ? 1 : 0;
+  j2 = simplex[c][1] >= 2 ? 1 : 0;
+  k2 = simplex[c][2] >= 2 ? 1 : 0;
+  l2 = simplex[c][3] >= 2 ? 1 : 0; // The number 1 in the "simplex" array is at the second smallest coordinate.
+
+  i3 = simplex[c][0] >= 1 ? 1 : 0;
+  j3 = simplex[c][1] >= 1 ? 1 : 0;
+  k3 = simplex[c][2] >= 1 ? 1 : 0;
+  l3 = simplex[c][3] >= 1 ? 1 : 0; // The fifth corner has all coordinate offsets = 1, so no need to look that up.
+
+  var x1 = x0 - i1 + G4; // Offsets for second corner in (x,y,z,w) coords
+
+  var y1 = y0 - j1 + G4;
+  var z1 = z0 - k1 + G4;
+  var w1 = w0 - l1 + G4;
+  var x2 = x0 - i2 + 2.0 * G4; // Offsets for third corner in (x,y,z,w) coords
+
+  var y2 = y0 - j2 + 2.0 * G4;
+  var z2 = z0 - k2 + 2.0 * G4;
+  var w2 = w0 - l2 + 2.0 * G4;
+  var x3 = x0 - i3 + 3.0 * G4; // Offsets for fourth corner in (x,y,z,w) coords
+
+  var y3 = y0 - j3 + 3.0 * G4;
+  var z3 = z0 - k3 + 3.0 * G4;
+  var w3 = w0 - l3 + 3.0 * G4;
+  var x4 = x0 - 1.0 + 4.0 * G4; // Offsets for last corner in (x,y,z,w) coords
+
+  var y4 = y0 - 1.0 + 4.0 * G4;
+  var z4 = z0 - 1.0 + 4.0 * G4;
+  var w4 = w0 - 1.0 + 4.0 * G4; // Work out the hashed gradient indices of the five simplex corners
+
+  var ii = i & 255;
+  var jj = j & 255;
+  var kk = k & 255;
+  var ll = l & 255;
+  var gi0 = perm[ii + perm[jj + perm[kk + perm[ll]]]] % 32;
+  var gi1 = perm[ii + i1 + perm[jj + j1 + perm[kk + k1 + perm[ll + l1]]]] % 32;
+  var gi2 = perm[ii + i2 + perm[jj + j2 + perm[kk + k2 + perm[ll + l2]]]] % 32;
+  var gi3 = perm[ii + i3 + perm[jj + j3 + perm[kk + k3 + perm[ll + l3]]]] % 32;
+  var gi4 = perm[ii + 1 + perm[jj + 1 + perm[kk + 1 + perm[ll + 1]]]] % 32; // Calculate the contribution from the five corners
+
+  var t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0 - w0 * w0;
+  if (t0 < 0) n0 = 0.0;else {
+    t0 *= t0;
+    n0 = t0 * t0 * this.dot4(grad4[gi0], x0, y0, z0, w0);
+  }
+  var t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1 - w1 * w1;
+  if (t1 < 0) n1 = 0.0;else {
+    t1 *= t1;
+    n1 = t1 * t1 * this.dot4(grad4[gi1], x1, y1, z1, w1);
+  }
+  var t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2 - w2 * w2;
+  if (t2 < 0) n2 = 0.0;else {
+    t2 *= t2;
+    n2 = t2 * t2 * this.dot4(grad4[gi2], x2, y2, z2, w2);
+  }
+  var t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3 - w3 * w3;
+  if (t3 < 0) n3 = 0.0;else {
+    t3 *= t3;
+    n3 = t3 * t3 * this.dot4(grad4[gi3], x3, y3, z3, w3);
+  }
+  var t4 = 0.6 - x4 * x4 - y4 * y4 - z4 * z4 - w4 * w4;
+  if (t4 < 0) n4 = 0.0;else {
+    t4 *= t4;
+    n4 = t4 * t4 * this.dot4(grad4[gi4], x4, y4, z4, w4);
+  } // Sum up and scale the result to cover the range [-1,1]
+
+  return 27.0 * (n0 + n1 + n2 + n3 + n4);
+};
+
+
+
+/***/ }),
+
+/***/ "./src/Renderer.js":
+/*!*************************!*\
+  !*** ./src/Renderer.js ***!
+  \*************************/
+/*! exports provided: Renderer */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Renderer", function() { return Renderer; });
+/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
+/* harmony import */ var three_examples_jsm_controls_FirstPersonControls_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three/examples/jsm/controls/FirstPersonControls.js */ "./node_modules/three/examples/jsm/controls/FirstPersonControls.js");
+/* harmony import */ var _Shader__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Shader */ "./src/Shader.js");
+/* harmony import */ var three_examples_jsm_libs_stats_module_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/libs/stats.module.js */ "./node_modules/three/examples/jsm/libs/stats.module.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three_examples_jsm_math_SimplexNoise_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! three/examples/jsm/math/SimplexNoise.js */ "./node_modules/three/examples/jsm/math/SimplexNoise.js");
+
+
+
+
+
+
+
+
+
+
+ //const types = { UnsignedShortType: THREE.UnsignedShortType, UnsignedIntType: THREE.UnsignedIntType, UnsignedInt248Type: THREE.UnsignedInt248Type };
+
+function Renderer(scene, container, camera) {
+  var self = this;
+  self.camera = camera;
+  this.scene = scene;
+  this.analyser;
+  this.camera;
+  this.beautyTarget;
+  this.postCamera;
+  this.postScene;
+  this.ssaoMaterial;
+  this.renderer;
+  this.controls;
+  this.container = container;
+  this.supportsExtension = true;
+  this.kernelSize = 16;
+  this.kernel = getKernel(this.kernelSize);
+  this.noise = getNoise();
+  this.kernelRadius = 8;
+  this.maxDistance = 0.1;
+  this.fftSize = 32;
+  this.clock = new three__WEBPACK_IMPORTED_MODULE_4__["Clock"]();
+  initMusic();
+  init();
+
+  function initMusic() {
+    var listener = new three__WEBPACK_IMPORTED_MODULE_4__["AudioListener"]();
+    var audio = new three__WEBPACK_IMPORTED_MODULE_4__["Audio"](listener);
+    var file = './P H A S E _ SHIFT.mp3';
+
+    if (/(iPad|iPhone|iPod)/g.test(navigator.userAgent)) {
+      var loader = new three__WEBPACK_IMPORTED_MODULE_4__["AudioLoader"]();
+      loader.load(file, function (buffer) {
+        audio.setBuffer(buffer);
+        audio.play();
+      });
+    } else {
+      var mediaElement = new Audio(file);
+      mediaElement.play();
+      audio.setMediaElementSource(mediaElement);
+    }
+
+    audio.setVolume(0.0);
+    self.analyser = new three__WEBPACK_IMPORTED_MODULE_4__["AudioAnalyser"](audio, self.fftSize);
+  }
+
+  function init() {
+    self.renderer = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderer"]();
+    self.renderer.antialias = true;
+
+    if (self.renderer.capabilities.isWebGL2 === false && self.renderer.extensions.has('WEBGL_depth_texture') === false) {
+      self.supportsExtension = false;
+      document.querySelector('#error').style.display = 'block';
+      return;
+    }
+
+    self.renderer.setPixelRatio(window.devicePixelRatio);
+    self.renderer.outputEncoding = three__WEBPACK_IMPORTED_MODULE_4__["sRGBEncoding"];
+    self.renderer.autoClear = false;
+    self.renderer.shadowMap.enabled = true;
+    self.renderer.shadowMap.type = three__WEBPACK_IMPORTED_MODULE_4__["PCFSoftShadowMap"];
+    self.renderer.setSize(self.container.offsetWidth, self.container.offsetHeight);
+    self.container.appendChild(self.renderer.domElement);
+    self.stats = new three_examples_jsm_libs_stats_module_js__WEBPACK_IMPORTED_MODULE_3__["default"]();
+    self.container.appendChild(self.stats.dom);
+    self.controls = new three_examples_jsm_controls_FirstPersonControls_js__WEBPACK_IMPORTED_MODULE_1__["FirstPersonControls"](self.camera, self.renderer.domElement);
+    self.camera.position.set(10, 10, 10);
+    self.controls.lookAt(0, 10, 0);
+    self.controls.movementSpeed = 5;
+    self.controls.domElement = self.renderer.domElement;
+    self.controls.rollSpeed = Math.PI;
+    self.controls.lookSpeed = 0.1;
+    self.controls.autoForward = false;
+    self.controls.dragToLook = false; //self.controls.enableDamping = true;
+    // Create a render target with depth texture
+
+    setupRenderTarget(); // Setup post-processing step
+
+    setupPost();
+    onWindowResize();
+    window.addEventListener('resize', onWindowResize);
+  }
+
+  function setupRenderTarget() {
+    if (self.beautyTarget) self.beautyTarget.dispose();
+    var format = three__WEBPACK_IMPORTED_MODULE_4__["DepthFormat"];
+    var type = three__WEBPACK_IMPORTED_MODULE_4__["UnsignedShortType"];
+    self.beautyTarget = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderTarget"](self.container.offsetWidth, self.container.offsetHeight);
+    self.beautyTarget.texture.format = three__WEBPACK_IMPORTED_MODULE_4__["RGBFormat"];
+    self.beautyTarget.texture.minFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
+    self.beautyTarget.texture.magFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
+    self.beautyTarget.texture.generateMipmaps = false;
+    self.beautyTarget.stencilBuffer = false;
+    self.beautyTarget.depthBuffer = true;
+    self.beautyTarget.depthTexture = new three__WEBPACK_IMPORTED_MODULE_4__["DepthTexture"]();
+    self.beautyTarget.depthTexture.format = format;
+    self.beautyTarget.depthTexture.type = type;
+    if (self.ssaoTarget) self.ssaoTarget.dispose();
+    self.ssaoTarget = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderTarget"](self.container.offsetWidth, self.container.offsetHeight);
+    self.ssaoTarget.texture.format = three__WEBPACK_IMPORTED_MODULE_4__["RGBFormat"];
+    self.ssaoTarget.texture.minFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
+    self.ssaoTarget.texture.magFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
+    self.ssaoTarget.texture.generateMipmaps = false;
+    self.ssaoTarget.stencilBuffer = false;
+    self.ssaoTarget.depthBuffer = false;
+    self.blurRenderTarget = self.ssaoTarget.clone();
+    self.musicTarget = self.ssaoTarget.clone();
+    if (self.reflectionsTarget) self.reflectionsTarget.dispose();
+    self.reflectionsTarget = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderTarget"](self.container.offsetWidth, self.container.offsetHeight);
+    self.reflectionsTarget.texture.format = three__WEBPACK_IMPORTED_MODULE_4__["RGBAFormat"];
+    self.reflectionsTarget.texture.minFilter = three__WEBPACK_IMPORTED_MODULE_4__["LinearFilter"];
+    self.reflectionsTarget.texture.magFilter = three__WEBPACK_IMPORTED_MODULE_4__["LinearFilter"];
+    self.reflectionsTarget.texture.generateMipmaps = false;
+    self.reflectionsTarget.stencilBuffer = false;
+    self.reflectionsTarget.depthBuffer = false;
+  }
+
+  function setupPost() {
+    // Setup post processing stage
+    var audioFormat = self.renderer.capabilities.isWebGL2 ? three__WEBPACK_IMPORTED_MODULE_4__["RedFormat"] : three__WEBPACK_IMPORTED_MODULE_4__["LuminanceFormat"];
+    self.postCamera = new three__WEBPACK_IMPORTED_MODULE_4__["OrthographicCamera"](-1, 1, 1, -1, 0, 1);
+    self.ssaoMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
+      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOShader"].vertexShader,
+      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOShader"].fragmentShader,
+      uniforms: {
+        cameraNear: {
+          value: self.camera.near
+        },
+        cameraFar: {
+          value: self.camera.far
+        },
+        screenWidth: {
+          value: null
+        },
+        screenHeight: {
+          value: null
+        },
+        tDiffuse: {
+          value: null
+        },
+        tDepth: {
+          value: null
+        },
+        cameraProjectionMatrix: {
+          value: self.camera.projectionMatrix
+        },
+        cameraInverseProjectionMatrix: {
+          value: self.camera.projectionMatrixInverse
+        },
+        matrixWorldInverse: {
+          value: self.camera.matrixWorldInverse
+        },
+        matrixWorld: {
+          value: self.camera.matrixWorld
+        },
+        tNoise: {
+          value: self.noise
+        },
+        kernel: {
+          value: self.kernel
+        },
+        kernelRadius: {
+          value: self.kernelRadius
+        },
+        maxDistance: {
+          value: self.maxDistance
+        }
+      },
+      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOShader"].defines)
+    });
+    self.ssaoBlurMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
+      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOBlurShader"].vertexShader,
+      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOBlurShader"].fragmentShader,
+      uniforms: {
+        screenWidth: {
+          value: null
+        },
+        screenHeight: {
+          value: null
+        },
+        tDiffuse: {
+          value: null
+        }
+      },
+      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOBlurShader"].defines)
+    });
+    self.musicMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
+      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MusicShader"].vertexShader,
+      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MusicShader"].fragmentShader,
+      uniforms: {
+        cameraNear: {
+          value: self.camera.near
+        },
+        cameraFar: {
+          value: self.camera.far
+        },
+        screenWidth: {
+          value: null
+        },
+        screenHeight: {
+          value: null
+        },
+        tDiffuse: {
+          value: null
+        },
+        tDepth: {
+          value: null
+        },
+        cameraProjectionMatrix: {
+          value: self.camera.projectionMatrix
+        },
+        cameraInverseProjectionMatrix: {
+          value: self.camera.projectionMatrixInverse
+        },
+        matrixWorldInverse: {
+          value: self.camera.matrixWorldInverse
+        },
+        matrixWorld: {
+          value: self.camera.matrixWorld
+        },
+        tAudioData: {
+          value: new three__WEBPACK_IMPORTED_MODULE_4__["DataTexture"](self.analyser.data, self.fftSize / 2, 1, audioFormat)
+        }
+      },
+      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["MusicShader"].defines)
+    });
+    self.reflexionsMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
+      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["ReflexionsShader"].vertexShader,
+      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["ReflexionsShader"].fragmentShader,
+      uniforms: {
+        cameraNear: {
+          value: self.camera.near
+        },
+        cameraFar: {
+          value: self.camera.far
+        },
+        screenWidth: {
+          value: null
+        },
+        screenHeight: {
+          value: null
+        },
+        cameraProjectionMatrix: {
+          value: self.camera.projectionMatrix
+        },
+        cameraInverseProjectionMatrix: {
+          value: self.camera.projectionMatrixInverse
+        },
+        matrixWorldInverse: {
+          value: self.camera.matrixWorldInverse
+        },
+        matrixWorld: {
+          value: self.camera.matrixWorld
+        },
+        tMusic: {
+          value: null
+        },
+        tDepth: {
+          value: null
+        }
+      },
+      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["ReflexionsShader"].defines)
+    });
+    self.mixinMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
+      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixinShader"].vertexShader,
+      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixinShader"].fragmentShader,
+      uniforms: {
+        tMusic: {
+          value: null
+        },
+        tReflexion: {
+          value: null
+        },
+        tOcclusion: {
+          value: null
+        }
+      },
+      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["MixinShader"].defines)
+    });
+    self.mixCutoffMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
+      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixCutoffShader"].vertexShader,
+      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixCutoffShader"].fragmentShader,
+      uniforms: {
+        tDiffuse: {
+          value: null
+        },
+        tOcclusion: {
+          value: null
+        }
+      },
+      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["MixCutoffShader"].defines)
+    });
+    var postSSAOPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
+    var postBlurPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
+    var postMusicPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
+    var postReflecionsPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
+    var postMixinPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
+    var postSSAOQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postSSAOPlane, self.ssaoMaterial);
+    var postBlurQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postBlurPlane, self.ssaoBlurMaterial);
+    var postMusicQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postMusicPlane, self.musicMaterial);
+    var postReflexionsQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postReflecionsPlane, self.reflexionsMaterial);
+    var postMixinQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postMixinPlane, self.mixinMaterial);
+    self.postSSAOScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
+    self.postSSAOScene.add(postSSAOQuad);
+    self.postBlurScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
+    self.postBlurScene.add(postBlurQuad);
+    self.postMusicScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
+    self.postMusicScene.add(postMusicQuad);
+    self.postReflexionsScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
+    self.postReflexionsScene.add(postReflexionsQuad);
+    self.postMixinScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
+    self.postMixinScene.add(postMixinQuad);
+    var postMixCutoffPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
+    var postMixCutoffQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postMixCutoffPlane, self.mixCutoffMaterial);
+    self.postMixCutoffScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
+    self.postMixCutoffScene.add(postMixCutoffQuad);
+  }
+
+  function onWindowResize() {
+    var aspect = self.container.offsetWidth / self.container.offsetHeight;
+    self.camera.aspect = aspect;
+    self.camera.updateProjectionMatrix();
+    var dpr = self.renderer.getPixelRatio();
+    self.beautyTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
+    self.ssaoTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
+    self.musicTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
+    self.reflectionsTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
+    self.renderer.setSize(self.container.offsetWidth, self.container.offsetHeight);
+    self.ssaoMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
+    self.ssaoMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
+    self.ssaoMaterial.uniforms.cameraProjectionMatrix.value = self.camera.projectionMatrix;
+    self.ssaoMaterial.uniforms.cameraInverseProjectionMatrix.value = self.camera.projectionMatrixInverse;
+    self.ssaoBlurMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
+    self.ssaoBlurMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
+    self.reflexionsMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
+    self.reflexionsMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
+    self.reflexionsMaterial.uniforms.cameraProjectionMatrix.value = self.camera.projectionMatrix;
+    self.reflexionsMaterial.uniforms.cameraInverseProjectionMatrix.value = self.camera.projectionMatrixInverse;
+    self.musicMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
+    self.musicMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
+    self.musicMaterial.uniforms.cameraProjectionMatrix.value = self.camera.projectionMatrix;
+    self.musicMaterial.uniforms.cameraInverseProjectionMatrix.value = self.camera.projectionMatrixInverse;
+  }
+
+  function render() {
+    if (!self.supportsExtension) return;
+    self.camera.near = 0.0 + Math.pow(self.camera.position.y / 10, 0.5);
+    self.camera.far = 1000 + self.camera.position.y * 1;
+    self.camera.updateProjectionMatrix();
+    requestAnimationFrame(render); // render scene into target
+
+    self.renderer.setRenderTarget(self.beautyTarget); //self.renderer.setRenderTarget(null);
+
+    self.renderer.render(self.scene, self.camera);
+    self.ssaoMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
+    self.ssaoMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
+    self.ssaoMaterial.uniforms['cameraNear'].value = self.camera.near;
+    self.ssaoMaterial.uniforms['cameraFar'].value = self.camera.far;
+    self.ssaoMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
+    self.ssaoMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
+    self.renderer.setRenderTarget(self.ssaoTarget);
+    self.renderer.render(self.postSSAOScene, self.postCamera);
+    self.ssaoBlurMaterial.uniforms.tDiffuse.value = self.ssaoTarget.texture;
+    self.renderer.setRenderTarget(self.blurRenderTarget);
+    self.renderer.render(self.postBlurScene, self.postCamera);
+    self.mixCutoffMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
+    self.mixCutoffMaterial.uniforms.tOcclusion.value = self.blurRenderTarget.texture;
+    self.renderer.setRenderTarget(null);
+    self.renderer.render(self.postMixCutoffScene, self.postCamera); //render post FX
+
+    /*
+    self.analyser.getFrequencyData();
+    self.musicMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
+    self.musicMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
+    self.musicMaterial.uniforms['cameraNear'].value = self.camera.near;
+    self.musicMaterial.uniforms['cameraFar'].value = self.camera.far;
+    self.musicMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
+    self.musicMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
+    self.musicMaterial.uniforms.tAudioData.value.needsUpdate = true;
+    self.renderer.setRenderTarget(self.musicTarget);
+    self.renderer.render(self.postMusicScene, self.postCamera);
+      self.reflexionsMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
+    self.reflexionsMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
+    self.reflexionsMaterial.uniforms['cameraNear'].value = self.camera.near;
+    self.reflexionsMaterial.uniforms['cameraFar'].value = self.camera.far;
+    self.reflexionsMaterial.uniforms.tMusic.value = self.musicTarget.texture;
+    self.reflexionsMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
+      self.renderer.setRenderTarget(self.reflectionsTarget);
+    self.renderer.render(self.postReflexionsScene, self.postCamera);
+      self.ssaoMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
+    self.ssaoMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
+    self.ssaoMaterial.uniforms['cameraNear'].value = self.camera.near;
+    self.ssaoMaterial.uniforms['cameraFar'].value = self.camera.far;
+    self.ssaoMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
+    self.ssaoMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
+      self.renderer.setRenderTarget(self.ssaoTarget);
+    self.renderer.render(self.postSSAOScene, self.postCamera);
+      self.ssaoBlurMaterial.uniforms.tDiffuse.value = self.ssaoTarget.texture;
+    self.renderer.setRenderTarget(self.blurRenderTarget);
+    self.renderer.render(self.postBlurScene, self.postCamera);
+      self.mixinMaterial.uniforms.tMusic.value = self.musicTarget.texture;
+    self.mixinMaterial.uniforms.tReflexion.value = self.reflectionsTarget.texture;
+    self.mixinMaterial.uniforms.tOcclusion.value = self.blurRenderTarget.texture;
+    self.renderer.setRenderTarget(null);
+    self.renderer.render(self.postMixinScene, self.postCamera);
+    */
+    //self.controls.update(); // required because damping is enabled
+
+    self.stats.update();
+    var delta = self.clock.getDelta();
+    self.controls.movementSpeed = 15;
+    self.controls.update(delta);
+  }
+
+  function getKernel(kernelSize) {
+    var kernel = [];
+
+    for (var i = 0; i < kernelSize; i++) {
+      var sample = new three__WEBPACK_IMPORTED_MODULE_4__["Vector3"]();
+      sample.x = Math.random() * 2 - 1;
+      sample.y = Math.random() * 2 - 1;
+      sample.z = Math.random() * 0.7 + 0.3;
+      sample.normalize();
+      var scale = i / kernelSize;
+      scale = three__WEBPACK_IMPORTED_MODULE_4__["MathUtils"].lerp(0.1, 1, scale * scale);
+      sample.multiplyScalar(scale);
+      kernel.push(sample);
+    }
+
+    return kernel;
+  }
+
+  function getNoise() {
+    var width = 4,
+        height = 4;
+
+    if (three_examples_jsm_math_SimplexNoise_js__WEBPACK_IMPORTED_MODULE_5__["SimplexNoise"] === undefined) {
+      console.error('The pass relies on SimplexNoise.');
+    }
+
+    var simplex = new three_examples_jsm_math_SimplexNoise_js__WEBPACK_IMPORTED_MODULE_5__["SimplexNoise"]();
+    var size = width * height;
+    var data = new Float32Array(size * 4);
+
+    for (var i = 0; i < size; i++) {
+      var stride = i * 4;
+      var x = Math.random() * 2 - 1;
+      var y = Math.random() * 2 - 1;
+      var z = 0;
+      var noise = simplex.noise3d(x, y, z);
+      data[stride] = noise;
+      data[stride + 1] = noise;
+      data[stride + 2] = noise;
+      data[stride + 3] = 1;
+    }
+
+    var noiseTexture = new three__WEBPACK_IMPORTED_MODULE_4__["DataTexture"](data, width, height, three__WEBPACK_IMPORTED_MODULE_4__["RGBAFormat"], three__WEBPACK_IMPORTED_MODULE_4__["FloatType"]);
+    noiseTexture.wrapS = three__WEBPACK_IMPORTED_MODULE_4__["RepeatWrapping"];
+    noiseTexture.wrapT = three__WEBPACK_IMPORTED_MODULE_4__["RepeatWrapping"];
+    return noiseTexture;
+  }
+
+  return {
+    render: render,
+    camera: self.camera
+  };
+}
+
+
+
+/***/ }),
+
+/***/ "./src/Shader.js":
+/*!***********************!*\
+  !*** ./src/Shader.js ***!
+  \***********************/
+/*! exports provided: SSAOShader, SSAOBlurShader, ReflexionsShader, MusicShader, MixinShader, MixCutoffShader */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SSAOShader", function() { return SSAOShader; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SSAOBlurShader", function() { return SSAOBlurShader; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ReflexionsShader", function() { return ReflexionsShader; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MusicShader", function() { return MusicShader; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MixinShader", function() { return MixinShader; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MixCutoffShader", function() { return MixCutoffShader; });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+
+var SSAOShader = {
+  defines: {
+    "PERSPECTIVE_CAMERA": 1,
+    "KERNEL_SIZE": 16
+  },
+  uniforms: {
+    "tDiffuse": {
+      value: null
+    },
+    "tDepth": {
+      value: null
+    },
+    "tNoise": {
+      value: null
+    },
+    "kernel": {
+      value: null
+    },
+    "cameraNear": {
+      value: null
+    },
+    "cameraFar": {
+      value: null
+    },
+    //"cameraHeight": { value: null },
+    //"resolution": { value: new Vector2() },
+    "cameraProjectionMatrix": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "cameraInverseProjectionMatrix": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "matrixWorldInverse": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "matrixWorld": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "kernelRadius": {
+      value: 8
+    },
+    //"minDistance": { value: 0.005 },
+    "maxDistance": {
+      value: 0.05
+    },
+    "screenWidth": {
+      value: null
+    },
+    "screenHeight": {
+      value: null
+    }
+  },
+  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
+  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform sampler2D tDepth;", "uniform sampler2D tNoise;", "uniform float kernelRadius;", "uniform float cameraNear;", "uniform float cameraFar;", "uniform float screenWidth;", "uniform float screenHeight;", "uniform float maxDistance;", "uniform mat4 cameraProjectionMatrix;", "uniform mat4 cameraInverseProjectionMatrix;", "uniform mat4 matrixWorldInverse;", "uniform mat4 matrixWorld;", "varying vec2 vUv;", "uniform vec3 kernel[ KERNEL_SIZE ];", "#include <packing>", "float getDepth( const in vec2 screenPosition ) {", "	return texture2D( tDepth, screenPosition ).x;", "}", "float getLinearDepth( const in vec2 screenPosition ) {", "	float fragCoordZ = texture2D( tDepth, screenPosition ).x;", "	float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );", "	return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );", "}", "float getViewZ( const in float depth ) {", "		return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );", "}", "vec3 getViewNormal( const in vec2 screenPosition ) {", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	float a = getDepth(screenPosition);", "	float b = getDepth(vec2(screenPosition.x, screenPosition.y+dY));", "	float c = getDepth(vec2(screenPosition.x, screenPosition.y-dY));", "  float d = getDepth(vec2(screenPosition.x+dX, screenPosition.y));", "	float e = getDepth(vec2(screenPosition.x-dX, screenPosition.y));", "	vec3 aa = vec3(dX*2.0, 0.0, d-e);", "	vec3 bb = vec3(0.0, dY*2.0, b-c);", "  vec3 n=cross(aa,bb);", "  n.z = -n.z;", "	return -normalize(n);", "}", "vec3 getWorldNormal( const in vec2 screenPosition ) {", "	vec3 n = getViewNormal(screenPosition);", "	return mat3(matrixWorld) * n;", "}", "vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {", "	float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];", "	vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );", "	clipPosition *= clipW; // unprojection.", "	return ( cameraInverseProjectionMatrix * clipPosition ).xyz;", "}", "float getOcclusion(float depth, vec3 viewNormal, vec3 viewPosition){", "	if(depth == 1.0) return 0.0;", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "   float occlusion = 0.0;", "   vec2 noiseScale = vec2( screenWidth / 4.0, screenHeight / 4.0 );", "	vec3 random = texture2D( tNoise, vUv * noiseScale ).xyz;", "	vec3 tangent = normalize( random - viewNormal * dot( random, viewNormal ) );", "	vec3 bitangent = cross( viewNormal, tangent );", "	mat3 kernelMatrix = mat3( tangent, bitangent, viewNormal );", "   int divisor = KERNEL_SIZE;", "   for ( int i = 0; i < KERNEL_SIZE; i ++ ) {", "		float maxD = kernelRadius * (0.02+(depth*0.5));", "		vec3 sampleVector = kernelMatrix * kernel[ i ];", // reorient sample vector in view space
+  "		vec3 samplePoint = viewPosition + ( sampleVector * maxD  );", // calculate sample point
+  "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
+  "		samplePointNDC /= samplePointNDC.w;", "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
+  // "		if((samplePointUv.x<0.0 || samplePointUv.x>1.0) || (samplePointUv.y<0.0 || samplePointUv.y>1.0) ||(abs(samplePointUv.x-viewPosition.x)<=dX && abs(samplePointUv.y-viewPosition.y)<=dY)){",
+  // "			divisor--;",
+  // "			continue;",
+  // "		}",
+  "		float realDepth = getLinearDepth( samplePointUv );", // get linear depth from depth texture
+  "		float sampleDepth = viewZToOrthographicDepth( samplePoint.z, cameraNear, cameraFar );", // compute linear depth of the sample view Z value
+  "		float delta = sampleDepth - realDepth;", "		if ( delta > 0.02*depth && delta < maxD ) {", // if fragment is before sample point, increase occlusion
+  "			occlusion += 1.0-(delta/maxD);", "		}", "		if(delta>maxD) divisor--;", "	}", "	return 1.0 - clamp( occlusion / float( max(1,divisor) ), 0.0, 1.0 );", "}", "float getNightLight(float depth, vec3 viewNormal, vec3 viewPosition){", "	if(depth == 1.0) return 0.0;", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "   float occlusion = 0.0;", "   vec2 noiseScale = vec2( screenWidth / 4.0, screenHeight / 4.0 );", "	vec3 random = texture2D( tNoise, vUv * noiseScale ).xyz;", "	vec3 tangent = normalize( random - viewNormal * dot( random, viewNormal ) );", "	vec3 bitangent = cross( viewNormal, tangent );", "	mat3 kernelMatrix = mat3( tangent, bitangent, viewNormal );", "   int divisor = KERNEL_SIZE;", "   for ( int i = 0; i < KERNEL_SIZE; i ++ ) {", "		float maxD = kernelRadius *4.0* (0.02+(depth*0.5));", "		vec3 sampleVector = kernelMatrix * kernel[ (i+8)%KERNEL_SIZE ];", // reorient sample vector in view space
+  "		vec3 samplePoint = viewPosition + ( sampleVector * maxD  );", // calculate sample point
+  "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
+  "		samplePointNDC /= samplePointNDC.w;", "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
+  // "		if((samplePointUv.x<0.0 || samplePointUv.x>1.0) || (samplePointUv.y<0.0 || samplePointUv.y>1.0) ||(abs(samplePointUv.x-viewPosition.x)<=dX && abs(samplePointUv.y-viewPosition.y)<=dY)){",
+  // "			divisor--;",
+  // "			continue;",
+  // "		}",
+  "		float realDepth = getLinearDepth( samplePointUv );", // get linear depth from depth texture
+  "		float sampleDepth = viewZToOrthographicDepth( samplePoint.z, cameraNear, cameraFar );", // compute linear depth of the sample view Z value
+  "		float delta = sampleDepth - realDepth;", "		if ( delta > 0.02*depth && delta < maxD ) {", // if fragment is before sample point, increase occlusion
+  "			occlusion += 1.0-(delta/maxD);", "		}", "		if(delta>maxD) divisor--;", "	}", "	return clamp( occlusion / float( max(1,divisor) ), 0.0, 1.0 );", "}", "vec3 getWorldPosition(float depth){", "vec4 ndc = vec4(", "	(vUv.x - 0.5) * 2.0,", "	(vUv.y - 0.5) * 2.0,", "(depth - 0.5) * 2.0,", "1.0);", "vec4 clip = cameraInverseProjectionMatrix * ndc;", "vec4 view = matrixWorld* (clip / clip.w);", "vec3 result = view.xyz;", "return result;", "}", "void main() {", "	float depth = getDepth( vUv );", "	float linearDepth = getLinearDepth( vUv );", "	float viewZ = getViewZ( depth );", "	vec3 viewNormal = getViewNormal( vUv );", "   vec3 viewPosition = getViewPosition(vUv, depth, viewZ);", "	vec3 worldPosition = getWorldPosition(depth);", "	float height = max(-1.0,min(1.0,(worldPosition.y - 50.0)*0.02));", "	height = (height+1.0)*0.5;", " 	height = height == 0.0?0.00001:height;", "	float nightLight = 0.1+pow(height*getNightLight(linearDepth, viewNormal, viewPosition),0.4);", "	float occlusion = getOcclusion(linearDepth, viewNormal, viewPosition);", "	gl_FragColor = vec4( vec3(mix(occlusion,nightLight,height)), 1.0 );", "}"].join("\n")
+};
+var ReflexionsShader = {
+  defines: {
+    "PERSPECTIVE_CAMERA": 1
+  },
+  uniforms: {
+    "tMusic": {
+      value: null
+    },
+    "tDepth": {
+      value: null
+    },
+    "cameraNear": {
+      value: null
+    },
+    "cameraFar": {
+      value: null
+    },
+    "cameraProjectionMatrix": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "cameraInverseProjectionMatrix": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "matrixWorldInverse": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "matrixWorld": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "screenWidth": {
+      value: null
+    },
+    "screenHeight": {
+      value: null
+    }
+  },
+  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
+  fragmentShader: ["uniform sampler2D tMusic;", "uniform sampler2D tDepth;", "uniform float cameraNear;", "uniform float cameraFar;", "uniform float screenWidth;", "uniform float screenHeight;", "uniform mat4 cameraProjectionMatrix;", "uniform mat4 cameraInverseProjectionMatrix;", "uniform mat4 matrixWorldInverse;", "uniform mat4 matrixWorld;", "varying vec2 vUv;", "#include <packing>", "float getDepth( const in vec2 screenPosition ) {", "	return texture2D( tDepth, screenPosition ).x;", "}", "float getLinearDepth( const in vec2 screenPosition ) {", "	float fragCoordZ = texture2D( tDepth, screenPosition ).x;", "	float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );", "	return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );", "}", "float getViewZ( const in float depth ) {", "		return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );", "}", "vec3 getViewNormal( const in vec2 screenPosition ) {", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	float a = getDepth(screenPosition);", "	float b = getDepth(vec2(screenPosition.x, screenPosition.y+dY));", "	float c = getDepth(vec2(screenPosition.x, screenPosition.y-dY));", "  float d = getDepth(vec2(screenPosition.x+dX, screenPosition.y));", "	float e = getDepth(vec2(screenPosition.x-dX, screenPosition.y));", "	vec3 aa = vec3(dX*2.0, 0.0, d-e);", "	vec3 bb = vec3(0.0, dY*2.0, b-c);", "  vec3 n=cross(aa,bb);", "  n.z = -n.z;", "	return -normalize(n);", "}", "vec3 getWorldNormal( const in vec2 screenPosition ) {", "	vec3 n = getViewNormal(screenPosition);", "	return mat3(matrixWorld) * n;", "}", "vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {", "	float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];", "	vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );", "	clipPosition *= clipW; // unprojection.", "	return ( cameraInverseProjectionMatrix * clipPosition ).xyz;", "}", "vec4 getReflexion(float depth, vec3 viewNormal, vec3 viewPosition){", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	vec3 color = texture2D( tMusic, vUv ).xyz;", "	if(depth ==1.0) return vec4(0.0);", "	vec3 incident = normalize(viewPosition);", "	vec3 reflection = reflect(incident, viewNormal);", "	if(reflection.x > reflection.y){", "		reflection = reflection / reflection.x * dX;", "	}else{", "		reflection = reflection / reflection.y * dY;", "	}", "	vec4 reflectionColor = vec4(0.0);", "	float divisor = 0.0;", "	for(float i = 1.0; i<7.0; i++){", "		vec3 samplePoint = viewPosition + (reflection*i*70.0);", "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
+  "		samplePointNDC /= samplePointNDC.w;", "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
+  "		if(samplePointUv.x<0.0 || samplePointUv.x>1.0 || samplePointUv.y<0.0 || samplePointUv.y>1.0) break;", "		float realDepth = getDepth( samplePointUv );", // get linear depth from depth texture
+  "		float sampleViewZ = getViewZ( realDepth );", "   	vec3 sampleViewPosition = getViewPosition(samplePointUv, realDepth, sampleViewZ);", "		vec3 vector = normalize(sampleViewPosition - viewPosition);", "		float delta = dot(normalize(reflection), vector);", "		if(delta<0.0) continue;", "		reflectionColor+= vec4(texture2D( tMusic, samplePointUv ).xyz, delta*delta*(1.0/i));", "		divisor++;", "	}", "	return divisor>0.0?reflectionColor/divisor:reflectionColor;", // "	for(float i = 1.0; i<9.0; i++){",
+  // "		vec3 samplePoint = viewPosition + (reflection * i *1.0  );",
+  // "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
+  // "		samplePointNDC /= samplePointNDC.w;",
+  // "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
+  // "		float realDepth = getLinearDepth( samplePointUv );", // get linear depth from depth texture
+  // "		float sampleDepth = viewZToOrthographicDepth( samplePoint.z, cameraNear, cameraFar );",
+  // "		float delta = sampleDepth - realDepth;",
+  // "		if ( delta > -0.001 && delta < 0.001 ) {", 
+  // "			return mix(texture2D( tMusic, samplePointUv ).xyz, color, i*0.125);",
+  // "		}",
+  // "	}",
+  // "   return color;",
+  "}", "void main() {", "	float depth = getDepth( vUv );", "	float viewZ = getViewZ( depth );", "	vec3 viewNormal = getViewNormal( vUv );", "   vec3 viewPosition = getViewPosition(vUv, depth, viewZ);", "	vec4 reflection = getReflexion(getLinearDepth(vUv), viewNormal, viewPosition);", "	gl_FragColor = reflection;", "}"].join("\n")
+};
+var SSAOBlurShader = {
+  uniforms: {
+    "tDiffuse": {
+      value: null
+    },
+    "screenWidth": {
+      value: null
+    },
+    "screenHeight": {
+      value: null
+    }
+  },
+  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
+  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform float screenWidth;", "uniform float screenHeight;", "varying vec2 vUv;", "void main() {", "	vec2 texelSize = ( 1.0 / vec2(screenWidth, screenHeight) );", "	float result = 0.0;", "	for ( int i = - 2; i <= 2; i ++ ) {", "		for ( int j = - 2; j <= 2; j ++ ) {", "			vec2 offset = ( vec2( float( i ), float( j ) ) ) * texelSize;", "			result += texture2D( tDiffuse, vUv + offset ).x;", "		}", "	}", "	gl_FragColor = vec4( vec3( result / ( 5.0 * 5.0 ) ), 1.0 );", "}"].join("\n")
+};
+var MusicShader = {
+  defines: {
+    "PERSPECTIVE_CAMERA": 1
+  },
+  uniforms: {
+    "tDiffuse": {
+      value: null
+    },
+    "tDepth": {
+      value: null
+    },
+    "tAudioData": {
+      value: null
+    },
+    "cameraNear": {
+      value: null
+    },
+    "cameraFar": {
+      value: null
+    },
+    "cameraProjectionMatrix": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "cameraInverseProjectionMatrix": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "matrixWorldInverse": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "matrixWorld": {
+      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
+    },
+    "screenWidth": {
+      value: null
+    },
+    "screenHeight": {
+      value: null
+    }
+  },
+  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
+  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform sampler2D tDepth;", "uniform sampler2D tAudioData;", "uniform float cameraNear;", "uniform float cameraFar;", "uniform float screenWidth;", "uniform float screenHeight;", "uniform mat4 cameraProjectionMatrix;", "uniform mat4 cameraInverseProjectionMatrix;", "uniform mat4 matrixWorldInverse;", "uniform mat4 matrixWorld;", "varying vec2 vUv;", "#include <packing>", "float getDepth( const in vec2 screenPosition ) {", "	return texture2D( tDepth, screenPosition ).x;", "}", "float getLinearDepth( const in vec2 screenPosition ) {", "	float fragCoordZ = texture2D( tDepth, screenPosition ).x;", "	float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );", "	return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );", "}", "float getViewZ( const in float depth ) {", "		return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );", "}", "vec3 getViewNormal( const in vec2 screenPosition ) {", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	float a = getDepth(screenPosition);", "	float b = getDepth(vec2(screenPosition.x, screenPosition.y+dY));", "	float c = getDepth(vec2(screenPosition.x, screenPosition.y-dY));", "  float d = getDepth(vec2(screenPosition.x+dX, screenPosition.y));", "	float e = getDepth(vec2(screenPosition.x-dX, screenPosition.y));", "	vec3 aa = vec3(dX*2.0, 0.0, d-e);", "	vec3 bb = vec3(0.0, dY*2.0, b-c);", "  vec3 n=cross(aa,bb);", "  n.z = -n.z;", "	return -normalize(n);", "}", "vec3 getWorldNormal( const in vec2 screenPosition ) {", "	vec3 n = getViewNormal(screenPosition);", "	return mat3(matrixWorld) * n;", "}", "vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {", "	float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];", "	vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );", "	clipPosition *= clipW; // unprojection.", "	return ( cameraInverseProjectionMatrix * clipPosition ).xyz;", "}", "vec3 hsv2rgb(vec3 c)", "{", "	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);", "	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);", "	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);", "}", "void main() {", "	float depth = getDepth( vUv );", "	float linearDepth = getLinearDepth( vUv );", "	float viewZ = getViewZ( depth );", "	vec3 viewNormal = getViewNormal( vUv );", "   vec3 viewPosition = getViewPosition(vUv, depth, viewZ);", "	vec3 diffuse = texture2D( tDiffuse, vUv ).xyz;", "	float outline = max(pow(dot(normalize(viewPosition), viewNormal),0.3),0.0);", "   vec3 music = vec3(texture2D( tAudioData, vec2( 0.0, 0.0 ) ).r, texture2D( tAudioData, vec2( 0.4, 0.0 ) ).r, texture2D( tAudioData, vec2( 0.8, 0.0 ) ).r);", //"   vec3 music = vec3(1.0,1.0,1.0);",
+  "	float h = sin((outline * 3.1416)) ;", "	float s = 1.0;", //cos((music.x*3.1416));",
+  "	gl_FragColor = vec4( diffuse + vec3(outline), 1.0 );", //"	//gl_FragColor = vec4( diffuse, 1.0 );",
+  "}"].join("\n")
+};
+var MixinShader = {
+  uniforms: {
+    "tMusic": {
+      value: null
+    },
+    "tReflexion": {
+      value: null
+    },
+    "tOcclusion": {
+      value: null
+    }
+  },
+  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
+  fragmentShader: ["uniform sampler2D tMusic;", "uniform sampler2D tOcclusion;", "uniform sampler2D tReflexion;", "varying vec2 vUv;", "void main() {", "   vec3 music = texture2D( tMusic, vUv ).xyz;", "	vec4 reflexion = texture2D(tReflexion, vUv).xyzw;", //"	reflexion.x = 1.0-reflexion.x;",
+  //"	reflexion.z = 1.0-reflexion.z;",
+  // "	float temp = reflexion.x;",
+  // "	reflexion.x = reflexion.z;",
+  // "	reflexion.z = temp;",
+  //"	reflexion.w *= 0.5;",
+  "	music.x = (music.x * (1.0-reflexion.w)) + (reflexion.x * reflexion.w);", "	music.y = (music.y * (1.0-reflexion.w)) + (reflexion.y * reflexion.w);", "	music.z = (music.z * (1.0-reflexion.w)) + (reflexion.z * reflexion.w);", "	float occlusion = texture2D( tOcclusion, vUv ).x;", "	gl_FragColor = vec4( music.x * occlusion, music.y, music.z, 1.0 );", //"	gl_FragColor = vec4( vec3(occlusion), 1.0 );",
+  "}"].join("\n")
+};
+var MixCutoffShader = {
+  uniforms: {
+    "tDiffuse": {
+      value: null
+    },
+    "tOcclusion": {
+      value: null
+    }
+  },
+  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
+  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform sampler2D tOcclusion;", "varying vec2 vUv;", "void main() {", "   float diffuse = texture2D( tDiffuse, vUv ).x;", "	float occlusion = texture2D(tOcclusion, vUv).x;", "	float dO = (diffuse + occlusion)*0.5;", "	gl_FragColor = vec4(vec3(occlusion), 1.0);", // "	if(dO>0.78){",
+  // "		gl_FragColor = vec4(vec3(1.0), 1.0);",
+  // "	}",
+  // "	else{",
+  // "		gl_FragColor = vec4(vec3(0.0), 1.0);",
+  // "	}",
+  "}"].join("\n")
+};
+
+
+/***/ }),
+
 /***/ "./src/cache/cache.js":
 /*!****************************!*\
   !*** ./src/cache/cache.js ***!
@@ -7439,15 +9031,15 @@ function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o =
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 //import sizeof from 'object-sizeof'
-function Cache(maxSize, loadFunction) {
+function Cache(maxSize, loader) {
   var self = this;
   this.map = new Map();
   this.maxSize = maxSize;
   this.size = 0;
-  this.loadFunction = loadFunction;
+  this.loader = loader;
 
   function get(key, signal) {
-    return self.loadFunction(key, signal);
+    return self.loader.load(key, signal);
     /*return new Promise((resolve, reject)=>{
         let object = self.map.get(key);
         if(!object){
@@ -7568,148 +9160,129 @@ function OBB(values) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
-/* harmony import */ var _tileset__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./tileset */ "./src/tileset.js");
+/* harmony import */ var _tileset__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./tileset */ "./src/tileset.js");
+/* harmony import */ var _Renderer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Renderer */ "./src/Renderer.js");
+/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
 
 
 
-var tileset;
-var scene = new three__WEBPACK_IMPORTED_MODULE_0__["Scene"]();
-scene.background = new three__WEBPACK_IMPORTED_MODULE_0__["Color"](0x49362A);
-var light = new three__WEBPACK_IMPORTED_MODULE_0__["AmbientLight"](0xeeeeee, 1); // soft white light
 
-scene.add(light); // build camera
+var startButton = document.getElementById('startButton');
+startButton.addEventListener('click', function () {
+  document.getElementById('overlay').remove();
+  init();
+});
 
-var camera = new three__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"](75, window.innerWidth / window.innerHeight, 1, 10000);
-var renderer = new three__WEBPACK_IMPORTED_MODULE_0__["WebGLRenderer"]();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement); // controls
+function init() {
+  var scene = new three__WEBPACK_IMPORTED_MODULE_0__["Scene"]();
+  scene.background = new three__WEBPACK_IMPORTED_MODULE_0__["Color"](0x888888);
+  var mesh = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["PlaneGeometry"](20000, 20000), new three__WEBPACK_IMPORTED_MODULE_0__["MeshPhongMaterial"]({
+    color: 0xffffff,
+    shadowSide: three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"]
+  }));
+  mesh.position.y = -0.2;
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  var container = document.getElementById('screen');
+  container.style = "position: absolute; height:100%; width:100%; left: 0px; top:0px;";
+  document.body.appendChild(container);
+  var camera = new three__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"](50, window.offsetWidth / window.offsetHeight, 3, 100);
+  camera.position.z = 4; //var camera2 = camera.clone();
+  //var helper = new THREE.CameraHelper(camera2);
+  //scene.add(helper);
+  /// Lights
 
-var controls = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_1__["OrbitControls"](camera, renderer.domElement); // handle resize
+  scene.add(new three__WEBPACK_IMPORTED_MODULE_0__["AmbientLight"](0xFFFFFF, 0.5));
+  var dirLight = new three__WEBPACK_IMPORTED_MODULE_0__["DirectionalLight"](0xffffff, 1.0);
+  dirLight.position.set(49, 500, 151);
+  dirLight.target.position.set(0, 0, 0); // dirLight.castShadow = true;
+  // dirLight.shadow.camera.near = 100;
+  // dirLight.shadow.camera.far = 1000;
+  // dirLight.shadow.camera.left = -1000;
+  // dirLight.shadow.camera.bottom = -1000;
+  // dirLight.shadow.camera.right = 1000;
+  // dirLight.shadow.camera.top = 1000;
+  // dirLight.shadow.bias = 0.0000001;
+  // dirLight.shadow.mapSize.width = 1024;
+  // dirLight.shadow.mapSize.height = 1024;
 
-window.addEventListener('resize', onWindowResize, false);
+  scene.add(dirLight);
+  scene.add(dirLight.target); //scene.add(new THREE.DirectionalLightHelper(dirLight, 5, "#ff0000"));
+  // setInterval(function () {
+  //     dirLight.target.position.set(camera.position.x, 0, camera.position.z);
+  //     dirLight.position.set(camera.position.x + 100,  500, camera.position.z + 20);
+  //     dirLight.shadow.camera.near = 100;
+  //     dirLight.shadow.camera.far = 5000;
+  //     var size = (camera.position.y*2) + 100;
+  //     dirLight.shadow.camera.left = -size;
+  //     dirLight.shadow.camera.bottom = -size;
+  //     dirLight.shadow.camera.right = size;
+  //     dirLight.shadow.camera.top = size;
+  //     dirLight.shadow.camera.updateProjectionMatrix();
+  //     dirLight.needsUpdate = true;
+  // }, 25);
 
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
+  var renderer = new _Renderer__WEBPACK_IMPORTED_MODULE_2__["Renderer"](scene, container, camera);
+  var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_1__["Tileset"]("dist/city2/tileset.json", scene, renderer.camera, 0.5, function (aMesh) {
+    aMesh.material = new three__WEBPACK_IMPORTED_MODULE_0__["MeshPhongMaterial"]({
+      color: 0xffffff,
+      flatShading: true,
+      shadowSide: three__WEBPACK_IMPORTED_MODULE_0__["BackSide"]
+    });
+    aMesh.castShadow = false;
+    aMesh.receiveShadow = false;
+    aMesh.material.side = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"]; //aMesh.material.shadowSide = THREE.DoubleSide;
 
-function animate() {
-  requestAnimationFrame(animate);
-  camera.updateMatrixWorld();
-  renderer.render(scene, camera);
-}
+    aMesh.geometry.computeVertexNormals(); //aMesh.shading = THREE.FlatShading
+  });
+  tileset.setLoadOutsideView(true);
+  var tileset2 = new _tileset__WEBPACK_IMPORTED_MODULE_1__["Tileset"]("dist/car4/tileset.json", scene, renderer.camera, 0.4, function (aMesh) {
+    aMesh.material = new three__WEBPACK_IMPORTED_MODULE_0__["MeshPhongMaterial"]({
+      color: 0xffffff,
+      flatShading: true,
+      shadowSide: three__WEBPACK_IMPORTED_MODULE_0__["BackSide"]
+    });
+    aMesh.material.side = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"];
+    aMesh.material.shadowSide = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"];
+    aMesh.castShadow = false;
+    aMesh.receiveShadow = false;
+    aMesh.geometry.computeVertexNormals(); //aMesh.shading = THREE.FlatShading
+  });
+  tileset2.setLoadOutsideView(true);
+  tileset2.move(10, 0, 0, true);
+  animate();
 
-animate();
-setAyaModel();
-setInterval(function () {
-  tileset.update();
-}, 100); /////// options
+  function animate() {
+    renderer.render();
+  }
 
-var loadOutsideFrustum = document.getElementById("loadOutsideFrustum");
+  var r = 0;
+  setInterval(function () {
+    tileset.update();
+    r += 0.1; //tileset2.setRotation(0,r,0,true);
 
-if (loadOutsideFrustum.addEventListener) {
-  loadOutsideFrustum.addEventListener("change", function (event) {
-    if (!!loadOutsideFrustum.checked) tileset.setLoadOutsideView(true);else tileset.setLoadOutsideView(false);
-  }, false);
-}
-
-var geometricErrorMultiplier = document.getElementById("GEM_range");
-
-if (geometricErrorMultiplier.addEventListener) {
-  geometricErrorMultiplier.addEventListener("change", function (event) {
-    tileset.setGeometricErrorMultiplier(geometricErrorMultiplier.value / 100);
-  }, false);
-}
-
-var modelDropDown = document.getElementById("model");
-
-if (modelDropDown.addEventListener) {
-  document.addEventListener("change", function (event) {
-    switch (event.target.value) {
-      case "Village":
-        {
-          setVillageModel();
-          return;
-        }
-
-      case "Aya":
-        {
-          setAyaModel();
-          return;
-        }
-
-      case "Interior":
-        {
-          setInteriorModel();
-          return;
-        }
-    }
-  }, false);
-}
-
-function setVillageModel() {
-  if (!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("https://ebeaufay.github.io/ThreedTilesViewer.github.io/frenchVillage/tileset.json", scene, camera);
-  if (!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
-  if (!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
-  camera.position.x = 0;
-  camera.position.y = 0;
-  camera.position.z = 100;
-  controls.minDistance = 1;
-  controls.maxDistance = 1000;
-  controls.target.x = 0;
-  controls.target.y = 0;
-  controls.target.z = -25;
-  controls.update();
-}
-
-function setAyaModel() {
-  if (!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("https://ebeaufay.github.io/ThreedTilesViewer.github.io/aya/tileset.json", scene, camera);
-  if (!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
-  if (!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
-  camera.position.x = 2000;
-  camera.position.y = 2000;
-  camera.position.z = 2400;
-  controls.minDistance = 1;
-  controls.maxDistance = 5000;
-  controls.target.x = 0;
-  controls.target.y = 1000;
-  controls.target.z = 0;
-  controls.update();
-}
-
-function setInteriorModel() {
-  if (!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new _tileset__WEBPACK_IMPORTED_MODULE_2__["Tileset"]("https://ebeaufay.github.io/ThreedTilesViewer.github.io/interior/tileset.json", scene, camera);
-  if (!!geometricErrorMultiplier) geometricErrorMultiplier.value = 20;
-  tileset.setGeometricErrorMultiplier(0.1);
-  if (!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
-  camera.position.x = -1.18;
-  camera.position.y = 6.77515;
-  camera.position.z = -1.7;
-  controls.minDistance = 0.1;
-  controls.maxDistance = 1000;
-  controls.target.x = 0;
-  controls.target.y = 0;
-  controls.target.z = -25;
-  controls.update();
+    tileset2.update(); // camera2.copy(camera, false);
+    // camera2.applyMatrix4(tileset2.matrix.clone().invert());
+    // camera2.updateMatrixWorld(true);
+    // camera2.updateProjectionMatrix();
+    // helper.update();
+  }, 100);
 }
 
 /***/ }),
 
-/***/ "./src/loader/loader.js":
+/***/ "./src/loader/Loader.js":
 /*!******************************!*\
-  !*** ./src/loader/loader.js ***!
+  !*** ./src/loader/Loader.js ***!
   \******************************/
-/*! exports provided: loader */
+/*! exports provided: Loader */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "loader", function() { return loader; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Loader", function() { return Loader; });
 /* harmony import */ var _tile_tile__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../tile/tile */ "./src/tile/tile.js");
 /* harmony import */ var _geometry_obb__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../geometry/obb */ "./src/geometry/obb.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
@@ -7723,113 +9296,126 @@ var path = __webpack_require__(/*! path */ "./node_modules/path-browserify/index
 
 var gltfLoader = new three_examples_jsm_loaders_GLTFLoader_js__WEBPACK_IMPORTED_MODULE_3__["GLTFLoader"]();
 
-function loader(url, signal) {
-  if (!url.endsWith("b3dm") && !url.endsWith("json")) {
-    throw new Error("unsupported format : " + url);
-  }
+function Loader(meshCallback) {
+  var self = this;
+  this.meshCallback = meshCallback;
 
-  return fetch(url, !!signal ? {
-    signal: signal
-  } : {}).then(function (result) {
-    if (!result.ok) {
-      throw new Error("couldn't load \"".concat(url, "\". Request failed with status ").concat(result.status, " : ").concat(result.statusText));
+  function load(url, signal) {
+    if (!url.endsWith("b3dm") && !url.endsWith("json")) {
+      throw new Error("unsupported format : " + url);
     }
 
-    if (url.endsWith("b3dm")) {
-      return result.arrayBuffer().then(function (buffer) {
-        return parseB3DM(buffer, url);
-      })["catch"](function (error) {
-        return console.log(error);
-      });
-    } else if (url.endsWith("json")) {
-      return result.json().then(function (json) {
-        return parseTileset(json.root, path.dirname(url));
-      });
-    }
-  })["catch"](function (error) {
-    return Promise.reject(error);
-  });
-}
+    return fetch(url, !!signal ? {
+      signal: signal
+    } : {}).then(function (result) {
+      if (!result.ok) {
+        throw new Error("couldn't load \"".concat(url, "\". Request failed with status ").concat(result.status, " : ").concat(result.statusText));
+      }
 
-function parseTileset(tileset, rootPath) {
-  var tile = new _tile_tile__WEBPACK_IMPORTED_MODULE_0__["Tile"]();
-  console.assert(tileset.geometricError !== 'undefined');
-  tile.setGeometricError(tileset.geometricError);
-  console.assert(!!tileset.content);
-
-  if (!!tileset.content.uri) {
-    if (path.isAbsolute(tileset.content.uri)) {
-      tile.setContent(tileset.content.uri);
-    } else {
-      tile.setContent(rootPath + path.sep + tileset.content.uri);
-    }
-  } else if (!!tileset.content.url) {
-    if (path.isAbsolute(tileset.content.url)) {
-      tile.setContent(tileset.content.url);
-    } else {
-      tile.setContent(rootPath + path.sep + tileset.content.url);
-    }
-  }
-
-  console.assert(!!tileset.boundingVolume);
-
-  if (!!tileset.boundingVolume.box) {
-    tile.setVolume(new _geometry_obb__WEBPACK_IMPORTED_MODULE_1__["OBB"](tileset.boundingVolume.box), "box");
-  } else if (!!tileset.boundingVolume.region) {
-    var region = tileset.boundingVolume.region;
-    tile.setVolume(new three__WEBPACK_IMPORTED_MODULE_2__["Box3"](new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](region[0], region[2], region[4]), new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](region[1], region[3], region[5])), "region");
-  } else if (!!tileset.boundingVolume.sphere) {
-    var sphere = tileset.boundingVolume.sphere;
-    tile.setVolume(new three__WEBPACK_IMPORTED_MODULE_2__["Box3"](new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](sphere[0], sphere[1], sphere[2]), sphere[3]), "sphere");
-  }
-
-  tile.setRefine(!!tileset.refine ? tileset.refine : "REPLACE");
-
-  if (!!tileset.children) {
-    tileset.children.forEach(function (element) {
-      tile.addChild(parseTileset(element, rootPath));
+      if (url.endsWith("b3dm")) {
+        return result.arrayBuffer().then(function (buffer) {
+          return parseB3DM(buffer, url);
+        })["catch"](function (error) {
+          return console.log(error);
+        });
+      } else if (url.endsWith("json")) {
+        return result.json().then(function (json) {
+          return parseTileset(json.root, path.dirname(url));
+        });
+      }
+    })["catch"](function (error) {
+      return Promise.reject(error);
     });
   }
 
-  return tile;
-}
+  function parseTileset(tileset, rootPath) {
+    var tile = new _tile_tile__WEBPACK_IMPORTED_MODULE_0__["Tile"](load);
+    console.assert(tileset.geometricError !== 'undefined');
+    tile.setGeometricError(tileset.geometricError);
+    console.assert(!!tileset.content);
 
-function parseB3DM(arrayBuffer, url) {
-  var dataView = new DataView(arrayBuffer);
-  var magic = String.fromCharCode(dataView.getUint8(0)) + String.fromCharCode(dataView.getUint8(1)) + String.fromCharCode(dataView.getUint8(2)) + String.fromCharCode(dataView.getUint8(3));
-  console.assert(magic === 'b3dm');
-  var version = dataView.getUint32(4, true);
-  console.assert(version === 1);
-  var byteLength = dataView.getUint32(8, true);
-  console.assert(byteLength === arrayBuffer.byteLength);
-  var featureTableJSONByteLength = dataView.getUint32(12, true);
-  var featureTableBinaryByteLength = dataView.getUint32(16, true);
-  var batchTableJSONByteLength = dataView.getUint32(20, true);
-  var batchTableBinaryByteLength = dataView.getUint32(24, true);
-  var featureTableStart = 28; //const featureTable = new FeatureTable( arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength );
+    if (!!tileset.content.uri) {
+      if (path.isAbsolute(tileset.content.uri)) {
+        tile.setContent(tileset.content.uri);
+      } else {
+        tile.setContent(rootPath + path.sep + tileset.content.uri);
+      }
+    } else if (!!tileset.content.url) {
+      if (path.isAbsolute(tileset.content.url)) {
+        tile.setContent(tileset.content.url);
+      } else {
+        tile.setContent(rootPath + path.sep + tileset.content.url);
+      }
+    }
 
-  var batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength; //const batchTable = new BatchTable( arrayBuffer, featureTable.getData( 'BATCH_LENGTH' ), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength );
+    console.assert(!!tileset.boundingVolume);
 
-  var glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
-  var glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
-  var gltfBuffer = glbBytes.slice().buffer;
-  return new Promise(function (resolve, reject) {
-    gltfLoader.parse(gltfBuffer, null, function (model) {
-      //model.batchTable = b3dm.batchTable;
-      //model.featureTable = b3dm.featureTable;
-      //model.scene.batchTable = b3dm.batchTable;
-      //model.scene.featureTable = b3dm.featureTable;
-      model.scene.traverse(function (o) {
-        if (o.isMesh) {
-          o.material.side = three__WEBPACK_IMPORTED_MODULE_2__["DoubleSide"];
-        }
+    if (!!tileset.boundingVolume.box) {
+      tile.setVolume(new _geometry_obb__WEBPACK_IMPORTED_MODULE_1__["OBB"](tileset.boundingVolume.box), "box");
+    } else if (!!tileset.boundingVolume.region) {
+      var region = tileset.boundingVolume.region;
+      tile.setVolume(new three__WEBPACK_IMPORTED_MODULE_2__["Box3"](new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](region[0], region[2], region[4]), new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](region[1], region[3], region[5])), "region");
+    } else if (!!tileset.boundingVolume.sphere) {
+      var sphere = tileset.boundingVolume.sphere;
+      tile.setVolume(new three__WEBPACK_IMPORTED_MODULE_2__["Box3"](new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](sphere[0], sphere[1], sphere[2]), sphere[3]), "sphere");
+    }
+
+    tile.setRefine(!!tileset.refine ? tileset.refine : "REPLACE");
+
+    if (!!tileset.children) {
+      tileset.children.forEach(function (element) {
+        tile.addChild(parseTileset(element, rootPath));
       });
-      resolve({
-        "model": model,
-        "url": url
-      });
-    }, reject);
-  });
+    }
+
+    return tile;
+  }
+
+  function parseB3DM(arrayBuffer, url) {
+    var dataView = new DataView(arrayBuffer);
+    var magic = String.fromCharCode(dataView.getUint8(0)) + String.fromCharCode(dataView.getUint8(1)) + String.fromCharCode(dataView.getUint8(2)) + String.fromCharCode(dataView.getUint8(3));
+    console.assert(magic === 'b3dm');
+    var version = dataView.getUint32(4, true);
+    console.assert(version === 1);
+    var byteLength = dataView.getUint32(8, true);
+    console.assert(byteLength === arrayBuffer.byteLength);
+    var featureTableJSONByteLength = dataView.getUint32(12, true);
+    var featureTableBinaryByteLength = dataView.getUint32(16, true);
+    var batchTableJSONByteLength = dataView.getUint32(20, true);
+    var batchTableBinaryByteLength = dataView.getUint32(24, true);
+    var featureTableStart = 28; //const featureTable = new FeatureTable( arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength );
+
+    var batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength; //const batchTable = new BatchTable( arrayBuffer, featureTable.getData( 'BATCH_LENGTH' ), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength );
+
+    var glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
+    var glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
+    var gltfBuffer = glbBytes.slice().buffer;
+    return new Promise(function (resolve, reject) {
+      gltfLoader.parse(gltfBuffer, null, function (model) {
+        //model.batchTable = b3dm.batchTable;
+        //model.featureTable = b3dm.featureTable;
+        //model.scene.batchTable = b3dm.batchTable;
+        //model.scene.featureTable = b3dm.featureTable;
+        model.scene.traverse(function (o) {
+          if (o.isMesh) {
+            if (!!self.meshCallback) {
+              self.meshCallback(o);
+            } else {
+              o.material.side = three__WEBPACK_IMPORTED_MODULE_2__["DoubleSide"];
+            }
+          }
+        });
+        resolve({
+          "model": model,
+          "url": url
+        });
+      }, reject);
+    });
+  }
+
+  return {
+    "load": load
+  };
 }
 
 
@@ -7846,20 +9432,18 @@ function parseB3DM(arrayBuffer, url) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Tile", function() { return Tile; });
-/* harmony import */ var _loader_loader__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./../loader/loader */ "./src/loader/loader.js");
-
-
-function Tile() {
+function Tile(loaderFunction) {
   var self = this;
   this.children = [];
   this.volume;
   this.refine;
   this.geometricError;
   this.content;
+  this.loader = loaderFunction;
 
   function getTilesInView(frustum, cameraPosition, errorCoefficient, loadAroundView) {
     if (self.content.endsWith(".json")) {
-      return Object(_loader_loader__WEBPACK_IMPORTED_MODULE_0__["loader"])(self.content).then(function (tile) {
+      return loaderFunction(self.content).then(function (tile) {
         setContent(tile.getContent());
         setGeometricError(tile.getGeometricError());
         setRefine(tile.getRefine());
@@ -8014,14 +9598,13 @@ function Tile() {
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Tileset", function() { return Tileset; });
 /* harmony import */ var _cache_cache__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./cache/cache */ "./src/cache/cache.js");
-/* harmony import */ var _loader_loader__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./loader/loader */ "./src/loader/loader.js");
+/* harmony import */ var _loader_Loader__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./loader/Loader */ "./src/loader/Loader.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 
 
 
-var cache = new _cache_cache__WEBPACK_IMPORTED_MODULE_0__["Cache"](100, _loader_loader__WEBPACK_IMPORTED_MODULE_1__["loader"]);
 
-function Tileset(url, scene, camera, geometricErrorMultiplier) {
+function Tileset(url, scene, camera, geometricErrorMultiplier, meshCallback) {
   var self = this;
   this.rootTile;
   if (!!scene) this.scene = scene;
@@ -8030,10 +9613,18 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
   this.currentlyRenderedTiles = {};
   this.futureActionOnTiles = {};
   this.loadAroundView = false;
-  Object(_loader_loader__WEBPACK_IMPORTED_MODULE_1__["loader"])(url).then(function (rootTile) {
+  this.loader = new _loader_Loader__WEBPACK_IMPORTED_MODULE_1__["Loader"](meshCallback);
+  this.cache = new _cache_cache__WEBPACK_IMPORTED_MODULE_0__["Cache"](100, this.loader);
+  this.loader.load(url).then(function (rootTile) {
     self.rootTile = rootTile;
     update();
   });
+  this.matrix = new three__WEBPACK_IMPORTED_MODULE_2__["Matrix4"]();
+  this.position = new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"]();
+  this.scale = new three__WEBPACK_IMPORTED_MODULE_2__["Vector3"](1, 1, 1);
+  this.rotation = new three__WEBPACK_IMPORTED_MODULE_2__["Quaternion"]();
+  this.tilesetCamera = this.camera.clone();
+  this.tilesetCameraHelper = new three__WEBPACK_IMPORTED_MODULE_2__["CameraHelper"](this.tilesetCamera);
 
   function setGeometricErrorMultiplier(geometricErrorMultiplier) {
     self.geometricErrorMultiplier = geometricErrorMultiplier;
@@ -8070,12 +9661,15 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     }
 
     var frustum = new three__WEBPACK_IMPORTED_MODULE_2__["Frustum"]();
-    self.camera.updateMatrix();
-    self.camera.updateMatrixWorld();
+    self.tilesetCamera.copy(self.camera, false);
+    self.tilesetCamera.applyMatrix4(self.matrix.clone().invert());
+    self.tilesetCamera.updateMatrixWorld(true);
+    self.tilesetCamera.updateProjectionMatrix(); //self.tilesetCameraHelper.update();
+
     var projScreenMatrix = new three__WEBPACK_IMPORTED_MODULE_2__["Matrix4"]();
-    projScreenMatrix.multiplyMatrices(self.camera.projectionMatrix, self.camera.matrixWorldInverse);
-    frustum.setFromProjectionMatrix(new three__WEBPACK_IMPORTED_MODULE_2__["Matrix4"]().multiplyMatrices(self.camera.projectionMatrix, self.camera.matrixWorldInverse));
-    self.rootTile.getTilesInView(frustum, camera.position, self.geometricErrorMultiplier, self.loadAroundView).then(function (tiles) {
+    projScreenMatrix.multiplyMatrices(self.tilesetCamera.projectionMatrix, self.tilesetCamera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projScreenMatrix);
+    self.rootTile.getTilesInView(frustum, self.tilesetCamera.position, self.geometricErrorMultiplier, self.loadAroundView).then(function (tiles) {
       if (tiles.length > 0 && !!self.scene) {
         var newTilesContent = tiles.map(function (tile) {
           return tile.content;
@@ -8092,11 +9686,12 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
           if (!self.currentlyRenderedTiles[content]) {
             if (self.futureActionOnTiles[content] !== "toUpdate") {
               self.futureActionOnTiles[content] = "toUpdate";
-              contentRequests.push(cache.get(content
+              contentRequests.push(self.cache.get(content
               /*, controller.signal*/
               ).then(function (gltf) {
                 if (!!gltf && !!self.scene) {
                   if (self.futureActionOnTiles[content] === "toUpdate") {
+                    applyMatrix(gltf.model.scene);
                     self.scene.add(gltf.model.scene);
                     self.currentlyRenderedTiles[content] = gltf.model;
                     delete self.futureActionOnTiles[content];
@@ -8133,16 +9728,48 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
                   }
                 }, 0);
               });
-
-              if (Object.keys(self.currentlyRenderedTiles).length != scene.children.length - 1) {
-                console.log(Object.keys(self.currentlyRenderedTiles).length);
-                console.log(scene.children.length);
-              }
             }
           });
         }
       }
     });
+  }
+
+  function setScale(x, y, z, applyNow) {
+    self.scale.set(x, y, z);
+    if (!!applyNow) applyMovement();
+  }
+
+  function setRotation(x, y, z, applyNow) {
+    self.rotation.setFromEuler(new three__WEBPACK_IMPORTED_MODULE_2__["Euler"](x, y, z, 'XYZ'));
+    if (!!applyNow) applyMovement();
+  }
+
+  function translate(x, y, z, applyNow) {
+    self.position.set(self.position.x + x, self.position.y + y, self.position.z + z);
+    if (!!applyNow) applyMovement();
+  }
+
+  function move(x, y, z, applyNow) {
+    self.position.set(x, y, z);
+    if (!!applyNow) applyMovement();
+  }
+
+  function applyMatrixAll() {
+    for (var model in self.currentlyRenderedTiles) {
+      applyMatrix(self.currentlyRenderedTiles[model].scene);
+    }
+  }
+
+  function applyMatrix(object) {
+    object.matrix.copy(self.matrix); //object.updateMatrix();
+
+    object.matrix.decompose(object.position, object.quaternion, object.scale);
+  }
+
+  function applyMovement() {
+    self.matrix.compose(self.position, self.rotation, self.scale);
+    applyMatrixAll();
   }
 
   return {
@@ -8151,7 +9778,12 @@ function Tileset(url, scene, camera, geometricErrorMultiplier) {
     "setCamera": setCamera,
     "deleteFromCurrentScene": deleteFromCurrentScene,
     "setLoadOutsideView": setLoadAroundView,
-    "setGeometricErrorMultiplier": setGeometricErrorMultiplier
+    "setGeometricErrorMultiplier": setGeometricErrorMultiplier,
+    "setRotation": setRotation,
+    "translate": translate,
+    "move": move,
+    "setScale": setScale,
+    "matrix": self.matrix
   };
 }
 

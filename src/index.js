@@ -1,132 +1,76 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Tileset } from './tileset';
-
-var tileset;
-var scene = new THREE.Scene();
-scene.background = new THREE.Color( 0x49362A );
-const light = new THREE.AmbientLight( 0xeeeeee, 1 ); // soft white light
-scene.add( light );
-
-// build camera
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
-
-var renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-
-document.body.appendChild( renderer.domElement );
+import { Renderer } from './Renderer';
+import { Water } from 'three/examples/jsm/objects/Water2.js';
 
 
-// controls
-var controls = new OrbitControls( camera, renderer.domElement );
+init();
 
 
-// handle resize
-window.addEventListener( 'resize', onWindowResize, false );
-function onWindowResize() {
-
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize( window.innerWidth, window.innerHeight );
-
-}
-
-function animate() {
-  requestAnimationFrame( animate );
-  camera.updateMatrixWorld();
-  renderer.render( scene, camera );
-}
-animate();
-
-setAyaModel();
-
-setInterval(function(){
-  tileset.update();
-}, 100);
+function init() {
+    var scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
 
 
-/////// options
-var loadOutsideFrustum = document.getElementById ("loadOutsideFrustum");
-if (loadOutsideFrustum.addEventListener) {
-  loadOutsideFrustum.addEventListener ("change", function(event){
-    if(!!loadOutsideFrustum.checked) tileset.setLoadOutsideView(true);
-    else tileset.setLoadOutsideView(false);
-  }, false);
-}
 
-var geometricErrorMultiplier = document.getElementById ("GEM_range");
-if (geometricErrorMultiplier.addEventListener) {
-  geometricErrorMultiplier.addEventListener ("change", function(event){
-    tileset.setGeometricErrorMultiplier(geometricErrorMultiplier.value / 100);
-  }, false);
-}
 
-var modelDropDown = document.getElementById ("model");
-if (modelDropDown.addEventListener) {
-  document.addEventListener ("change", function(event){
-    switch(event.target.value){
-      case "Village":{
-        setVillageModel();
-        return;
-      }
-      case "Aya":{
-        setAyaModel();
-        return;
-      }
-      case "Interior":{
-        setInteriorModel();
-        return;
-      }
+    var container = document.getElementById('screen');
+    container.style = "position: absolute; height:100%; width:100%; left: 0px; top:0px;";
+    document.body.appendChild(container);
+    var camera = new THREE.PerspectiveCamera(50, window.offsetWidth / window.offsetHeight, 3, 10000);
+    camera.position.z = 4;
+
+    // //water
+
+    // const waterGeometry = new THREE.PlaneGeometry(4000, 2000);
+
+    // var water = new Water(waterGeometry, {
+
+    //     color: "#aaaaff",
+    //     scale: 50,
+    //     flowDirection: new THREE.Vector2(0.05,0.2),
+    //     textureWidth: 1024,
+    //     textureHeight: 1024
+    // });
+
+    // water.position.y = 14;
+    // water.rotation.x = Math.PI * - 0.5;
+    // scene.add(water);
+
+    /// Lights
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
+
+    var dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(49, 500, 151);
+    dirLight.target.position.set(0, 0, 0);
+
+    scene.add(dirLight);
+    scene.add(dirLight.target);
+    //scene.add(new THREE.DirectionalLightHelper(dirLight, 5, "#ff0000"));
+
+    var renderer = new Renderer(scene, container, camera);
+    var tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json", scene, renderer.camera, 0.3, aMesh => {
+        //aMesh.material = new THREE.MeshPhongMaterial({ color: 0xffaaff, flatShading: true })
+        aMesh.material.side = THREE.DoubleSide;
+        //aMesh.material.flatShading = true;
+        //aMesh.geometry.computeVertexNormals();
+    });
+    tileset.setLoadOutsideView(true);
+
+    setInterval(function () {
+        tileset.update();
+    }, 200);
+
+    var r = 0.0;
+    setInterval(function () {
+        r+=0.001;
+        tileset.setRotation(0,r,0,true);
+    }, 10);
+
+    animate();
+    function animate() {
+        renderer.render();
     }
-  }, false);
 }
 
-function setVillageModel(){
-  if(!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/frenchVillage/tileset.json", scene, camera);
-  if(!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
-  if(!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
-  camera.position.x = 0;
-  camera.position.y = 0;
-  camera.position.z = 100;
-  controls.minDistance = 1;
-  controls.maxDistance = 1000;
-  controls.target.x = 0;
-  controls.target.y = 0;
-  controls.target.z = -25;
-  controls.update();
-}
 
-function setAyaModel(){
-  if(!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/aya/tileset.json", scene, camera);
-  if(!!geometricErrorMultiplier) geometricErrorMultiplier.value = 100;
-  if(!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
-  camera.position.x = 2000;
-  camera.position.y = 2000;
-  camera.position.z = 2400;
-  controls.minDistance = 1;
-  controls.maxDistance = 5000;
-  controls.target.x = 0;
-  controls.target.y = 1000;
-  controls.target.z = 0;
-  controls.update();
-}
-
-function setInteriorModel(){
-  if(!!tileset) tileset.deleteFromCurrentScene();
-  tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/interior/tileset.json", scene, camera);
-  if(!!geometricErrorMultiplier) geometricErrorMultiplier.value = 20;
-  tileset.setGeometricErrorMultiplier(0.1)
-  if(!!loadOutsideFrustum) loadOutsideFrustum.checked = false;
-  camera.position.x = -1.18;
-  camera.position.y = 6.77515;
-  camera.position.z = -1.7;
-  controls.minDistance = 0.1;
-  controls.maxDistance = 1000;
-  controls.target.x = 0;
-  controls.target.y = 0;
-  controls.target.z = -25;
-  controls.update();
-}

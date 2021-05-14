@@ -1,15 +1,15 @@
-import {loader} from "./../loader/loader"
-function Tile(){
+function Tile(loaderFunction){
     var self = this;
     this.children = [];
     this.volume;
     this.refine;
     this.geometricError;
     this.content;
+    this.loader = loaderFunction;
 
     function getTilesInView(frustum, cameraPosition, errorCoefficient, loadAroundView){
         if(self.content.endsWith(".json")){
-            return loader(self.content).then(tile=>{
+            return loaderFunction(self.content).then(tile=>{
                 setContent(tile.getContent());
                 setGeometricError(tile.getGeometricError());
                 setRefine(tile.getRefine());

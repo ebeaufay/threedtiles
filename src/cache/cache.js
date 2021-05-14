@@ -1,14 +1,14 @@
 
 //import sizeof from 'object-sizeof'
-function Cache(maxSize, loadFunction){
+function Cache(maxSize, loader){
     var self = this;
     this.map = new Map();
     this.maxSize = maxSize;
     this.size = 0;
-    this.loadFunction = loadFunction;
+    this.loader = loader;
 
     function get(key, signal){
-        return self.loadFunction(key, signal);
+        return self.loader.load(key, signal);
         /*return new Promise((resolve, reject)=>{
             let object = self.map.get(key);
             if(!object){

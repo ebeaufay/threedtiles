@@ -5,22 +5,10 @@
     <title>Three 3DTiles viewer sample</title>
   </head>
   <body>
-    <div style="position: absolute; top: 2%; right: 2%; width: auto; height: auto; background-color: gray; border-color: blue; border: green;">
-      <input type="checkbox" id="loadOutsideFrustum" name="option" value="false">
-      <label for="loadOutsideFrustum"> Load low LOD outside Frustum</label><br>
-      <div class="slidecontainer">
-        <br>Geometric error multiplier<br>
-        <input style="position:relative; left:20%;"id="GEM_range" type="range" min="1" max="200" value="100">
-      </div>
-      <p>
-      <label for="model">Model</label>
-      <select name="model" id="model">
-        <option value="Aya">aya</option>
-        <option value="Village">Village</option>
-        <option value="Interior">Interior</option>
-      </select>
-      <p>
-    </div>
-      <div style="position: absolute; bottom: 1%;"> model converted to 3DTiles from <a href="https://sketchfab.com/">sketchfab</a> <a href="https://creativecommons.org/licenses/by/4.0/">(CC)</a></div>
-  <script src="index.js"></script></body>
+    <div id="screen"></div>
+    <div id="overlay">
+			<button id="startButton">Play</button>
+		</div>
+    <div style="position: absolute; bottom: 1%;"> model converted to 3DTiles from <a href="https://sketchfab.com/">sketchfab</a> <a href="https://creativecommons.org/licenses/by/4.0/">(CC)</a></div>
+    <script src="index.js"></script></body>
 </html>
