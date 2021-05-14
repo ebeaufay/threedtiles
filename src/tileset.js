@@ -175,6 +175,7 @@ function Tileset(url, scene, camera, geometricErrorMultiplier, meshCallback) {
         "translate": translate,
         "move": move,
         "setScale": setScale,
+        "apply":applyMovement,
         "matrix": self.matrix
     }
 }

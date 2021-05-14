@@ -1,7 +1,5 @@
 # 3DTilesViewer
 
-contact me at : emericbeaufays@gmail.com
-
 3DTiles viewer for three.js
 
 demo : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
@@ -13,26 +11,20 @@ Adding a tileset to a scene is as easy as :
 ```
 import { Tileset } from './tileset';
 
-...
-
 var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera);
 
 setInterval(function(){
   tileset.update();
 }, 100);
 ```
-##Features
+
+## Features
 
 - Correctly traverses tileset trees, whatever the structure.
 - Handles nested tileset.json files which are loaded on the fly (a tileset.json may point to other tileset.json files as its children).
 - Allows tilesets transformations. Translate, scale and rotate a tilesets in real-time.
 - callback on loaded geometry to assign a custom material or use the meshes for computations.
 - Optionally load low detail tiles outside of view frustum for correct shadows and basic mesh present when the camera moves quickly.
-
-## Caching
-Caching of B3DMs is not implemented yet. The current code relies on simple browser caching.
-
-## Options
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -50,11 +42,39 @@ Instead of this behaviour, you can force the lowest possible LODs to be loaded f
 tileset.setLoadOutsideView(true);
 ```
 
+### Callback
+Add a callback on loaded tiles in order to set a material or do some logic on the meshes.
+
+```
+var tileset = new Tileset("https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json", scene, camera, geometricErrorMultiplier, aMesh => {
+        aMesh.material = new THREE.MeshPhongMaterial({ color: 0xffaaff, flatShading: true })
+        aMesh.material.side = THREE.DoubleSide;
+        aMesh.geometry.computeVertexNormals();
+    });
+```
+
+### Transformations
+Rotation, scale and translation on the entire tileset in real-time.
+
+```
+tileset.setRotation(0, 0.5, 0, true); // rotates immediately by 0.5 RAD around the Y-axis
+tileset.move(1,0,0,true); // moves immediately to coordinates 1,0,0
+tileset.translate(1,0,0,true); // translates immediately by 1,0,0
+tileset.setScale(2,1,1); // scales immediately by 2 along the x-axis and 1 along the other axis
+
+tileset.setRotation(1, 0, 0, false); // rotates by 1.0 RAD around the X-axis only when tileset#apply is called
+tileset.apply(); // applies all rotations/scales/translations that were accumulated
+```
+
+For performance, if there are many transformations that need to be applied in one go, it's best to use a falsy "applyNow" parameter for all transformation calls
+followed by a single call to tileset#apply.
+
 ## upcomming features
+ - caching
  - provide access to batch and feature tables
  - support for i3dm, pnts,...
 
 # EXTRA Mesh to 3DTiles Converter
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
-For more info, don't hesitate to contact me at emericbeaufays@gmail.com
+For more info, don't hesitate to contact me directly at emericbeaufays@gmail.com
