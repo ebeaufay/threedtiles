@@ -21,11 +21,13 @@ setInterval(function(){
   tileset.update();
 }, 100);
 ```
+##Features
 
-This library provides several advantages over existing ones: 
-- It correctly traverses tileset trees, whatever the structure.
-- It handles nested tileset.json files which are loaded on the fly (a tileset.json may point to other tileset.json files as its children).
-
+- Correctly traverses tileset trees, whatever the structure.
+- Handles nested tileset.json files which are loaded on the fly (a tileset.json may point to other tileset.json files as its children).
+- Allows tilesets transformations. Translate, scale and rotate a tilesets in real-time.
+- callback on loaded geometry to assign a custom material or use the meshes for computations.
+- Optionally load low detail tiles outside of view frustum for correct shadows and basic mesh present when the camera moves quickly.
 
 ## Caching
 Caching of B3DMs is not implemented yet. The current code relies on simple browser caching.
@@ -49,11 +51,10 @@ tileset.setLoadOutsideView(true);
 ```
 
 ## upcomming features
- - make a callback available for loaded meshes
  - provide access to batch and feature tables
  - support for i3dm, pnts,...
 
 # EXTRA Mesh to 3DTiles Converter
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
-For more info, contact me at emericbeaufays@gmail.com
+For more info, don't hesitate to contact me at emericbeaufays@gmail.com
