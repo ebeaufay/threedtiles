@@ -1,15 +1,27 @@
 {
-    "name": "ThreeDTilesViewer",
-    "version": "0.0.1",
-    "private": true,
-    "description": "A 3D Tiles Viewer for THREE.js",
-    "main": "main.js",
+    "name": "@jdultra/threedtiles",
+    "version": "1.0.0",
+    "description": "An OGC 3DTiles viewer for Three.js",
+    "main": "tileset.js",
     "scripts": {
         "build": "webpack",
         "watch": "webpack --watch",
         "dev": "webpack-dev-server"
     },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ebeaufay/3DTilesViewer"
+    },
+    "keywords": [
+        "OGC",
+        "3D",
+        "3DTiles",
+        "Tiles",
+        "Three.js",
+        "Three"
+    ],
     "author": "Emeric Beaufays",
+    "license": "MIT",
     "dependencies": {
         "gltf-validator": ">=2.0.0-dev.3.3",
         "lodash": ">=4.17.20",
