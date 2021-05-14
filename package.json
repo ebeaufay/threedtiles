@@ -11,9 +11,10 @@
     },
     "author": "Emeric Beaufays",
     "dependencies": {
-        "gltf-validator": "^2.0.0-dev.3.3",
-        "lodash": "^4.17.20",
-        "three": "^0.123.0"
+        "gltf-validator": ">=2.0.0-dev.3.3",
+        "lodash": ">=4.17.20",
+        "regenerator-runtime": ">=0.13.7",
+        "three": ">=0.125.0"
     },
     "devDependencies": {
         "@babel/core": "^7.12.9",

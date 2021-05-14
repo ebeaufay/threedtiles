@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Tileset } from './tileset';
 import { Renderer } from './Renderer';
-import { Water } from 'three/examples/jsm/objects/Water2.js';
+import "regenerator-runtime/runtime.js";
 
 
 init();
@@ -20,22 +20,6 @@ function init() {
     var camera = new THREE.PerspectiveCamera(50, window.offsetWidth / window.offsetHeight, 3, 10000);
     camera.position.z = 4;
 
-    // //water
-
-    // const waterGeometry = new THREE.PlaneGeometry(4000, 2000);
-
-    // var water = new Water(waterGeometry, {
-
-    //     color: "#aaaaff",
-    //     scale: 50,
-    //     flowDirection: new THREE.Vector2(0.05,0.2),
-    //     textureWidth: 1024,
-    //     textureHeight: 1024
-    // });
-
-    // water.position.y = 14;
-    // water.rotation.x = Math.PI * - 0.5;
-    // scene.add(water);
 
     /// Lights
     scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
