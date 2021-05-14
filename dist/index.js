@@ -5257,11 +5257,7 @@ var GLTFLoader = function () {
         }
       }
 
-      try {
-        var json = JSON.parse(content);
-      } catch (e) {
-        console.log(e);
-      }
+      var json = JSON.parse(content);
 
       if (json.asset === undefined || json.asset.version[0] < 2) {
         if (onError) onError(new Error('THREE.GLTFLoader: Unsupported asset. glTF versions >=2.0 are supported.'));
@@ -7868,388 +7864,565 @@ var GLTFLoader = function () {
 
 /***/ }),
 
-/***/ "./node_modules/three/examples/jsm/math/SimplexNoise.js":
+/***/ "./node_modules/three/examples/jsm/objects/Reflector.js":
 /*!**************************************************************!*\
-  !*** ./node_modules/three/examples/jsm/math/SimplexNoise.js ***!
+  !*** ./node_modules/three/examples/jsm/objects/Reflector.js ***!
   \**************************************************************/
-/*! exports provided: SimplexNoise */
+/*! exports provided: Reflector */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SimplexNoise", function() { return SimplexNoise; });
-// Ported from Stefan Gustavson's java implementation
-// http://staffwww.itn.liu.se/~stegu/simplexnoise/simplexnoise.pdf
-// Read Stefan's excellent paper for details on how this code works.
-//
-// Sean McCullough banksean@gmail.com
-//
-// Added 4D noise
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Reflector", function() { return Reflector; });
+/* harmony import */ var _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../build/three.module.js */ "./node_modules/three/build/three.module.js");
+
+
+var Reflector = function Reflector(geometry, options) {
+  _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Mesh"].call(this, geometry);
+  this.type = 'Reflector';
+  var scope = this;
+  options = options || {};
+  var color = options.color !== undefined ? new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Color"](options.color) : new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Color"](0x7F7F7F);
+  var textureWidth = options.textureWidth || 512;
+  var textureHeight = options.textureHeight || 512;
+  var clipBias = options.clipBias || 0;
+  var shader = options.shader || Reflector.ReflectorShader; //
+
+  var reflectorPlane = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Plane"]();
+  var normal = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+  var reflectorWorldPosition = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+  var cameraWorldPosition = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+  var rotationMatrix = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]();
+  var lookAtPosition = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"](0, 0, -1);
+  var clipPlane = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector4"]();
+  var view = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+  var target = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+  var q = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector4"]();
+  var textureMatrix = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]();
+  var virtualCamera = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"]();
+  var parameters = {
+    minFilter: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["LinearFilter"],
+    magFilter: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["LinearFilter"],
+    format: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["RGBFormat"]
+  };
+  var renderTarget = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["WebGLRenderTarget"](textureWidth, textureHeight, parameters);
+
+  if (!_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].isPowerOfTwo(textureWidth) || !_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].isPowerOfTwo(textureHeight)) {
+    renderTarget.texture.generateMipmaps = false;
+  }
+
+  var material = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["ShaderMaterial"]({
+    uniforms: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["UniformsUtils"].clone(shader.uniforms),
+    fragmentShader: shader.fragmentShader,
+    vertexShader: shader.vertexShader
+  });
+  material.uniforms["tDiffuse"].value = renderTarget.texture;
+  material.uniforms["color"].value = color;
+  material.uniforms["textureMatrix"].value = textureMatrix;
+  this.material = material;
+
+  this.onBeforeRender = function (renderer, scene, camera) {
+    reflectorWorldPosition.setFromMatrixPosition(scope.matrixWorld);
+    cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
+    rotationMatrix.extractRotation(scope.matrixWorld);
+    normal.set(0, 0, 1);
+    normal.applyMatrix4(rotationMatrix);
+    view.subVectors(reflectorWorldPosition, cameraWorldPosition); // Avoid rendering when reflector is facing away
+
+    if (view.dot(normal) > 0) return;
+    view.reflect(normal).negate();
+    view.add(reflectorWorldPosition);
+    rotationMatrix.extractRotation(camera.matrixWorld);
+    lookAtPosition.set(0, 0, -1);
+    lookAtPosition.applyMatrix4(rotationMatrix);
+    lookAtPosition.add(cameraWorldPosition);
+    target.subVectors(reflectorWorldPosition, lookAtPosition);
+    target.reflect(normal).negate();
+    target.add(reflectorWorldPosition);
+    virtualCamera.position.copy(view);
+    virtualCamera.up.set(0, 1, 0);
+    virtualCamera.up.applyMatrix4(rotationMatrix);
+    virtualCamera.up.reflect(normal);
+    virtualCamera.lookAt(target);
+    virtualCamera.far = camera.far; // Used in WebGLBackground
+
+    virtualCamera.updateMatrixWorld();
+    virtualCamera.projectionMatrix.copy(camera.projectionMatrix); // Update the texture matrix
+
+    textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0);
+    textureMatrix.multiply(virtualCamera.projectionMatrix);
+    textureMatrix.multiply(virtualCamera.matrixWorldInverse);
+    textureMatrix.multiply(scope.matrixWorld); // Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+    // Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+
+    reflectorPlane.setFromNormalAndCoplanarPoint(normal, reflectorWorldPosition);
+    reflectorPlane.applyMatrix4(virtualCamera.matrixWorldInverse);
+    clipPlane.set(reflectorPlane.normal.x, reflectorPlane.normal.y, reflectorPlane.normal.z, reflectorPlane.constant);
+    var projectionMatrix = virtualCamera.projectionMatrix;
+    q.x = (Math.sign(clipPlane.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+    q.y = (Math.sign(clipPlane.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+    q.z = -1.0;
+    q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14]; // Calculate the scaled plane vector
+
+    clipPlane.multiplyScalar(2.0 / clipPlane.dot(q)); // Replacing the third row of the projection matrix
+
+    projectionMatrix.elements[2] = clipPlane.x;
+    projectionMatrix.elements[6] = clipPlane.y;
+    projectionMatrix.elements[10] = clipPlane.z + 1.0 - clipBias;
+    projectionMatrix.elements[14] = clipPlane.w; // Render
+
+    renderTarget.texture.encoding = renderer.outputEncoding;
+    scope.visible = false;
+    var currentRenderTarget = renderer.getRenderTarget();
+    var currentXrEnabled = renderer.xr.enabled;
+    var currentShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+    renderer.xr.enabled = false; // Avoid camera modification
+
+    renderer.shadowMap.autoUpdate = false; // Avoid re-computing shadows
+
+    renderer.setRenderTarget(renderTarget);
+    renderer.state.buffers.depth.setMask(true); // make sure the depth buffer is writable so it can be properly cleared, see #18897
+
+    if (renderer.autoClear === false) renderer.clear();
+    renderer.render(scene, virtualCamera);
+    renderer.xr.enabled = currentXrEnabled;
+    renderer.shadowMap.autoUpdate = currentShadowAutoUpdate;
+    renderer.setRenderTarget(currentRenderTarget); // Restore viewport
+
+    var viewport = camera.viewport;
+
+    if (viewport !== undefined) {
+      renderer.state.viewport(viewport);
+    }
+
+    scope.visible = true;
+  };
+
+  this.getRenderTarget = function () {
+    return renderTarget;
+  };
+};
+
+Reflector.prototype = Object.create(_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Mesh"].prototype);
+Reflector.prototype.constructor = Reflector;
+Reflector.ReflectorShader = {
+  uniforms: {
+    'color': {
+      value: null
+    },
+    'tDiffuse': {
+      value: null
+    },
+    'textureMatrix': {
+      value: null
+    }
+  },
+  vertexShader: ['uniform mat4 textureMatrix;', 'varying vec4 vUv;', 'void main() {', '	vUv = textureMatrix * vec4( position, 1.0 );', '	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );', '}'].join('\n'),
+  fragmentShader: ['uniform vec3 color;', 'uniform sampler2D tDiffuse;', 'varying vec4 vUv;', 'float blendOverlay( float base, float blend ) {', '	return( base < 0.5 ? ( 2.0 * base * blend ) : ( 1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );', '}', 'vec3 blendOverlay( vec3 base, vec3 blend ) {', '	return vec3( blendOverlay( base.r, blend.r ), blendOverlay( base.g, blend.g ), blendOverlay( base.b, blend.b ) );', '}', 'void main() {', '	vec4 base = texture2DProj( tDiffuse, vUv );', '	gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );', '}'].join('\n')
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/objects/Refractor.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/objects/Refractor.js ***!
+  \**************************************************************/
+/*! exports provided: Refractor */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Refractor", function() { return Refractor; });
+/* harmony import */ var _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../build/three.module.js */ "./node_modules/three/build/three.module.js");
+
+
+var Refractor = function Refractor(geometry, options) {
+  _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Mesh"].call(this, geometry);
+  this.type = 'Refractor';
+  var scope = this;
+  options = options || {};
+  var color = options.color !== undefined ? new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Color"](options.color) : new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Color"](0x7F7F7F);
+  var textureWidth = options.textureWidth || 512;
+  var textureHeight = options.textureHeight || 512;
+  var clipBias = options.clipBias || 0;
+  var shader = options.shader || Refractor.RefractorShader; //
+
+  var virtualCamera = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"]();
+  virtualCamera.matrixAutoUpdate = false;
+  virtualCamera.userData.refractor = true; //
+
+  var refractorPlane = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Plane"]();
+  var textureMatrix = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Matrix4"](); // render target
+
+  var parameters = {
+    minFilter: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["LinearFilter"],
+    magFilter: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["LinearFilter"],
+    format: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["RGBFormat"]
+  };
+  var renderTarget = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["WebGLRenderTarget"](textureWidth, textureHeight, parameters);
+
+  if (!_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].isPowerOfTwo(textureWidth) || !_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["MathUtils"].isPowerOfTwo(textureHeight)) {
+    renderTarget.texture.generateMipmaps = false;
+  } // material
+
+
+  this.material = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["ShaderMaterial"]({
+    uniforms: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["UniformsUtils"].clone(shader.uniforms),
+    vertexShader: shader.vertexShader,
+    fragmentShader: shader.fragmentShader,
+    transparent: true // ensures, refractors are drawn from farthest to closest
+
+  });
+  this.material.uniforms["color"].value = color;
+  this.material.uniforms["tDiffuse"].value = renderTarget.texture;
+  this.material.uniforms["textureMatrix"].value = textureMatrix; // functions
+
+  var visible = function () {
+    var refractorWorldPosition = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    var cameraWorldPosition = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    var rotationMatrix = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]();
+    var view = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    var normal = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    return function visible(camera) {
+      refractorWorldPosition.setFromMatrixPosition(scope.matrixWorld);
+      cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
+      view.subVectors(refractorWorldPosition, cameraWorldPosition);
+      rotationMatrix.extractRotation(scope.matrixWorld);
+      normal.set(0, 0, 1);
+      normal.applyMatrix4(rotationMatrix);
+      return view.dot(normal) < 0;
+    };
+  }();
+
+  var updateRefractorPlane = function () {
+    var normal = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    var position = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    var quaternion = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Quaternion"]();
+    var scale = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
+    return function updateRefractorPlane() {
+      scope.matrixWorld.decompose(position, quaternion, scale);
+      normal.set(0, 0, 1).applyQuaternion(quaternion).normalize(); // flip the normal because we want to cull everything above the plane
+
+      normal.negate();
+      refractorPlane.setFromNormalAndCoplanarPoint(normal, position);
+    };
+  }();
+
+  var updateVirtualCamera = function () {
+    var clipPlane = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Plane"]();
+    var clipVector = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector4"]();
+    var q = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector4"]();
+    return function updateVirtualCamera(camera) {
+      virtualCamera.matrixWorld.copy(camera.matrixWorld);
+      virtualCamera.matrixWorldInverse.copy(virtualCamera.matrixWorld).invert();
+      virtualCamera.projectionMatrix.copy(camera.projectionMatrix);
+      virtualCamera.far = camera.far; // used in WebGLBackground
+      // The following code creates an oblique view frustum for clipping.
+      // see: Lengyel, Eric. “Oblique View Frustum Depth Projection and Clipping”.
+      // Journal of Game Development, Vol. 1, No. 2 (2005), Charles River Media, pp. 5–16
+
+      clipPlane.copy(refractorPlane);
+      clipPlane.applyMatrix4(virtualCamera.matrixWorldInverse);
+      clipVector.set(clipPlane.normal.x, clipPlane.normal.y, clipPlane.normal.z, clipPlane.constant); // calculate the clip-space corner point opposite the clipping plane and
+      // transform it into camera space by multiplying it by the inverse of the projection matrix
+
+      var projectionMatrix = virtualCamera.projectionMatrix;
+      q.x = (Math.sign(clipVector.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+      q.y = (Math.sign(clipVector.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+      q.z = -1.0;
+      q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14]; // calculate the scaled plane vector
+
+      clipVector.multiplyScalar(2.0 / clipVector.dot(q)); // replacing the third row of the projection matrix
+
+      projectionMatrix.elements[2] = clipVector.x;
+      projectionMatrix.elements[6] = clipVector.y;
+      projectionMatrix.elements[10] = clipVector.z + 1.0 - clipBias;
+      projectionMatrix.elements[14] = clipVector.w;
+    };
+  }(); // This will update the texture matrix that is used for projective texture mapping in the shader.
+  // see: http://developer.download.nvidia.com/assets/gamedev/docs/projective_texture_mapping.pdf
+
+
+  function updateTextureMatrix(camera) {
+    // this matrix does range mapping to [ 0, 1 ]
+    textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0); // we use "Object Linear Texgen", so we need to multiply the texture matrix T
+    // (matrix above) with the projection and view matrix of the virtual camera
+    // and the model matrix of the refractor
+
+    textureMatrix.multiply(camera.projectionMatrix);
+    textureMatrix.multiply(camera.matrixWorldInverse);
+    textureMatrix.multiply(scope.matrixWorld);
+  } //
+
+
+  function render(renderer, scene, camera) {
+    scope.visible = false;
+    var currentRenderTarget = renderer.getRenderTarget();
+    var currentXrEnabled = renderer.xr.enabled;
+    var currentShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+    renderer.xr.enabled = false; // avoid camera modification
+
+    renderer.shadowMap.autoUpdate = false; // avoid re-computing shadows
+
+    renderer.setRenderTarget(renderTarget);
+    if (renderer.autoClear === false) renderer.clear();
+    renderer.render(scene, virtualCamera);
+    renderer.xr.enabled = currentXrEnabled;
+    renderer.shadowMap.autoUpdate = currentShadowAutoUpdate;
+    renderer.setRenderTarget(currentRenderTarget); // restore viewport
+
+    var viewport = camera.viewport;
+
+    if (viewport !== undefined) {
+      renderer.state.viewport(viewport);
+    }
+
+    scope.visible = true;
+  } //
+
+
+  this.onBeforeRender = function (renderer, scene, camera) {
+    // Render
+    renderTarget.texture.encoding = renderer.outputEncoding; // ensure refractors are rendered only once per frame
+
+    if (camera.userData.refractor === true) return; // avoid rendering when the refractor is viewed from behind
+
+    if (!visible(camera) === true) return; // update
+
+    updateRefractorPlane();
+    updateTextureMatrix(camera);
+    updateVirtualCamera(camera);
+    render(renderer, scene, camera);
+  };
+
+  this.getRenderTarget = function () {
+    return renderTarget;
+  };
+};
+
+Refractor.prototype = Object.create(_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Mesh"].prototype);
+Refractor.prototype.constructor = Refractor;
+Refractor.RefractorShader = {
+  uniforms: {
+    'color': {
+      value: null
+    },
+    'tDiffuse': {
+      value: null
+    },
+    'textureMatrix': {
+      value: null
+    }
+  },
+  vertexShader: ['uniform mat4 textureMatrix;', 'varying vec4 vUv;', 'void main() {', '	vUv = textureMatrix * vec4( position, 1.0 );', '	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );', '}'].join('\n'),
+  fragmentShader: ['uniform vec3 color;', 'uniform sampler2D tDiffuse;', 'varying vec4 vUv;', 'float blendOverlay( float base, float blend ) {', '	return( base < 0.5 ? ( 2.0 * base * blend ) : ( 1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );', '}', 'vec3 blendOverlay( vec3 base, vec3 blend ) {', '	return vec3( blendOverlay( base.r, blend.r ), blendOverlay( base.g, blend.g ), blendOverlay( base.b, blend.b ) );', '}', 'void main() {', '	vec4 base = texture2DProj( tDiffuse, vUv );', '	gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );', '}'].join('\n')
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/objects/Water2.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/three/examples/jsm/objects/Water2.js ***!
+  \***********************************************************/
+/*! exports provided: Water */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Water", function() { return Water; });
+/* harmony import */ var _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../build/three.module.js */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _objects_Reflector_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../objects/Reflector.js */ "./node_modules/three/examples/jsm/objects/Reflector.js");
+/* harmony import */ var _objects_Refractor_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../objects/Refractor.js */ "./node_modules/three/examples/jsm/objects/Refractor.js");
+
+
 
 /**
- * You can pass in a random number generator object if you like.
- * It is assumed to have a random() method.
+ * References:
+ *	http://www.valvesoftware.com/publications/2010/siggraph2010_vlachos_waterflow.pdf
+ * 	http://graphicsrunner.blogspot.de/2010/08/water-using-flow-maps.html
+ *
  */
-var SimplexNoise = function SimplexNoise(r) {
-  if (r == undefined) r = Math;
-  this.grad3 = [[1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0], [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1], [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]];
-  this.grad4 = [[0, 1, 1, 1], [0, 1, 1, -1], [0, 1, -1, 1], [0, 1, -1, -1], [0, -1, 1, 1], [0, -1, 1, -1], [0, -1, -1, 1], [0, -1, -1, -1], [1, 0, 1, 1], [1, 0, 1, -1], [1, 0, -1, 1], [1, 0, -1, -1], [-1, 0, 1, 1], [-1, 0, 1, -1], [-1, 0, -1, 1], [-1, 0, -1, -1], [1, 1, 0, 1], [1, 1, 0, -1], [1, -1, 0, 1], [1, -1, 0, -1], [-1, 1, 0, 1], [-1, 1, 0, -1], [-1, -1, 0, 1], [-1, -1, 0, -1], [1, 1, 1, 0], [1, 1, -1, 0], [1, -1, 1, 0], [1, -1, -1, 0], [-1, 1, 1, 0], [-1, 1, -1, 0], [-1, -1, 1, 0], [-1, -1, -1, 0]];
-  this.p = [];
 
-  for (var i = 0; i < 256; i++) {
-    this.p[i] = Math.floor(r.random() * 256);
-  } // To remove the need for index wrapping, double the permutation table length
+var Water = function Water(geometry, options) {
+  _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Mesh"].call(this, geometry);
+  this.type = 'Water';
+  var scope = this;
+  options = options || {};
+  var color = options.color !== undefined ? new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Color"](options.color) : new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Color"](0xFFFFFF);
+  var textureWidth = options.textureWidth || 512;
+  var textureHeight = options.textureHeight || 512;
+  var clipBias = options.clipBias || 0;
+  var flowDirection = options.flowDirection || new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector2"](1, 0);
+  var flowSpeed = options.flowSpeed || 0.03;
+  var reflectivity = options.reflectivity || 0.02;
+  var scale = options.scale || 1;
+  var shader = options.shader || Water.WaterShader;
+  var encoding = options.encoding !== undefined ? options.encoding : _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["LinearEncoding"];
+  var textureLoader = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["TextureLoader"]();
+  var flowMap = options.flowMap || undefined;
+  var normalMap0 = options.normalMap0 || textureLoader.load('textures/water/Water_1_M_Normal.jpg');
+  var normalMap1 = options.normalMap1 || textureLoader.load('textures/water/Water_2_M_Normal.jpg');
+  var cycle = 0.15; // a cycle of a flow map phase
 
+  var halfCycle = cycle * 0.5;
+  var textureMatrix = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]();
+  var clock = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Clock"](); // internal components
 
-  this.perm = [];
+  if (_objects_Reflector_js__WEBPACK_IMPORTED_MODULE_1__["Reflector"] === undefined) {
+    console.error('THREE.Water: Required component Reflector not found.');
+    return;
+  }
 
-  for (var i = 0; i < 512; i++) {
-    this.perm[i] = this.p[i & 255];
-  } // A lookup table to traverse the simplex around a given point in 4D.
-  // Details can be found where this table is used, in the 4D noise method.
+  if (_objects_Refractor_js__WEBPACK_IMPORTED_MODULE_2__["Refractor"] === undefined) {
+    console.error('THREE.Water: Required component Refractor not found.');
+    return;
+  }
 
+  var reflector = new _objects_Reflector_js__WEBPACK_IMPORTED_MODULE_1__["Reflector"](geometry, {
+    textureWidth: textureWidth,
+    textureHeight: textureHeight,
+    clipBias: clipBias,
+    encoding: encoding
+  });
+  var refractor = new _objects_Refractor_js__WEBPACK_IMPORTED_MODULE_2__["Refractor"](geometry, {
+    textureWidth: textureWidth,
+    textureHeight: textureHeight,
+    clipBias: clipBias,
+    encoding: encoding
+  });
+  reflector.matrixAutoUpdate = false;
+  refractor.matrixAutoUpdate = false; // material
 
-  this.simplex = [[0, 1, 2, 3], [0, 1, 3, 2], [0, 0, 0, 0], [0, 2, 3, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 2, 3, 0], [0, 2, 1, 3], [0, 0, 0, 0], [0, 3, 1, 2], [0, 3, 2, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 3, 2, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 2, 0, 3], [0, 0, 0, 0], [1, 3, 0, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 3, 0, 1], [2, 3, 1, 0], [1, 0, 2, 3], [1, 0, 3, 2], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 3, 1], [0, 0, 0, 0], [2, 1, 3, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 1, 3], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 0, 1, 2], [3, 0, 2, 1], [0, 0, 0, 0], [3, 1, 2, 0], [2, 1, 0, 3], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 1, 0, 2], [0, 0, 0, 0], [3, 2, 0, 1], [3, 2, 1, 0]];
-};
+  this.material = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["ShaderMaterial"]({
+    uniforms: _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["UniformsUtils"].merge([_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["UniformsLib"]['fog'], shader.uniforms]),
+    vertexShader: shader.vertexShader,
+    fragmentShader: shader.fragmentShader,
+    transparent: true,
+    fog: true
+  });
 
-SimplexNoise.prototype.dot = function (g, x, y) {
-  return g[0] * x + g[1] * y;
-};
-
-SimplexNoise.prototype.dot3 = function (g, x, y, z) {
-  return g[0] * x + g[1] * y + g[2] * z;
-};
-
-SimplexNoise.prototype.dot4 = function (g, x, y, z, w) {
-  return g[0] * x + g[1] * y + g[2] * z + g[3] * w;
-};
-
-SimplexNoise.prototype.noise = function (xin, yin) {
-  var n0, n1, n2; // Noise contributions from the three corners
-  // Skew the input space to determine which simplex cell we're in
-
-  var F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
-  var s = (xin + yin) * F2; // Hairy factor for 2D
-
-  var i = Math.floor(xin + s);
-  var j = Math.floor(yin + s);
-  var G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
-  var t = (i + j) * G2;
-  var X0 = i - t; // Unskew the cell origin back to (x,y) space
-
-  var Y0 = j - t;
-  var x0 = xin - X0; // The x,y distances from the cell origin
-
-  var y0 = yin - Y0; // For the 2D case, the simplex shape is an equilateral triangle.
-  // Determine which simplex we are in.
-
-  var i1, j1; // Offsets for second (middle) corner of simplex in (i,j) coords
-
-  if (x0 > y0) {
-    i1 = 1;
-    j1 = 0; // lower triangle, XY order: (0,0)->(1,0)->(1,1)
+  if (flowMap !== undefined) {
+    this.material.defines.USE_FLOWMAP = '';
+    this.material.uniforms["tFlowMap"] = {
+      type: 't',
+      value: flowMap
+    };
   } else {
-    i1 = 0;
-    j1 = 1;
-  } // upper triangle, YX order: (0,0)->(0,1)->(1,1)
-  // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
-  // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
-  // c = (3-sqrt(3))/6
+    this.material.uniforms["flowDirection"] = {
+      type: 'v2',
+      value: flowDirection
+    };
+  } // maps
 
 
-  var x1 = x0 - i1 + G2; // Offsets for middle corner in (x,y) unskewed coords
+  normalMap0.wrapS = normalMap0.wrapT = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["RepeatWrapping"];
+  normalMap1.wrapS = normalMap1.wrapT = _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["RepeatWrapping"];
+  this.material.uniforms["tReflectionMap"].value = reflector.getRenderTarget().texture;
+  this.material.uniforms["tRefractionMap"].value = refractor.getRenderTarget().texture;
+  this.material.uniforms["tNormalMap0"].value = normalMap0;
+  this.material.uniforms["tNormalMap1"].value = normalMap1; // water
 
-  var y1 = y0 - j1 + G2;
-  var x2 = x0 - 1.0 + 2.0 * G2; // Offsets for last corner in (x,y) unskewed coords
+  this.material.uniforms["color"].value = color;
+  this.material.uniforms["reflectivity"].value = reflectivity;
+  this.material.uniforms["textureMatrix"].value = textureMatrix; // inital values
 
-  var y2 = y0 - 1.0 + 2.0 * G2; // Work out the hashed gradient indices of the three simplex corners
+  this.material.uniforms["config"].value.x = 0; // flowMapOffset0
 
-  var ii = i & 255;
-  var jj = j & 255;
-  var gi0 = this.perm[ii + this.perm[jj]] % 12;
-  var gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
-  var gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12; // Calculate the contribution from the three corners
+  this.material.uniforms["config"].value.y = halfCycle; // flowMapOffset1
 
-  var t0 = 0.5 - x0 * x0 - y0 * y0;
-  if (t0 < 0) n0 = 0.0;else {
-    t0 *= t0;
-    n0 = t0 * t0 * this.dot(this.grad3[gi0], x0, y0); // (x,y) of grad3 used for 2D gradient
+  this.material.uniforms["config"].value.z = halfCycle; // halfCycle
+
+  this.material.uniforms["config"].value.w = scale; // scale
+  // functions
+
+  function updateTextureMatrix(camera) {
+    textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0);
+    textureMatrix.multiply(camera.projectionMatrix);
+    textureMatrix.multiply(camera.matrixWorldInverse);
+    textureMatrix.multiply(scope.matrixWorld);
   }
-  var t1 = 0.5 - x1 * x1 - y1 * y1;
-  if (t1 < 0) n1 = 0.0;else {
-    t1 *= t1;
-    n1 = t1 * t1 * this.dot(this.grad3[gi1], x1, y1);
-  }
-  var t2 = 0.5 - x2 * x2 - y2 * y2;
-  if (t2 < 0) n2 = 0.0;else {
-    t2 *= t2;
-    n2 = t2 * t2 * this.dot(this.grad3[gi2], x2, y2);
-  } // Add contributions from each corner to get the final noise value.
-  // The result is scaled to return values in the interval [-1,1].
 
-  return 70.0 * (n0 + n1 + n2);
-}; // 3D simplex noise
+  function updateFlow() {
+    var delta = clock.getDelta();
+    var config = scope.material.uniforms["config"];
+    config.value.x += flowSpeed * delta; // flowMapOffset0
 
+    config.value.y = config.value.x + halfCycle; // flowMapOffset1
+    // Important: The distance between offsets should be always the value of "halfCycle".
+    // Moreover, both offsets should be in the range of [ 0, cycle ].
+    // This approach ensures a smooth water flow and avoids "reset" effects.
 
-SimplexNoise.prototype.noise3d = function (xin, yin, zin) {
-  var n0, n1, n2, n3; // Noise contributions from the four corners
-  // Skew the input space to determine which simplex cell we're in
-
-  var F3 = 1.0 / 3.0;
-  var s = (xin + yin + zin) * F3; // Very nice and simple skew factor for 3D
-
-  var i = Math.floor(xin + s);
-  var j = Math.floor(yin + s);
-  var k = Math.floor(zin + s);
-  var G3 = 1.0 / 6.0; // Very nice and simple unskew factor, too
-
-  var t = (i + j + k) * G3;
-  var X0 = i - t; // Unskew the cell origin back to (x,y,z) space
-
-  var Y0 = j - t;
-  var Z0 = k - t;
-  var x0 = xin - X0; // The x,y,z distances from the cell origin
-
-  var y0 = yin - Y0;
-  var z0 = zin - Z0; // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
-  // Determine which simplex we are in.
-
-  var i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
-
-  var i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
-
-  if (x0 >= y0) {
-    if (y0 >= z0) {
-      i1 = 1;
-      j1 = 0;
-      k1 = 0;
-      i2 = 1;
-      j2 = 1;
-      k2 = 0; // X Y Z order
-    } else if (x0 >= z0) {
-      i1 = 1;
-      j1 = 0;
-      k1 = 0;
-      i2 = 1;
-      j2 = 0;
-      k2 = 1; // X Z Y order
-    } else {
-      i1 = 0;
-      j1 = 0;
-      k1 = 1;
-      i2 = 1;
-      j2 = 0;
-      k2 = 1;
-    } // Z X Y order
-
-  } else {
-    // x0<y0
-    if (y0 < z0) {
-      i1 = 0;
-      j1 = 0;
-      k1 = 1;
-      i2 = 0;
-      j2 = 1;
-      k2 = 1; // Z Y X order
-    } else if (x0 < z0) {
-      i1 = 0;
-      j1 = 1;
-      k1 = 0;
-      i2 = 0;
-      j2 = 1;
-      k2 = 1; // Y Z X order
-    } else {
-      i1 = 0;
-      j1 = 1;
-      k1 = 0;
-      i2 = 1;
-      j2 = 1;
-      k2 = 0;
-    } // Y X Z order
-
-  } // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
-  // a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
-  // a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
-  // c = 1/6.
+    if (config.value.x >= cycle) {
+      config.value.x = 0;
+      config.value.y = halfCycle;
+    } else if (config.value.y >= cycle) {
+      config.value.y = config.value.y - cycle;
+    }
+  } //
 
 
-  var x1 = x0 - i1 + G3; // Offsets for second corner in (x,y,z) coords
-
-  var y1 = y0 - j1 + G3;
-  var z1 = z0 - k1 + G3;
-  var x2 = x0 - i2 + 2.0 * G3; // Offsets for third corner in (x,y,z) coords
-
-  var y2 = y0 - j2 + 2.0 * G3;
-  var z2 = z0 - k2 + 2.0 * G3;
-  var x3 = x0 - 1.0 + 3.0 * G3; // Offsets for last corner in (x,y,z) coords
-
-  var y3 = y0 - 1.0 + 3.0 * G3;
-  var z3 = z0 - 1.0 + 3.0 * G3; // Work out the hashed gradient indices of the four simplex corners
-
-  var ii = i & 255;
-  var jj = j & 255;
-  var kk = k & 255;
-  var gi0 = this.perm[ii + this.perm[jj + this.perm[kk]]] % 12;
-  var gi1 = this.perm[ii + i1 + this.perm[jj + j1 + this.perm[kk + k1]]] % 12;
-  var gi2 = this.perm[ii + i2 + this.perm[jj + j2 + this.perm[kk + k2]]] % 12;
-  var gi3 = this.perm[ii + 1 + this.perm[jj + 1 + this.perm[kk + 1]]] % 12; // Calculate the contribution from the four corners
-
-  var t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
-  if (t0 < 0) n0 = 0.0;else {
-    t0 *= t0;
-    n0 = t0 * t0 * this.dot3(this.grad3[gi0], x0, y0, z0);
-  }
-  var t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
-  if (t1 < 0) n1 = 0.0;else {
-    t1 *= t1;
-    n1 = t1 * t1 * this.dot3(this.grad3[gi1], x1, y1, z1);
-  }
-  var t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
-  if (t2 < 0) n2 = 0.0;else {
-    t2 *= t2;
-    n2 = t2 * t2 * this.dot3(this.grad3[gi2], x2, y2, z2);
-  }
-  var t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
-  if (t3 < 0) n3 = 0.0;else {
-    t3 *= t3;
-    n3 = t3 * t3 * this.dot3(this.grad3[gi3], x3, y3, z3);
-  } // Add contributions from each corner to get the final noise value.
-  // The result is scaled to stay just inside [-1,1]
-
-  return 32.0 * (n0 + n1 + n2 + n3);
-}; // 4D simplex noise
-
-
-SimplexNoise.prototype.noise4d = function (x, y, z, w) {
-  // For faster and easier lookups
-  var grad4 = this.grad4;
-  var simplex = this.simplex;
-  var perm = this.perm; // The skewing and unskewing factors are hairy again for the 4D case
-
-  var F4 = (Math.sqrt(5.0) - 1.0) / 4.0;
-  var G4 = (5.0 - Math.sqrt(5.0)) / 20.0;
-  var n0, n1, n2, n3, n4; // Noise contributions from the five corners
-  // Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
-
-  var s = (x + y + z + w) * F4; // Factor for 4D skewing
-
-  var i = Math.floor(x + s);
-  var j = Math.floor(y + s);
-  var k = Math.floor(z + s);
-  var l = Math.floor(w + s);
-  var t = (i + j + k + l) * G4; // Factor for 4D unskewing
-
-  var X0 = i - t; // Unskew the cell origin back to (x,y,z,w) space
-
-  var Y0 = j - t;
-  var Z0 = k - t;
-  var W0 = l - t;
-  var x0 = x - X0; // The x,y,z,w distances from the cell origin
-
-  var y0 = y - Y0;
-  var z0 = z - Z0;
-  var w0 = w - W0; // For the 4D case, the simplex is a 4D shape I won't even try to describe.
-  // To find out which of the 24 possible simplices we're in, we need to
-  // determine the magnitude ordering of x0, y0, z0 and w0.
-  // The method below is a good way of finding the ordering of x,y,z,w and
-  // then find the correct traversal order for the simplex we’re in.
-  // First, six pair-wise comparisons are performed between each possible pair
-  // of the four coordinates, and the results are used to add up binary bits
-  // for an integer index.
-
-  var c1 = x0 > y0 ? 32 : 0;
-  var c2 = x0 > z0 ? 16 : 0;
-  var c3 = y0 > z0 ? 8 : 0;
-  var c4 = x0 > w0 ? 4 : 0;
-  var c5 = y0 > w0 ? 2 : 0;
-  var c6 = z0 > w0 ? 1 : 0;
-  var c = c1 + c2 + c3 + c4 + c5 + c6;
-  var i1, j1, k1, l1; // The integer offsets for the second simplex corner
-
-  var i2, j2, k2, l2; // The integer offsets for the third simplex corner
-
-  var i3, j3, k3, l3; // The integer offsets for the fourth simplex corner
-  // simplex[c] is a 4-vector with the numbers 0, 1, 2 and 3 in some order.
-  // Many values of c will never occur, since e.g. x>y>z>w makes x<z, y<w and x<w
-  // impossible. Only the 24 indices which have non-zero entries make any sense.
-  // We use a thresholding to set the coordinates in turn from the largest magnitude.
-  // The number 3 in the "simplex" array is at the position of the largest coordinate.
-
-  i1 = simplex[c][0] >= 3 ? 1 : 0;
-  j1 = simplex[c][1] >= 3 ? 1 : 0;
-  k1 = simplex[c][2] >= 3 ? 1 : 0;
-  l1 = simplex[c][3] >= 3 ? 1 : 0; // The number 2 in the "simplex" array is at the second largest coordinate.
-
-  i2 = simplex[c][0] >= 2 ? 1 : 0;
-  j2 = simplex[c][1] >= 2 ? 1 : 0;
-  k2 = simplex[c][2] >= 2 ? 1 : 0;
-  l2 = simplex[c][3] >= 2 ? 1 : 0; // The number 1 in the "simplex" array is at the second smallest coordinate.
-
-  i3 = simplex[c][0] >= 1 ? 1 : 0;
-  j3 = simplex[c][1] >= 1 ? 1 : 0;
-  k3 = simplex[c][2] >= 1 ? 1 : 0;
-  l3 = simplex[c][3] >= 1 ? 1 : 0; // The fifth corner has all coordinate offsets = 1, so no need to look that up.
-
-  var x1 = x0 - i1 + G4; // Offsets for second corner in (x,y,z,w) coords
-
-  var y1 = y0 - j1 + G4;
-  var z1 = z0 - k1 + G4;
-  var w1 = w0 - l1 + G4;
-  var x2 = x0 - i2 + 2.0 * G4; // Offsets for third corner in (x,y,z,w) coords
-
-  var y2 = y0 - j2 + 2.0 * G4;
-  var z2 = z0 - k2 + 2.0 * G4;
-  var w2 = w0 - l2 + 2.0 * G4;
-  var x3 = x0 - i3 + 3.0 * G4; // Offsets for fourth corner in (x,y,z,w) coords
-
-  var y3 = y0 - j3 + 3.0 * G4;
-  var z3 = z0 - k3 + 3.0 * G4;
-  var w3 = w0 - l3 + 3.0 * G4;
-  var x4 = x0 - 1.0 + 4.0 * G4; // Offsets for last corner in (x,y,z,w) coords
-
-  var y4 = y0 - 1.0 + 4.0 * G4;
-  var z4 = z0 - 1.0 + 4.0 * G4;
-  var w4 = w0 - 1.0 + 4.0 * G4; // Work out the hashed gradient indices of the five simplex corners
-
-  var ii = i & 255;
-  var jj = j & 255;
-  var kk = k & 255;
-  var ll = l & 255;
-  var gi0 = perm[ii + perm[jj + perm[kk + perm[ll]]]] % 32;
-  var gi1 = perm[ii + i1 + perm[jj + j1 + perm[kk + k1 + perm[ll + l1]]]] % 32;
-  var gi2 = perm[ii + i2 + perm[jj + j2 + perm[kk + k2 + perm[ll + l2]]]] % 32;
-  var gi3 = perm[ii + i3 + perm[jj + j3 + perm[kk + k3 + perm[ll + l3]]]] % 32;
-  var gi4 = perm[ii + 1 + perm[jj + 1 + perm[kk + 1 + perm[ll + 1]]]] % 32; // Calculate the contribution from the five corners
-
-  var t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0 - w0 * w0;
-  if (t0 < 0) n0 = 0.0;else {
-    t0 *= t0;
-    n0 = t0 * t0 * this.dot4(grad4[gi0], x0, y0, z0, w0);
-  }
-  var t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1 - w1 * w1;
-  if (t1 < 0) n1 = 0.0;else {
-    t1 *= t1;
-    n1 = t1 * t1 * this.dot4(grad4[gi1], x1, y1, z1, w1);
-  }
-  var t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2 - w2 * w2;
-  if (t2 < 0) n2 = 0.0;else {
-    t2 *= t2;
-    n2 = t2 * t2 * this.dot4(grad4[gi2], x2, y2, z2, w2);
-  }
-  var t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3 - w3 * w3;
-  if (t3 < 0) n3 = 0.0;else {
-    t3 *= t3;
-    n3 = t3 * t3 * this.dot4(grad4[gi3], x3, y3, z3, w3);
-  }
-  var t4 = 0.6 - x4 * x4 - y4 * y4 - z4 * z4 - w4 * w4;
-  if (t4 < 0) n4 = 0.0;else {
-    t4 *= t4;
-    n4 = t4 * t4 * this.dot4(grad4[gi4], x4, y4, z4, w4);
-  } // Sum up and scale the result to cover the range [-1,1]
-
-  return 27.0 * (n0 + n1 + n2 + n3 + n4);
+  this.onBeforeRender = function (renderer, scene, camera) {
+    updateTextureMatrix(camera);
+    updateFlow();
+    scope.visible = false;
+    reflector.matrixWorld.copy(scope.matrixWorld);
+    refractor.matrixWorld.copy(scope.matrixWorld);
+    reflector.onBeforeRender(renderer, scene, camera);
+    refractor.onBeforeRender(renderer, scene, camera);
+    scope.visible = true;
+  };
 };
 
+Water.prototype = Object.create(_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Mesh"].prototype);
+Water.prototype.constructor = Water;
+Water.WaterShader = {
+  uniforms: {
+    'color': {
+      type: 'c',
+      value: null
+    },
+    'reflectivity': {
+      type: 'f',
+      value: 0
+    },
+    'tReflectionMap': {
+      type: 't',
+      value: null
+    },
+    'tRefractionMap': {
+      type: 't',
+      value: null
+    },
+    'tNormalMap0': {
+      type: 't',
+      value: null
+    },
+    'tNormalMap1': {
+      type: 't',
+      value: null
+    },
+    'textureMatrix': {
+      type: 'm4',
+      value: null
+    },
+    'config': {
+      type: 'v4',
+      value: new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__["Vector4"]()
+    }
+  },
+  vertexShader: ['#include <common>', '#include <fog_pars_vertex>', '#include <logdepthbuf_pars_vertex>', 'uniform mat4 textureMatrix;', 'varying vec4 vCoord;', 'varying vec2 vUv;', 'varying vec3 vToEye;', 'void main() {', '	vUv = uv;', '	vCoord = textureMatrix * vec4( position, 1.0 );', '	vec4 worldPosition = modelMatrix * vec4( position, 1.0 );', '	vToEye = cameraPosition - worldPosition.xyz;', '	vec4 mvPosition =  viewMatrix * worldPosition;', // used in fog_vertex
+  '	gl_Position = projectionMatrix * mvPosition;', '	#include <logdepthbuf_vertex>', '	#include <fog_vertex>', '}'].join('\n'),
+  fragmentShader: ['#include <common>', '#include <fog_pars_fragment>', '#include <logdepthbuf_pars_fragment>', 'uniform sampler2D tReflectionMap;', 'uniform sampler2D tRefractionMap;', 'uniform sampler2D tNormalMap0;', 'uniform sampler2D tNormalMap1;', '#ifdef USE_FLOWMAP', '	uniform sampler2D tFlowMap;', '#else', '	uniform vec2 flowDirection;', '#endif', 'uniform vec3 color;', 'uniform float reflectivity;', 'uniform vec4 config;', 'varying vec4 vCoord;', 'varying vec2 vUv;', 'varying vec3 vToEye;', 'void main() {', '	#include <logdepthbuf_fragment>', '	float flowMapOffset0 = config.x;', '	float flowMapOffset1 = config.y;', '	float halfCycle = config.z;', '	float scale = config.w;', '	vec3 toEye = normalize( vToEye );', // determine flow direction
+  '	vec2 flow;', '	#ifdef USE_FLOWMAP', '		flow = texture2D( tFlowMap, vUv ).rg * 2.0 - 1.0;', '	#else', '		flow = flowDirection;', '	#endif', '	flow.x *= - 1.0;', // sample normal maps (distort uvs with flowdata)
+  '	vec4 normalColor0 = texture2D( tNormalMap0, ( vUv * scale ) + flow * flowMapOffset0 );', '	vec4 normalColor1 = texture2D( tNormalMap1, ( vUv * scale ) + flow * flowMapOffset1 );', // linear interpolate to get the final normal color
+  '	float flowLerp = abs( halfCycle - flowMapOffset0 ) / halfCycle;', '	vec4 normalColor = mix( normalColor0, normalColor1, flowLerp );', // calculate normal vector
+  '	vec3 normal = normalize( vec3( normalColor.r * 2.0 - 1.0, normalColor.b,  normalColor.g * 2.0 - 1.0 ) );', // calculate the fresnel term to blend reflection and refraction maps
+  '	float theta = max( dot( toEye, normal ), 0.0 );', '	float reflectance = reflectivity + ( 1.0 - reflectivity ) * pow( ( 1.0 - theta ), 5.0 );', // calculate final uv coords
+  '	vec3 coord = vCoord.xyz / vCoord.w;', '	vec2 uv = coord.xy + coord.z * normal.xz * 0.05;', '	vec4 reflectColor = texture2D( tReflectionMap, vec2( 1.0 - uv.x, uv.y ) );', '	vec4 refractColor = texture2D( tRefractionMap, uv );', // multiply water color with the mix of both textures
+  '	gl_FragColor = vec4( color, 1.0 ) * mix( refractColor, reflectColor, reflectance );', '	#include <tonemapping_fragment>', '	#include <encodings_fragment>', '	#include <fog_fragment>', '}'].join('\n')
+};
 
 
 /***/ }),
@@ -8264,19 +8437,10 @@ SimplexNoise.prototype.noise4d = function (x, y, z, w) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Renderer", function() { return Renderer; });
-/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
-/* harmony import */ var three_examples_jsm_controls_FirstPersonControls_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three/examples/jsm/controls/FirstPersonControls.js */ "./node_modules/three/examples/jsm/controls/FirstPersonControls.js");
-/* harmony import */ var _Shader__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Shader */ "./src/Shader.js");
-/* harmony import */ var three_examples_jsm_libs_stats_module_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/libs/stats.module.js */ "./node_modules/three/examples/jsm/libs/stats.module.js");
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var three_examples_jsm_math_SimplexNoise_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! three/examples/jsm/math/SimplexNoise.js */ "./node_modules/three/examples/jsm/math/SimplexNoise.js");
-
-
-
-
-
-
-
+/* harmony import */ var three_examples_jsm_controls_FirstPersonControls_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three/examples/jsm/controls/FirstPersonControls.js */ "./node_modules/three/examples/jsm/controls/FirstPersonControls.js");
+/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
+/* harmony import */ var three_examples_jsm_libs_stats_module_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three/examples/jsm/libs/stats.module.js */ "./node_modules/three/examples/jsm/libs/stats.module.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 
 
 
@@ -8286,49 +8450,16 @@ function Renderer(scene, container, camera) {
   var self = this;
   self.camera = camera;
   this.scene = scene;
-  this.analyser;
-  this.camera;
-  this.beautyTarget;
-  this.postCamera;
-  this.postScene;
-  this.ssaoMaterial;
+  this.camera = camera;
   this.renderer;
   this.controls;
   this.container = container;
   this.supportsExtension = true;
-  this.kernelSize = 16;
-  this.kernel = getKernel(this.kernelSize);
-  this.noise = getNoise();
-  this.kernelRadius = 8;
-  this.maxDistance = 0.1;
-  this.fftSize = 32;
-  this.clock = new three__WEBPACK_IMPORTED_MODULE_4__["Clock"]();
-  initMusic();
+  this.clock = new three__WEBPACK_IMPORTED_MODULE_3__["Clock"]();
   init();
 
-  function initMusic() {
-    var listener = new three__WEBPACK_IMPORTED_MODULE_4__["AudioListener"]();
-    var audio = new three__WEBPACK_IMPORTED_MODULE_4__["Audio"](listener);
-    var file = './P H A S E _ SHIFT.mp3';
-
-    if (/(iPad|iPhone|iPod)/g.test(navigator.userAgent)) {
-      var loader = new three__WEBPACK_IMPORTED_MODULE_4__["AudioLoader"]();
-      loader.load(file, function (buffer) {
-        audio.setBuffer(buffer);
-        audio.play();
-      });
-    } else {
-      var mediaElement = new Audio(file);
-      mediaElement.play();
-      audio.setMediaElementSource(mediaElement);
-    }
-
-    audio.setVolume(0.0);
-    self.analyser = new three__WEBPACK_IMPORTED_MODULE_4__["AudioAnalyser"](audio, self.fftSize);
-  }
-
   function init() {
-    self.renderer = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderer"]();
+    self.renderer = new three__WEBPACK_IMPORTED_MODULE_3__["WebGLRenderer"]();
     self.renderer.antialias = true;
 
     if (self.renderer.capabilities.isWebGL2 === false && self.renderer.extensions.has('WEBGL_depth_texture') === false) {
@@ -8338,265 +8469,22 @@ function Renderer(scene, container, camera) {
     }
 
     self.renderer.setPixelRatio(window.devicePixelRatio);
-    self.renderer.outputEncoding = three__WEBPACK_IMPORTED_MODULE_4__["sRGBEncoding"];
+    self.renderer.outputEncoding = three__WEBPACK_IMPORTED_MODULE_3__["sRGBEncoding"];
     self.renderer.autoClear = false;
-    self.renderer.shadowMap.enabled = true;
-    self.renderer.shadowMap.type = three__WEBPACK_IMPORTED_MODULE_4__["PCFSoftShadowMap"];
     self.renderer.setSize(self.container.offsetWidth, self.container.offsetHeight);
     self.container.appendChild(self.renderer.domElement);
-    self.stats = new three_examples_jsm_libs_stats_module_js__WEBPACK_IMPORTED_MODULE_3__["default"]();
+    self.stats = new three_examples_jsm_libs_stats_module_js__WEBPACK_IMPORTED_MODULE_2__["default"]();
     self.container.appendChild(self.stats.dom);
-    self.controls = new three_examples_jsm_controls_FirstPersonControls_js__WEBPACK_IMPORTED_MODULE_1__["FirstPersonControls"](self.camera, self.renderer.domElement);
-    self.camera.position.set(10, 10, 10);
-    self.controls.lookAt(0, 10, 0);
-    self.controls.movementSpeed = 5;
-    self.controls.domElement = self.renderer.domElement;
-    self.controls.rollSpeed = Math.PI;
-    self.controls.lookSpeed = 0.1;
-    self.controls.autoForward = false;
-    self.controls.dragToLook = false; //self.controls.enableDamping = true;
-    // Create a render target with depth texture
-
-    setupRenderTarget(); // Setup post-processing step
-
-    setupPost();
+    self.controls = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_1__["OrbitControls"](self.camera, self.renderer.domElement);
+    self.camera.position.set(100, 100, 100);
+    self.controls.target.x = 0;
+    self.controls.target.y = 0;
+    self.controls.target.z = 0;
+    self.controls.minDistance = 1;
+    self.controls.maxDistance = 5000;
+    self.controls.update();
     onWindowResize();
     window.addEventListener('resize', onWindowResize);
-  }
-
-  function setupRenderTarget() {
-    if (self.beautyTarget) self.beautyTarget.dispose();
-    var format = three__WEBPACK_IMPORTED_MODULE_4__["DepthFormat"];
-    var type = three__WEBPACK_IMPORTED_MODULE_4__["UnsignedShortType"];
-    self.beautyTarget = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderTarget"](self.container.offsetWidth, self.container.offsetHeight);
-    self.beautyTarget.texture.format = three__WEBPACK_IMPORTED_MODULE_4__["RGBFormat"];
-    self.beautyTarget.texture.minFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
-    self.beautyTarget.texture.magFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
-    self.beautyTarget.texture.generateMipmaps = false;
-    self.beautyTarget.stencilBuffer = false;
-    self.beautyTarget.depthBuffer = true;
-    self.beautyTarget.depthTexture = new three__WEBPACK_IMPORTED_MODULE_4__["DepthTexture"]();
-    self.beautyTarget.depthTexture.format = format;
-    self.beautyTarget.depthTexture.type = type;
-    if (self.ssaoTarget) self.ssaoTarget.dispose();
-    self.ssaoTarget = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderTarget"](self.container.offsetWidth, self.container.offsetHeight);
-    self.ssaoTarget.texture.format = three__WEBPACK_IMPORTED_MODULE_4__["RGBFormat"];
-    self.ssaoTarget.texture.minFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
-    self.ssaoTarget.texture.magFilter = three__WEBPACK_IMPORTED_MODULE_4__["NearestFilter"];
-    self.ssaoTarget.texture.generateMipmaps = false;
-    self.ssaoTarget.stencilBuffer = false;
-    self.ssaoTarget.depthBuffer = false;
-    self.blurRenderTarget = self.ssaoTarget.clone();
-    self.musicTarget = self.ssaoTarget.clone();
-    if (self.reflectionsTarget) self.reflectionsTarget.dispose();
-    self.reflectionsTarget = new three__WEBPACK_IMPORTED_MODULE_4__["WebGLRenderTarget"](self.container.offsetWidth, self.container.offsetHeight);
-    self.reflectionsTarget.texture.format = three__WEBPACK_IMPORTED_MODULE_4__["RGBAFormat"];
-    self.reflectionsTarget.texture.minFilter = three__WEBPACK_IMPORTED_MODULE_4__["LinearFilter"];
-    self.reflectionsTarget.texture.magFilter = three__WEBPACK_IMPORTED_MODULE_4__["LinearFilter"];
-    self.reflectionsTarget.texture.generateMipmaps = false;
-    self.reflectionsTarget.stencilBuffer = false;
-    self.reflectionsTarget.depthBuffer = false;
-  }
-
-  function setupPost() {
-    // Setup post processing stage
-    var audioFormat = self.renderer.capabilities.isWebGL2 ? three__WEBPACK_IMPORTED_MODULE_4__["RedFormat"] : three__WEBPACK_IMPORTED_MODULE_4__["LuminanceFormat"];
-    self.postCamera = new three__WEBPACK_IMPORTED_MODULE_4__["OrthographicCamera"](-1, 1, 1, -1, 0, 1);
-    self.ssaoMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
-      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOShader"].vertexShader,
-      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOShader"].fragmentShader,
-      uniforms: {
-        cameraNear: {
-          value: self.camera.near
-        },
-        cameraFar: {
-          value: self.camera.far
-        },
-        screenWidth: {
-          value: null
-        },
-        screenHeight: {
-          value: null
-        },
-        tDiffuse: {
-          value: null
-        },
-        tDepth: {
-          value: null
-        },
-        cameraProjectionMatrix: {
-          value: self.camera.projectionMatrix
-        },
-        cameraInverseProjectionMatrix: {
-          value: self.camera.projectionMatrixInverse
-        },
-        matrixWorldInverse: {
-          value: self.camera.matrixWorldInverse
-        },
-        matrixWorld: {
-          value: self.camera.matrixWorld
-        },
-        tNoise: {
-          value: self.noise
-        },
-        kernel: {
-          value: self.kernel
-        },
-        kernelRadius: {
-          value: self.kernelRadius
-        },
-        maxDistance: {
-          value: self.maxDistance
-        }
-      },
-      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOShader"].defines)
-    });
-    self.ssaoBlurMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
-      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOBlurShader"].vertexShader,
-      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOBlurShader"].fragmentShader,
-      uniforms: {
-        screenWidth: {
-          value: null
-        },
-        screenHeight: {
-          value: null
-        },
-        tDiffuse: {
-          value: null
-        }
-      },
-      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["SSAOBlurShader"].defines)
-    });
-    self.musicMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
-      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MusicShader"].vertexShader,
-      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MusicShader"].fragmentShader,
-      uniforms: {
-        cameraNear: {
-          value: self.camera.near
-        },
-        cameraFar: {
-          value: self.camera.far
-        },
-        screenWidth: {
-          value: null
-        },
-        screenHeight: {
-          value: null
-        },
-        tDiffuse: {
-          value: null
-        },
-        tDepth: {
-          value: null
-        },
-        cameraProjectionMatrix: {
-          value: self.camera.projectionMatrix
-        },
-        cameraInverseProjectionMatrix: {
-          value: self.camera.projectionMatrixInverse
-        },
-        matrixWorldInverse: {
-          value: self.camera.matrixWorldInverse
-        },
-        matrixWorld: {
-          value: self.camera.matrixWorld
-        },
-        tAudioData: {
-          value: new three__WEBPACK_IMPORTED_MODULE_4__["DataTexture"](self.analyser.data, self.fftSize / 2, 1, audioFormat)
-        }
-      },
-      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["MusicShader"].defines)
-    });
-    self.reflexionsMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
-      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["ReflexionsShader"].vertexShader,
-      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["ReflexionsShader"].fragmentShader,
-      uniforms: {
-        cameraNear: {
-          value: self.camera.near
-        },
-        cameraFar: {
-          value: self.camera.far
-        },
-        screenWidth: {
-          value: null
-        },
-        screenHeight: {
-          value: null
-        },
-        cameraProjectionMatrix: {
-          value: self.camera.projectionMatrix
-        },
-        cameraInverseProjectionMatrix: {
-          value: self.camera.projectionMatrixInverse
-        },
-        matrixWorldInverse: {
-          value: self.camera.matrixWorldInverse
-        },
-        matrixWorld: {
-          value: self.camera.matrixWorld
-        },
-        tMusic: {
-          value: null
-        },
-        tDepth: {
-          value: null
-        }
-      },
-      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["ReflexionsShader"].defines)
-    });
-    self.mixinMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
-      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixinShader"].vertexShader,
-      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixinShader"].fragmentShader,
-      uniforms: {
-        tMusic: {
-          value: null
-        },
-        tReflexion: {
-          value: null
-        },
-        tOcclusion: {
-          value: null
-        }
-      },
-      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["MixinShader"].defines)
-    });
-    self.mixCutoffMaterial = new three__WEBPACK_IMPORTED_MODULE_4__["ShaderMaterial"]({
-      vertexShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixCutoffShader"].vertexShader,
-      fragmentShader: _Shader__WEBPACK_IMPORTED_MODULE_2__["MixCutoffShader"].fragmentShader,
-      uniforms: {
-        tDiffuse: {
-          value: null
-        },
-        tOcclusion: {
-          value: null
-        }
-      },
-      defines: Object.assign({}, _Shader__WEBPACK_IMPORTED_MODULE_2__["MixCutoffShader"].defines)
-    });
-    var postSSAOPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
-    var postBlurPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
-    var postMusicPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
-    var postReflecionsPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
-    var postMixinPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
-    var postSSAOQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postSSAOPlane, self.ssaoMaterial);
-    var postBlurQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postBlurPlane, self.ssaoBlurMaterial);
-    var postMusicQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postMusicPlane, self.musicMaterial);
-    var postReflexionsQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postReflecionsPlane, self.reflexionsMaterial);
-    var postMixinQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postMixinPlane, self.mixinMaterial);
-    self.postSSAOScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
-    self.postSSAOScene.add(postSSAOQuad);
-    self.postBlurScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
-    self.postBlurScene.add(postBlurQuad);
-    self.postMusicScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
-    self.postMusicScene.add(postMusicQuad);
-    self.postReflexionsScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
-    self.postReflexionsScene.add(postReflexionsQuad);
-    self.postMixinScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
-    self.postMixinScene.add(postMixinQuad);
-    var postMixCutoffPlane = new three__WEBPACK_IMPORTED_MODULE_4__["PlaneGeometry"](2, 2);
-    var postMixCutoffQuad = new three__WEBPACK_IMPORTED_MODULE_4__["Mesh"](postMixCutoffPlane, self.mixCutoffMaterial);
-    self.postMixCutoffScene = new three__WEBPACK_IMPORTED_MODULE_4__["Scene"]();
-    self.postMixCutoffScene.add(postMixCutoffQuad);
   }
 
   function onWindowResize() {
@@ -8604,143 +8492,21 @@ function Renderer(scene, container, camera) {
     self.camera.aspect = aspect;
     self.camera.updateProjectionMatrix();
     var dpr = self.renderer.getPixelRatio();
-    self.beautyTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
-    self.ssaoTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
-    self.musicTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
-    self.reflectionsTarget.setSize(self.container.offsetWidth * dpr, self.container.offsetHeight * dpr);
     self.renderer.setSize(self.container.offsetWidth, self.container.offsetHeight);
-    self.ssaoMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
-    self.ssaoMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
-    self.ssaoMaterial.uniforms.cameraProjectionMatrix.value = self.camera.projectionMatrix;
-    self.ssaoMaterial.uniforms.cameraInverseProjectionMatrix.value = self.camera.projectionMatrixInverse;
-    self.ssaoBlurMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
-    self.ssaoBlurMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
-    self.reflexionsMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
-    self.reflexionsMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
-    self.reflexionsMaterial.uniforms.cameraProjectionMatrix.value = self.camera.projectionMatrix;
-    self.reflexionsMaterial.uniforms.cameraInverseProjectionMatrix.value = self.camera.projectionMatrixInverse;
-    self.musicMaterial.uniforms.screenWidth.value = self.container.offsetWidth;
-    self.musicMaterial.uniforms.screenHeight.value = self.container.offsetHeight;
-    self.musicMaterial.uniforms.cameraProjectionMatrix.value = self.camera.projectionMatrix;
-    self.musicMaterial.uniforms.cameraInverseProjectionMatrix.value = self.camera.projectionMatrixInverse;
   }
 
   function render() {
-    if (!self.supportsExtension) return;
-    self.camera.near = 0.0 + Math.pow(self.camera.position.y / 10, 0.5);
-    self.camera.far = 1000 + self.camera.position.y * 1;
-    self.camera.updateProjectionMatrix();
-    requestAnimationFrame(render); // render scene into target
+    if (!self.supportsExtension) return; //self.camera.near = 0.0 + Math.pow(self.camera.position.y / 10, 0.5);
+    //self.camera.far = 1000 + self.camera.position.y * 1;
+    //self.camera.updateProjectionMatrix();
 
-    self.renderer.setRenderTarget(self.beautyTarget); //self.renderer.setRenderTarget(null);
-
-    self.renderer.render(self.scene, self.camera);
-    self.ssaoMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
-    self.ssaoMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
-    self.ssaoMaterial.uniforms['cameraNear'].value = self.camera.near;
-    self.ssaoMaterial.uniforms['cameraFar'].value = self.camera.far;
-    self.ssaoMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
-    self.ssaoMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
-    self.renderer.setRenderTarget(self.ssaoTarget);
-    self.renderer.render(self.postSSAOScene, self.postCamera);
-    self.ssaoBlurMaterial.uniforms.tDiffuse.value = self.ssaoTarget.texture;
-    self.renderer.setRenderTarget(self.blurRenderTarget);
-    self.renderer.render(self.postBlurScene, self.postCamera);
-    self.mixCutoffMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
-    self.mixCutoffMaterial.uniforms.tOcclusion.value = self.blurRenderTarget.texture;
-    self.renderer.setRenderTarget(null);
-    self.renderer.render(self.postMixCutoffScene, self.postCamera); //render post FX
-
-    /*
-    self.analyser.getFrequencyData();
-    self.musicMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
-    self.musicMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
-    self.musicMaterial.uniforms['cameraNear'].value = self.camera.near;
-    self.musicMaterial.uniforms['cameraFar'].value = self.camera.far;
-    self.musicMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
-    self.musicMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
-    self.musicMaterial.uniforms.tAudioData.value.needsUpdate = true;
-    self.renderer.setRenderTarget(self.musicTarget);
-    self.renderer.render(self.postMusicScene, self.postCamera);
-      self.reflexionsMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
-    self.reflexionsMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
-    self.reflexionsMaterial.uniforms['cameraNear'].value = self.camera.near;
-    self.reflexionsMaterial.uniforms['cameraFar'].value = self.camera.far;
-    self.reflexionsMaterial.uniforms.tMusic.value = self.musicTarget.texture;
-    self.reflexionsMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
-      self.renderer.setRenderTarget(self.reflectionsTarget);
-    self.renderer.render(self.postReflexionsScene, self.postCamera);
-      self.ssaoMaterial.uniforms['matrixWorldInverse'].value.copy(self.camera.matrixWorldInverse);
-    self.ssaoMaterial.uniforms['matrixWorld'].value.copy(self.camera.matrixWorld);
-    self.ssaoMaterial.uniforms['cameraNear'].value = self.camera.near;
-    self.ssaoMaterial.uniforms['cameraFar'].value = self.camera.far;
-    self.ssaoMaterial.uniforms.tDiffuse.value = self.beautyTarget.texture;
-    self.ssaoMaterial.uniforms.tDepth.value = self.beautyTarget.depthTexture;
-      self.renderer.setRenderTarget(self.ssaoTarget);
-    self.renderer.render(self.postSSAOScene, self.postCamera);
-      self.ssaoBlurMaterial.uniforms.tDiffuse.value = self.ssaoTarget.texture;
-    self.renderer.setRenderTarget(self.blurRenderTarget);
-    self.renderer.render(self.postBlurScene, self.postCamera);
-      self.mixinMaterial.uniforms.tMusic.value = self.musicTarget.texture;
-    self.mixinMaterial.uniforms.tReflexion.value = self.reflectionsTarget.texture;
-    self.mixinMaterial.uniforms.tOcclusion.value = self.blurRenderTarget.texture;
-    self.renderer.setRenderTarget(null);
-    self.renderer.render(self.postMixinScene, self.postCamera);
-    */
-    //self.controls.update(); // required because damping is enabled
-
+    requestAnimationFrame(render);
+    self.camera.updateMatrixWorld();
+    self.renderer.render(scene, camera);
     self.stats.update();
     var delta = self.clock.getDelta();
     self.controls.movementSpeed = 15;
     self.controls.update(delta);
-  }
-
-  function getKernel(kernelSize) {
-    var kernel = [];
-
-    for (var i = 0; i < kernelSize; i++) {
-      var sample = new three__WEBPACK_IMPORTED_MODULE_4__["Vector3"]();
-      sample.x = Math.random() * 2 - 1;
-      sample.y = Math.random() * 2 - 1;
-      sample.z = Math.random() * 0.7 + 0.3;
-      sample.normalize();
-      var scale = i / kernelSize;
-      scale = three__WEBPACK_IMPORTED_MODULE_4__["MathUtils"].lerp(0.1, 1, scale * scale);
-      sample.multiplyScalar(scale);
-      kernel.push(sample);
-    }
-
-    return kernel;
-  }
-
-  function getNoise() {
-    var width = 4,
-        height = 4;
-
-    if (three_examples_jsm_math_SimplexNoise_js__WEBPACK_IMPORTED_MODULE_5__["SimplexNoise"] === undefined) {
-      console.error('The pass relies on SimplexNoise.');
-    }
-
-    var simplex = new three_examples_jsm_math_SimplexNoise_js__WEBPACK_IMPORTED_MODULE_5__["SimplexNoise"]();
-    var size = width * height;
-    var data = new Float32Array(size * 4);
-
-    for (var i = 0; i < size; i++) {
-      var stride = i * 4;
-      var x = Math.random() * 2 - 1;
-      var y = Math.random() * 2 - 1;
-      var z = 0;
-      var noise = simplex.noise3d(x, y, z);
-      data[stride] = noise;
-      data[stride + 1] = noise;
-      data[stride + 2] = noise;
-      data[stride + 3] = 1;
-    }
-
-    var noiseTexture = new three__WEBPACK_IMPORTED_MODULE_4__["DataTexture"](data, width, height, three__WEBPACK_IMPORTED_MODULE_4__["RGBAFormat"], three__WEBPACK_IMPORTED_MODULE_4__["FloatType"]);
-    noiseTexture.wrapS = three__WEBPACK_IMPORTED_MODULE_4__["RepeatWrapping"];
-    noiseTexture.wrapT = three__WEBPACK_IMPORTED_MODULE_4__["RepeatWrapping"];
-    return noiseTexture;
   }
 
   return {
@@ -8749,259 +8515,6 @@ function Renderer(scene, container, camera) {
   };
 }
 
-
-
-/***/ }),
-
-/***/ "./src/Shader.js":
-/*!***********************!*\
-  !*** ./src/Shader.js ***!
-  \***********************/
-/*! exports provided: SSAOShader, SSAOBlurShader, ReflexionsShader, MusicShader, MixinShader, MixCutoffShader */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SSAOShader", function() { return SSAOShader; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SSAOBlurShader", function() { return SSAOBlurShader; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ReflexionsShader", function() { return ReflexionsShader; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MusicShader", function() { return MusicShader; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MixinShader", function() { return MixinShader; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MixCutoffShader", function() { return MixCutoffShader; });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-
-var SSAOShader = {
-  defines: {
-    "PERSPECTIVE_CAMERA": 1,
-    "KERNEL_SIZE": 16
-  },
-  uniforms: {
-    "tDiffuse": {
-      value: null
-    },
-    "tDepth": {
-      value: null
-    },
-    "tNoise": {
-      value: null
-    },
-    "kernel": {
-      value: null
-    },
-    "cameraNear": {
-      value: null
-    },
-    "cameraFar": {
-      value: null
-    },
-    //"cameraHeight": { value: null },
-    //"resolution": { value: new Vector2() },
-    "cameraProjectionMatrix": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "cameraInverseProjectionMatrix": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "matrixWorldInverse": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "matrixWorld": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "kernelRadius": {
-      value: 8
-    },
-    //"minDistance": { value: 0.005 },
-    "maxDistance": {
-      value: 0.05
-    },
-    "screenWidth": {
-      value: null
-    },
-    "screenHeight": {
-      value: null
-    }
-  },
-  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
-  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform sampler2D tDepth;", "uniform sampler2D tNoise;", "uniform float kernelRadius;", "uniform float cameraNear;", "uniform float cameraFar;", "uniform float screenWidth;", "uniform float screenHeight;", "uniform float maxDistance;", "uniform mat4 cameraProjectionMatrix;", "uniform mat4 cameraInverseProjectionMatrix;", "uniform mat4 matrixWorldInverse;", "uniform mat4 matrixWorld;", "varying vec2 vUv;", "uniform vec3 kernel[ KERNEL_SIZE ];", "#include <packing>", "float getDepth( const in vec2 screenPosition ) {", "	return texture2D( tDepth, screenPosition ).x;", "}", "float getLinearDepth( const in vec2 screenPosition ) {", "	float fragCoordZ = texture2D( tDepth, screenPosition ).x;", "	float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );", "	return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );", "}", "float getViewZ( const in float depth ) {", "		return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );", "}", "vec3 getViewNormal( const in vec2 screenPosition ) {", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	float a = getDepth(screenPosition);", "	float b = getDepth(vec2(screenPosition.x, screenPosition.y+dY));", "	float c = getDepth(vec2(screenPosition.x, screenPosition.y-dY));", "  float d = getDepth(vec2(screenPosition.x+dX, screenPosition.y));", "	float e = getDepth(vec2(screenPosition.x-dX, screenPosition.y));", "	vec3 aa = vec3(dX*2.0, 0.0, d-e);", "	vec3 bb = vec3(0.0, dY*2.0, b-c);", "  vec3 n=cross(aa,bb);", "  n.z = -n.z;", "	return -normalize(n);", "}", "vec3 getWorldNormal( const in vec2 screenPosition ) {", "	vec3 n = getViewNormal(screenPosition);", "	return mat3(matrixWorld) * n;", "}", "vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {", "	float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];", "	vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );", "	clipPosition *= clipW; // unprojection.", "	return ( cameraInverseProjectionMatrix * clipPosition ).xyz;", "}", "float getOcclusion(float depth, vec3 viewNormal, vec3 viewPosition){", "	if(depth == 1.0) return 0.0;", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "   float occlusion = 0.0;", "   vec2 noiseScale = vec2( screenWidth / 4.0, screenHeight / 4.0 );", "	vec3 random = texture2D( tNoise, vUv * noiseScale ).xyz;", "	vec3 tangent = normalize( random - viewNormal * dot( random, viewNormal ) );", "	vec3 bitangent = cross( viewNormal, tangent );", "	mat3 kernelMatrix = mat3( tangent, bitangent, viewNormal );", "   int divisor = KERNEL_SIZE;", "   for ( int i = 0; i < KERNEL_SIZE; i ++ ) {", "		float maxD = kernelRadius * (0.02+(depth*0.5));", "		vec3 sampleVector = kernelMatrix * kernel[ i ];", // reorient sample vector in view space
-  "		vec3 samplePoint = viewPosition + ( sampleVector * maxD  );", // calculate sample point
-  "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
-  "		samplePointNDC /= samplePointNDC.w;", "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
-  // "		if((samplePointUv.x<0.0 || samplePointUv.x>1.0) || (samplePointUv.y<0.0 || samplePointUv.y>1.0) ||(abs(samplePointUv.x-viewPosition.x)<=dX && abs(samplePointUv.y-viewPosition.y)<=dY)){",
-  // "			divisor--;",
-  // "			continue;",
-  // "		}",
-  "		float realDepth = getLinearDepth( samplePointUv );", // get linear depth from depth texture
-  "		float sampleDepth = viewZToOrthographicDepth( samplePoint.z, cameraNear, cameraFar );", // compute linear depth of the sample view Z value
-  "		float delta = sampleDepth - realDepth;", "		if ( delta > 0.02*depth && delta < maxD ) {", // if fragment is before sample point, increase occlusion
-  "			occlusion += 1.0-(delta/maxD);", "		}", "		if(delta>maxD) divisor--;", "	}", "	return 1.0 - clamp( occlusion / float( max(1,divisor) ), 0.0, 1.0 );", "}", "float getNightLight(float depth, vec3 viewNormal, vec3 viewPosition){", "	if(depth == 1.0) return 0.0;", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "   float occlusion = 0.0;", "   vec2 noiseScale = vec2( screenWidth / 4.0, screenHeight / 4.0 );", "	vec3 random = texture2D( tNoise, vUv * noiseScale ).xyz;", "	vec3 tangent = normalize( random - viewNormal * dot( random, viewNormal ) );", "	vec3 bitangent = cross( viewNormal, tangent );", "	mat3 kernelMatrix = mat3( tangent, bitangent, viewNormal );", "   int divisor = KERNEL_SIZE;", "   for ( int i = 0; i < KERNEL_SIZE; i ++ ) {", "		float maxD = kernelRadius *4.0* (0.02+(depth*0.5));", "		vec3 sampleVector = kernelMatrix * kernel[ (i+8)%KERNEL_SIZE ];", // reorient sample vector in view space
-  "		vec3 samplePoint = viewPosition + ( sampleVector * maxD  );", // calculate sample point
-  "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
-  "		samplePointNDC /= samplePointNDC.w;", "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
-  // "		if((samplePointUv.x<0.0 || samplePointUv.x>1.0) || (samplePointUv.y<0.0 || samplePointUv.y>1.0) ||(abs(samplePointUv.x-viewPosition.x)<=dX && abs(samplePointUv.y-viewPosition.y)<=dY)){",
-  // "			divisor--;",
-  // "			continue;",
-  // "		}",
-  "		float realDepth = getLinearDepth( samplePointUv );", // get linear depth from depth texture
-  "		float sampleDepth = viewZToOrthographicDepth( samplePoint.z, cameraNear, cameraFar );", // compute linear depth of the sample view Z value
-  "		float delta = sampleDepth - realDepth;", "		if ( delta > 0.02*depth && delta < maxD ) {", // if fragment is before sample point, increase occlusion
-  "			occlusion += 1.0-(delta/maxD);", "		}", "		if(delta>maxD) divisor--;", "	}", "	return clamp( occlusion / float( max(1,divisor) ), 0.0, 1.0 );", "}", "vec3 getWorldPosition(float depth){", "vec4 ndc = vec4(", "	(vUv.x - 0.5) * 2.0,", "	(vUv.y - 0.5) * 2.0,", "(depth - 0.5) * 2.0,", "1.0);", "vec4 clip = cameraInverseProjectionMatrix * ndc;", "vec4 view = matrixWorld* (clip / clip.w);", "vec3 result = view.xyz;", "return result;", "}", "void main() {", "	float depth = getDepth( vUv );", "	float linearDepth = getLinearDepth( vUv );", "	float viewZ = getViewZ( depth );", "	vec3 viewNormal = getViewNormal( vUv );", "   vec3 viewPosition = getViewPosition(vUv, depth, viewZ);", "	vec3 worldPosition = getWorldPosition(depth);", "	float height = max(-1.0,min(1.0,(worldPosition.y - 50.0)*0.02));", "	height = (height+1.0)*0.5;", " 	height = height == 0.0?0.00001:height;", "	float nightLight = 0.1+pow(height*getNightLight(linearDepth, viewNormal, viewPosition),0.4);", "	float occlusion = getOcclusion(linearDepth, viewNormal, viewPosition);", "	gl_FragColor = vec4( vec3(mix(occlusion,nightLight,height)), 1.0 );", "}"].join("\n")
-};
-var ReflexionsShader = {
-  defines: {
-    "PERSPECTIVE_CAMERA": 1
-  },
-  uniforms: {
-    "tMusic": {
-      value: null
-    },
-    "tDepth": {
-      value: null
-    },
-    "cameraNear": {
-      value: null
-    },
-    "cameraFar": {
-      value: null
-    },
-    "cameraProjectionMatrix": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "cameraInverseProjectionMatrix": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "matrixWorldInverse": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "matrixWorld": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "screenWidth": {
-      value: null
-    },
-    "screenHeight": {
-      value: null
-    }
-  },
-  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
-  fragmentShader: ["uniform sampler2D tMusic;", "uniform sampler2D tDepth;", "uniform float cameraNear;", "uniform float cameraFar;", "uniform float screenWidth;", "uniform float screenHeight;", "uniform mat4 cameraProjectionMatrix;", "uniform mat4 cameraInverseProjectionMatrix;", "uniform mat4 matrixWorldInverse;", "uniform mat4 matrixWorld;", "varying vec2 vUv;", "#include <packing>", "float getDepth( const in vec2 screenPosition ) {", "	return texture2D( tDepth, screenPosition ).x;", "}", "float getLinearDepth( const in vec2 screenPosition ) {", "	float fragCoordZ = texture2D( tDepth, screenPosition ).x;", "	float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );", "	return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );", "}", "float getViewZ( const in float depth ) {", "		return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );", "}", "vec3 getViewNormal( const in vec2 screenPosition ) {", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	float a = getDepth(screenPosition);", "	float b = getDepth(vec2(screenPosition.x, screenPosition.y+dY));", "	float c = getDepth(vec2(screenPosition.x, screenPosition.y-dY));", "  float d = getDepth(vec2(screenPosition.x+dX, screenPosition.y));", "	float e = getDepth(vec2(screenPosition.x-dX, screenPosition.y));", "	vec3 aa = vec3(dX*2.0, 0.0, d-e);", "	vec3 bb = vec3(0.0, dY*2.0, b-c);", "  vec3 n=cross(aa,bb);", "  n.z = -n.z;", "	return -normalize(n);", "}", "vec3 getWorldNormal( const in vec2 screenPosition ) {", "	vec3 n = getViewNormal(screenPosition);", "	return mat3(matrixWorld) * n;", "}", "vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {", "	float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];", "	vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );", "	clipPosition *= clipW; // unprojection.", "	return ( cameraInverseProjectionMatrix * clipPosition ).xyz;", "}", "vec4 getReflexion(float depth, vec3 viewNormal, vec3 viewPosition){", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	vec3 color = texture2D( tMusic, vUv ).xyz;", "	if(depth ==1.0) return vec4(0.0);", "	vec3 incident = normalize(viewPosition);", "	vec3 reflection = reflect(incident, viewNormal);", "	if(reflection.x > reflection.y){", "		reflection = reflection / reflection.x * dX;", "	}else{", "		reflection = reflection / reflection.y * dY;", "	}", "	vec4 reflectionColor = vec4(0.0);", "	float divisor = 0.0;", "	for(float i = 1.0; i<7.0; i++){", "		vec3 samplePoint = viewPosition + (reflection*i*70.0);", "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
-  "		samplePointNDC /= samplePointNDC.w;", "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
-  "		if(samplePointUv.x<0.0 || samplePointUv.x>1.0 || samplePointUv.y<0.0 || samplePointUv.y>1.0) break;", "		float realDepth = getDepth( samplePointUv );", // get linear depth from depth texture
-  "		float sampleViewZ = getViewZ( realDepth );", "   	vec3 sampleViewPosition = getViewPosition(samplePointUv, realDepth, sampleViewZ);", "		vec3 vector = normalize(sampleViewPosition - viewPosition);", "		float delta = dot(normalize(reflection), vector);", "		if(delta<0.0) continue;", "		reflectionColor+= vec4(texture2D( tMusic, samplePointUv ).xyz, delta*delta*(1.0/i));", "		divisor++;", "	}", "	return divisor>0.0?reflectionColor/divisor:reflectionColor;", // "	for(float i = 1.0; i<9.0; i++){",
-  // "		vec3 samplePoint = viewPosition + (reflection * i *1.0  );",
-  // "		vec4 samplePointNDC = cameraProjectionMatrix * vec4( samplePoint, 1.0 );", // project point and calculate NDC
-  // "		samplePointNDC /= samplePointNDC.w;",
-  // "		vec2 samplePointUv = samplePointNDC.xy * 0.5 + 0.5;", // compute uv coordinates
-  // "		float realDepth = getLinearDepth( samplePointUv );", // get linear depth from depth texture
-  // "		float sampleDepth = viewZToOrthographicDepth( samplePoint.z, cameraNear, cameraFar );",
-  // "		float delta = sampleDepth - realDepth;",
-  // "		if ( delta > -0.001 && delta < 0.001 ) {", 
-  // "			return mix(texture2D( tMusic, samplePointUv ).xyz, color, i*0.125);",
-  // "		}",
-  // "	}",
-  // "   return color;",
-  "}", "void main() {", "	float depth = getDepth( vUv );", "	float viewZ = getViewZ( depth );", "	vec3 viewNormal = getViewNormal( vUv );", "   vec3 viewPosition = getViewPosition(vUv, depth, viewZ);", "	vec4 reflection = getReflexion(getLinearDepth(vUv), viewNormal, viewPosition);", "	gl_FragColor = reflection;", "}"].join("\n")
-};
-var SSAOBlurShader = {
-  uniforms: {
-    "tDiffuse": {
-      value: null
-    },
-    "screenWidth": {
-      value: null
-    },
-    "screenHeight": {
-      value: null
-    }
-  },
-  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
-  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform float screenWidth;", "uniform float screenHeight;", "varying vec2 vUv;", "void main() {", "	vec2 texelSize = ( 1.0 / vec2(screenWidth, screenHeight) );", "	float result = 0.0;", "	for ( int i = - 2; i <= 2; i ++ ) {", "		for ( int j = - 2; j <= 2; j ++ ) {", "			vec2 offset = ( vec2( float( i ), float( j ) ) ) * texelSize;", "			result += texture2D( tDiffuse, vUv + offset ).x;", "		}", "	}", "	gl_FragColor = vec4( vec3( result / ( 5.0 * 5.0 ) ), 1.0 );", "}"].join("\n")
-};
-var MusicShader = {
-  defines: {
-    "PERSPECTIVE_CAMERA": 1
-  },
-  uniforms: {
-    "tDiffuse": {
-      value: null
-    },
-    "tDepth": {
-      value: null
-    },
-    "tAudioData": {
-      value: null
-    },
-    "cameraNear": {
-      value: null
-    },
-    "cameraFar": {
-      value: null
-    },
-    "cameraProjectionMatrix": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "cameraInverseProjectionMatrix": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "matrixWorldInverse": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "matrixWorld": {
-      value: new three__WEBPACK_IMPORTED_MODULE_0__["Matrix4"]()
-    },
-    "screenWidth": {
-      value: null
-    },
-    "screenHeight": {
-      value: null
-    }
-  },
-  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
-  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform sampler2D tDepth;", "uniform sampler2D tAudioData;", "uniform float cameraNear;", "uniform float cameraFar;", "uniform float screenWidth;", "uniform float screenHeight;", "uniform mat4 cameraProjectionMatrix;", "uniform mat4 cameraInverseProjectionMatrix;", "uniform mat4 matrixWorldInverse;", "uniform mat4 matrixWorld;", "varying vec2 vUv;", "#include <packing>", "float getDepth( const in vec2 screenPosition ) {", "	return texture2D( tDepth, screenPosition ).x;", "}", "float getLinearDepth( const in vec2 screenPosition ) {", "	float fragCoordZ = texture2D( tDepth, screenPosition ).x;", "	float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );", "	return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );", "}", "float getViewZ( const in float depth ) {", "		return perspectiveDepthToViewZ( depth, cameraNear, cameraFar );", "}", "vec3 getViewNormal( const in vec2 screenPosition ) {", "	float dY = 1.0/screenHeight;", "	float dX = 1.0/screenWidth;", "	float a = getDepth(screenPosition);", "	float b = getDepth(vec2(screenPosition.x, screenPosition.y+dY));", "	float c = getDepth(vec2(screenPosition.x, screenPosition.y-dY));", "  float d = getDepth(vec2(screenPosition.x+dX, screenPosition.y));", "	float e = getDepth(vec2(screenPosition.x-dX, screenPosition.y));", "	vec3 aa = vec3(dX*2.0, 0.0, d-e);", "	vec3 bb = vec3(0.0, dY*2.0, b-c);", "  vec3 n=cross(aa,bb);", "  n.z = -n.z;", "	return -normalize(n);", "}", "vec3 getWorldNormal( const in vec2 screenPosition ) {", "	vec3 n = getViewNormal(screenPosition);", "	return mat3(matrixWorld) * n;", "}", "vec3 getViewPosition( const in vec2 screenPosition, const in float depth, const in float viewZ ) {", "	float clipW = cameraProjectionMatrix[2][3] * viewZ + cameraProjectionMatrix[3][3];", "	vec4 clipPosition = vec4( ( vec3( screenPosition, depth ) - 0.5 ) * 2.0, 1.0 );", "	clipPosition *= clipW; // unprojection.", "	return ( cameraInverseProjectionMatrix * clipPosition ).xyz;", "}", "vec3 hsv2rgb(vec3 c)", "{", "	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);", "	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);", "	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);", "}", "void main() {", "	float depth = getDepth( vUv );", "	float linearDepth = getLinearDepth( vUv );", "	float viewZ = getViewZ( depth );", "	vec3 viewNormal = getViewNormal( vUv );", "   vec3 viewPosition = getViewPosition(vUv, depth, viewZ);", "	vec3 diffuse = texture2D( tDiffuse, vUv ).xyz;", "	float outline = max(pow(dot(normalize(viewPosition), viewNormal),0.3),0.0);", "   vec3 music = vec3(texture2D( tAudioData, vec2( 0.0, 0.0 ) ).r, texture2D( tAudioData, vec2( 0.4, 0.0 ) ).r, texture2D( tAudioData, vec2( 0.8, 0.0 ) ).r);", //"   vec3 music = vec3(1.0,1.0,1.0);",
-  "	float h = sin((outline * 3.1416)) ;", "	float s = 1.0;", //cos((music.x*3.1416));",
-  "	gl_FragColor = vec4( diffuse + vec3(outline), 1.0 );", //"	//gl_FragColor = vec4( diffuse, 1.0 );",
-  "}"].join("\n")
-};
-var MixinShader = {
-  uniforms: {
-    "tMusic": {
-      value: null
-    },
-    "tReflexion": {
-      value: null
-    },
-    "tOcclusion": {
-      value: null
-    }
-  },
-  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
-  fragmentShader: ["uniform sampler2D tMusic;", "uniform sampler2D tOcclusion;", "uniform sampler2D tReflexion;", "varying vec2 vUv;", "void main() {", "   vec3 music = texture2D( tMusic, vUv ).xyz;", "	vec4 reflexion = texture2D(tReflexion, vUv).xyzw;", //"	reflexion.x = 1.0-reflexion.x;",
-  //"	reflexion.z = 1.0-reflexion.z;",
-  // "	float temp = reflexion.x;",
-  // "	reflexion.x = reflexion.z;",
-  // "	reflexion.z = temp;",
-  //"	reflexion.w *= 0.5;",
-  "	music.x = (music.x * (1.0-reflexion.w)) + (reflexion.x * reflexion.w);", "	music.y = (music.y * (1.0-reflexion.w)) + (reflexion.y * reflexion.w);", "	music.z = (music.z * (1.0-reflexion.w)) + (reflexion.z * reflexion.w);", "	float occlusion = texture2D( tOcclusion, vUv ).x;", "	gl_FragColor = vec4( music.x * occlusion, music.y, music.z, 1.0 );", //"	gl_FragColor = vec4( vec3(occlusion), 1.0 );",
-  "}"].join("\n")
-};
-var MixCutoffShader = {
-  uniforms: {
-    "tDiffuse": {
-      value: null
-    },
-    "tOcclusion": {
-      value: null
-    }
-  },
-  vertexShader: ["varying vec2 vUv;", "void main() {", "	vUv = uv;", "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );", "}"].join("\n"),
-  fragmentShader: ["uniform sampler2D tDiffuse;", "uniform sampler2D tOcclusion;", "varying vec2 vUv;", "void main() {", "   float diffuse = texture2D( tDiffuse, vUv ).x;", "	float occlusion = texture2D(tOcclusion, vUv).x;", "	float dO = (diffuse + occlusion)*0.5;", "	gl_FragColor = vec4(vec3(occlusion), 1.0);", // "	if(dO>0.78){",
-  // "		gl_FragColor = vec4(vec3(1.0), 1.0);",
-  // "	}",
-  // "	else{",
-  // "		gl_FragColor = vec4(vec3(0.0), 1.0);",
-  // "	}",
-  "}"].join("\n")
-};
 
 
 /***/ }),
@@ -9162,113 +8675,61 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 /* harmony import */ var _tileset__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./tileset */ "./src/tileset.js");
 /* harmony import */ var _Renderer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Renderer */ "./src/Renderer.js");
-/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
+/* harmony import */ var three_examples_jsm_objects_Water2_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/objects/Water2.js */ "./node_modules/three/examples/jsm/objects/Water2.js");
 
 
 
 
-var startButton = document.getElementById('startButton');
-startButton.addEventListener('click', function () {
-  document.getElementById('overlay').remove();
-  init();
-});
+init();
 
 function init() {
   var scene = new three__WEBPACK_IMPORTED_MODULE_0__["Scene"]();
-  scene.background = new three__WEBPACK_IMPORTED_MODULE_0__["Color"](0x888888);
-  var mesh = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["PlaneGeometry"](20000, 20000), new three__WEBPACK_IMPORTED_MODULE_0__["MeshPhongMaterial"]({
-    color: 0xffffff,
-    shadowSide: three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"]
-  }));
-  mesh.position.y = -0.2;
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  scene.add(mesh);
+  scene.background = new three__WEBPACK_IMPORTED_MODULE_0__["Color"](0x000000);
   var container = document.getElementById('screen');
   container.style = "position: absolute; height:100%; width:100%; left: 0px; top:0px;";
   document.body.appendChild(container);
-  var camera = new three__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"](50, window.offsetWidth / window.offsetHeight, 3, 100);
-  camera.position.z = 4; //var camera2 = camera.clone();
-  //var helper = new THREE.CameraHelper(camera2);
-  //scene.add(helper);
+  var camera = new three__WEBPACK_IMPORTED_MODULE_0__["PerspectiveCamera"](50, window.offsetWidth / window.offsetHeight, 3, 10000);
+  camera.position.z = 4; // //water
+  // const waterGeometry = new THREE.PlaneGeometry(4000, 2000);
+  // var water = new Water(waterGeometry, {
+  //     color: "#aaaaff",
+  //     scale: 50,
+  //     flowDirection: new THREE.Vector2(0.05,0.2),
+  //     textureWidth: 1024,
+  //     textureHeight: 1024
+  // });
+  // water.position.y = 14;
+  // water.rotation.x = Math.PI * - 0.5;
+  // scene.add(water);
   /// Lights
 
   scene.add(new three__WEBPACK_IMPORTED_MODULE_0__["AmbientLight"](0xFFFFFF, 0.5));
   var dirLight = new three__WEBPACK_IMPORTED_MODULE_0__["DirectionalLight"](0xffffff, 1.0);
   dirLight.position.set(49, 500, 151);
-  dirLight.target.position.set(0, 0, 0); // dirLight.castShadow = true;
-  // dirLight.shadow.camera.near = 100;
-  // dirLight.shadow.camera.far = 1000;
-  // dirLight.shadow.camera.left = -1000;
-  // dirLight.shadow.camera.bottom = -1000;
-  // dirLight.shadow.camera.right = 1000;
-  // dirLight.shadow.camera.top = 1000;
-  // dirLight.shadow.bias = 0.0000001;
-  // dirLight.shadow.mapSize.width = 1024;
-  // dirLight.shadow.mapSize.height = 1024;
-
+  dirLight.target.position.set(0, 0, 0);
   scene.add(dirLight);
   scene.add(dirLight.target); //scene.add(new THREE.DirectionalLightHelper(dirLight, 5, "#ff0000"));
-  // setInterval(function () {
-  //     dirLight.target.position.set(camera.position.x, 0, camera.position.z);
-  //     dirLight.position.set(camera.position.x + 100,  500, camera.position.z + 20);
-  //     dirLight.shadow.camera.near = 100;
-  //     dirLight.shadow.camera.far = 5000;
-  //     var size = (camera.position.y*2) + 100;
-  //     dirLight.shadow.camera.left = -size;
-  //     dirLight.shadow.camera.bottom = -size;
-  //     dirLight.shadow.camera.right = size;
-  //     dirLight.shadow.camera.top = size;
-  //     dirLight.shadow.camera.updateProjectionMatrix();
-  //     dirLight.needsUpdate = true;
-  // }, 25);
 
   var renderer = new _Renderer__WEBPACK_IMPORTED_MODULE_2__["Renderer"](scene, container, camera);
-  var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_1__["Tileset"]("dist/city2/tileset.json", scene, renderer.camera, 0.5, function (aMesh) {
-    aMesh.material = new three__WEBPACK_IMPORTED_MODULE_0__["MeshPhongMaterial"]({
-      color: 0xffffff,
-      flatShading: true,
-      shadowSide: three__WEBPACK_IMPORTED_MODULE_0__["BackSide"]
-    });
-    aMesh.castShadow = false;
-    aMesh.receiveShadow = false;
-    aMesh.material.side = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"]; //aMesh.material.shadowSide = THREE.DoubleSide;
-
-    aMesh.geometry.computeVertexNormals(); //aMesh.shading = THREE.FlatShading
+  var tileset = new _tileset__WEBPACK_IMPORTED_MODULE_1__["Tileset"]("https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json", scene, renderer.camera, 0.3, function (aMesh) {
+    //aMesh.material = new THREE.MeshPhongMaterial({ color: 0xffaaff, flatShading: true })
+    aMesh.material.side = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"]; //aMesh.material.flatShading = true;
+    //aMesh.geometry.computeVertexNormals();
   });
   tileset.setLoadOutsideView(true);
-  var tileset2 = new _tileset__WEBPACK_IMPORTED_MODULE_1__["Tileset"]("dist/car4/tileset.json", scene, renderer.camera, 0.4, function (aMesh) {
-    aMesh.material = new three__WEBPACK_IMPORTED_MODULE_0__["MeshPhongMaterial"]({
-      color: 0xffffff,
-      flatShading: true,
-      shadowSide: three__WEBPACK_IMPORTED_MODULE_0__["BackSide"]
-    });
-    aMesh.material.side = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"];
-    aMesh.material.shadowSide = three__WEBPACK_IMPORTED_MODULE_0__["DoubleSide"];
-    aMesh.castShadow = false;
-    aMesh.receiveShadow = false;
-    aMesh.geometry.computeVertexNormals(); //aMesh.shading = THREE.FlatShading
-  });
-  tileset2.setLoadOutsideView(true);
-  tileset2.move(10, 0, 0, true);
+  setInterval(function () {
+    tileset.update();
+  }, 200);
+  var r = 0.0;
+  setInterval(function () {
+    r += 0.001;
+    tileset.setRotation(0, r, 0, true);
+  }, 10);
   animate();
 
   function animate() {
     renderer.render();
   }
-
-  var r = 0;
-  setInterval(function () {
-    tileset.update();
-    r += 0.1; //tileset2.setRotation(0,r,0,true);
-
-    tileset2.update(); // camera2.copy(camera, false);
-    // camera2.applyMatrix4(tileset2.matrix.clone().invert());
-    // camera2.updateMatrixWorld(true);
-    // camera2.updateProjectionMatrix();
-    // helper.update();
-  }, 100);
 }
 
 /***/ }),
