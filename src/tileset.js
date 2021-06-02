@@ -36,11 +36,27 @@ function Tileset(url, scene, camera, geometricErrorMultiplier, meshCallback) {
         if (!!self.scene) {
             Object.values(self.currentlyRenderedTiles).forEach(element => {
                 self.scene.remove(element.scene);
+                if (element.geometry) {
+                    element.geometry.dispose()                     
+                }
+    
+                if (element.material) {
+                    if (element.material.length) {
+                        for (let i = 0; i < element.material.length; ++i) {
+                            element.material[i].dispose()                             
+                        }
+                    }
+                    else {
+                        element.material.dispose()                         
+                    }
+                }
             });
         }
         self.currentlyRenderedTiles = {}
         self.scene = null;
     }
+
+    
     function setScene(scene) {
         deleteFromCurrentScene();
         self.scene = scene;
@@ -113,6 +129,22 @@ function Tileset(url, scene, camera, geometricErrorMultiplier, meshCallback) {
                                 setTimeout(() => {
                                     if (self.futureActionOnTiles[url] === "toDelete") {
                                         self.scene.remove(self.currentlyRenderedTiles[url].scene);
+                                        self.currentlyRenderedTiles[url].scene.traverse((element) => {
+                                            if (element.geometry) {
+                                                element.geometry.dispose()                     
+                                            }
+                                
+                                            if (element.material) {
+                                                if (element.material.length) {
+                                                    for (let i = 0; i < element.material.length; ++i) {
+                                                        element.material[i].dispose()                             
+                                                    }
+                                                }
+                                                else {
+                                                    element.material.dispose()                         
+                                                }
+                                            }
+                                          });
                                         delete self.currentlyRenderedTiles[url];
                                         delete self.futureActionOnTiles[url];
                                     }

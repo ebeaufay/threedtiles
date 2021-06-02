@@ -51,6 +51,8 @@ function init() {
         tileset.setRotation(0,r,0,true);
     }, 10);
 
+    
+
     animate();
     function animate() {
         renderer.render();
