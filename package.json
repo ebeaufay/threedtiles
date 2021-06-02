@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "tileset.js",
     "scripts": {
