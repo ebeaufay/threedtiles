@@ -11,7 +11,7 @@ Adding a tileset to a scene is as easy as :
 ```
 import { Tileset } from './tileset';
 
-var tileset = new Tileset("http://127.0.0.1:8080/tileset.json", scene, camera);
+var tileset = new Tileset("http://127.tileset.json", scene, camera);
 
 setInterval(function(){
   tileset.update();
@@ -77,4 +77,6 @@ followed by a single call to tileset#apply.
 # EXTRA Mesh to 3DTiles Converter
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
-For more info, don't hesitate to contact me directly at emericbeaufays@gmail.com
+It works for all types of meshes though it tends to show gaps in photogrametry meshes between tiles (see demo).
+I'm keeping the code private for now but I'll convert any dataset you have for free.
+Contact: emericbeaufays@gmail.com
