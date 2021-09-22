@@ -1,7 +1,7 @@
+import "regenerator-runtime/runtime.js";
 import * as THREE from 'three';
 import { Tileset } from './tileset';
 import { Renderer } from './Renderer';
-import "regenerator-runtime/runtime.js";
 
 init();
 
