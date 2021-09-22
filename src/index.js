@@ -3,17 +3,11 @@ import { Tileset } from './tileset';
 import { Renderer } from './Renderer';
 import "regenerator-runtime/runtime.js";
 
-
 init();
-
 
 function init() {
     var scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
-
-
-
-
     var container = document.getElementById('screen');
     container.style = "position: absolute; height:100%; width:100%; left: 0px; top:0px;";
     document.body.appendChild(container);

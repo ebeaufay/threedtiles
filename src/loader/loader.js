@@ -37,20 +37,22 @@ function Loader(meshCallback){
 		var tile = new Tile(load);
 		console.assert(tileset.geometricError !== 'undefined');
 		tile.setGeometricError(tileset.geometricError);
-		console.assert(!!tileset.content);
-		if(!!tileset.content.uri){
-			if(path.isAbsolute(tileset.content.uri)){
-				tile.setContent(tileset.content.uri);
-			}else{
-				tile.setContent(rootPath +path.sep+ tileset.content.uri)
-			}
-		}else if(!!tileset.content.url){
-			if(path.isAbsolute(tileset.content.url)){
-				tile.setContent(tileset.content.url);
-			}else{
-				tile.setContent(rootPath+path.sep+ tileset.content.url)
+		if(!!tileset.content){
+			if(!!tileset.content.uri){
+				if(path.isAbsolute(tileset.content.uri)){
+					tile.setContent(tileset.content.uri);
+				}else{
+					tile.setContent(rootPath +path.sep+ tileset.content.uri)
+				}
+			}else if(!!tileset.content.url){
+				if(path.isAbsolute(tileset.content.url)){
+					tile.setContent(tileset.content.url);
+				}else{
+					tile.setContent(rootPath+path.sep+ tileset.content.url)
+				}
 			}
 		}
+		
 		
 		console.assert( !!tileset.boundingVolume );
 		if(!!tileset.boundingVolume.box){
