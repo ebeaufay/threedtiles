@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "tileset.js",
     "scripts": {
@@ -26,7 +26,7 @@
         "gltf-validator": ">=2.0.0-dev.3.3",
         "lodash": ">=4.17.20",
         "regenerator-runtime": ">=0.13.7",
-        "three": ">=0.125.0"
+        "three": "0.131.0"
     },
     "devDependencies": {
         "@babel/core": "^7.12.9",

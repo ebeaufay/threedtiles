@@ -34,18 +34,17 @@ function init() {
         //aMesh.geometry.computeVertexNormals();
     });
     tileset.setLoadOutsideView(true);
+    tileset.setGeometricErrorMultiplier(1.0);
 
     setInterval(function () {
         tileset.update();
     }, 200);
 
     var r = 0.0;
-    setInterval(function () {
+    /* setInterval(function () {
         r+=0.001;
         tileset.setRotation(0,r,0,true);
-    }, 10);
-
-    
+    }, 10); */
 
     animate();
     function animate() {
