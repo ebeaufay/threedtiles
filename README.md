@@ -27,7 +27,6 @@ setInterval(function () {
 
 ## Features
 
-- Correctly traverses tileset trees, whatever the structure.
 - Handles nested tileset.json files which are loaded on the fly (a tileset.json may point to another tileset.json file as its child).
 - Allows tilesets transformations. Translate, scale and rotate a tilesets in real-time.
 - callback on loaded geometry to assign a custom material or use the meshes for computations.
