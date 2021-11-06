@@ -11,9 +11,13 @@ Adding a tileset to a scene is as easy as :
 ```
 import { OGC3DTile } from "./tileset/OGC3DTile";
 
+...
+
 const ogc3DTile = new OGC3DTile({
     url: "https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json"
 });
+
+scene.add(ogc3DTile);
 ```
 
 It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here:
