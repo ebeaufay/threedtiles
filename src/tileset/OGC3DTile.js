@@ -34,7 +34,7 @@ class OGC3DTile extends THREE.Object3D {
     constructor(properties) {
         super();
         // set properties general to the entire tileset
-        this.geometricErrorMultiplier = properties.geometricErrorMultiplier;
+        this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier?properties.geometricErrorMultiplier:1.0;
         this.meshCallback = properties.meshCallback;
         this.loadOutsideView = properties.loadOutsideView;
 
