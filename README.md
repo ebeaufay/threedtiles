@@ -23,9 +23,7 @@ scene.add(ogc3DTile);
 It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here:
 ```
 setInterval(function () {
-    var frustum = new THREE.Frustum();
-    frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
-    ogc3DTile.update(camera, frustum);
+    ogc3DTile.update(camera);
 }, 200);
 ```
 
