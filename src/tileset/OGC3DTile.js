@@ -34,7 +34,7 @@ class OGC3DTile extends THREE.Object3D {
     constructor(properties) {
         super();
         // set properties general to the entire tileset
-        this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier?properties.geometricErrorMultiplier:1.0;
+        this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
         this.meshCallback = properties.meshCallback;
         this.loadOutsideView = properties.loadOutsideView;
 
@@ -47,6 +47,8 @@ class OGC3DTile extends THREE.Object3D {
         this.geometricError;
         this.boundingVolume;
         this.json; // the json corresponding to this tile
+        this.materialVisibility = false;
+        this.inFrustum = true;
 
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
@@ -151,13 +153,13 @@ class OGC3DTile extends THREE.Object3D {
                         result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
                             mesh.traverse((o) => {
                                 if (o.isMesh) {
-                                    o.material.visible = true;
+                                    o.material.visible = false;
                                 }
                             });
                             self.add(mesh);
                             self.meshContent = mesh;
-                            
-                            
+
+
                         }).catch(error => { });
                     } else if (url.endsWith("json")) {// if the content is json
                         result.json().then(json => {
@@ -216,95 +218,95 @@ class OGC3DTile extends THREE.Object3D {
     }
 
 
-
-    update(camera, frustum) {
+    update(camera){
+        const frustum = new THREE.Frustum();
+        frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+        this._update(camera, frustum);
+    }
+    _update(camera, frustum) {
         const self = this;
-        if (!self.hasMeshContent) {
-            if (!!self.json && !!self.json.children) {
-                if(self.childrenTiles.length != self.json.children.length){
-                    loadJsonChildren();
-                    return false;
-                }else{
-                    const childrenReadyCounter = countChildrenReady();
-                    if (self.json.children.length == childrenReadyCounter) return true;
-                    else return false;
-                }
-            }
-        }
 
-        
         if (!!self.boundingVolume && !!self.geometricError) {
             var metric = self.calculateUpdateMetric(camera, frustum);
         }
 
-        if (isNaN(metric)) {
-            throw ("calculation of metric for planet LOD calculation failed");
+        updateTree(metric);
+        self.childrenTiles.forEach(child => child._update(camera, frustum));
+        updateNodeVisibility(metric);
+        trimTree(metric);
+
+
+        function updateTree(metric) {
+            // If this tile does not have mesh content but it has children
+            if(metric<0) return;
+            if (!self.hasMeshContent || metric < self.geometricError) {
+                if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
+                    loadJsonChildren();
+                    return;
+                }
+            }
         }
 
-        if (metric < 0) { // outside frustum
-            if (!!self.meshContent) {
+        function updateNodeVisibility(metric) {
+
+            //doesn't have a mesh content
+            if (!self.hasMeshContent) return;
+
+            // mesh content not yet loaded
+            if(!self.meshContent) {
+                return;
+            }
+
+            // outside frustum
+            if (metric < 0) {
+                self.inFrustum = false;
                 self.changeContentVisibility(!!self.loadOutsideView);
-            }
-            self.disposeChildren();
-            return true;
-        }
-
-        if (metric >= self.geometricError) { // if self is ideal LOD
-
-            //self.disposeChildren(); // remove all children 
-            if (self.hasMeshContent) { // has a mesh content
-                self.disposeChildren();
-                if (self.meshContent) { // mesh content is loaded
-                    self.changeContentVisibility(true); // show content
-                    return true; // is ready
-                } else {
-                    return false; // not ready
-                }
-            } else {
-                if (self.hasUnloadedJSONContent) { //has a json content that's not yet loaded
-                    return false;
-                } else if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
-                    loadJsonChildren();
-                    return false;
-                } else if (!!self.json && !!self.json.children) {
-                    const childrenReadyCounter = countChildrenReady();
-                    if (self.json.children.length == childrenReadyCounter) return true;
-                    else return false;
-                }
-                else {
-                    return true; //no mesh content and no children
-                }
+                return;
+            }else{
+                self.inFrustum = true;
             }
 
-        }
-
-        else { // if ideal LOD is past self tile
-            if (self.hasUnloadedJSONContent) {
-                return false;
+            // has no children
+            if (self.childrenTiles.length == 0) {
+                self.changeContentVisibility(true);
+                return;
             }
-            if (!!self.json && !!self.json.children) {
-                if (self.childrenTiles.length == self.json.children.length) {
-                    return recurse();
-                } else {
-                    loadJsonChildren();
-                    return recurse();
-                }
-            } else {
-                if (self.hasMeshContent) {
-                    if (self.meshContent) {
-                        self.changeContentVisibility(true);
-                        return true;
-                    }
-                    if (!self.meshContent) {
+
+            // has children
+            if (metric >= self.geometricError) { // Ideal LOD or before ideal lod
+
+                self.changeContentVisibility(true);
+            } else if (metric < self.geometricError) { // Ideal LOD is past this one
+                // if children are visible and have been displayed, can be hidden
+                var allChildrenReady = true;
+                self.childrenTiles.every(child => {
+                    
+                    if (!child.isReady()) {
+                        allChildrenReady = false;
                         return false;
                     }
-                } else {
                     return true;
+                });
+                if (allChildrenReady) {
+                    self.changeContentVisibility(false);
                 }
             }
-
         }
 
+        function trimTree(metric) {
+            if (!self.hasMeshContent) return;
+            if (metric < 0) { // outside frustum
+                self.disposeChildren();
+                return;
+            }
+            if (metric >= self.geometricError) {
+                if (self.isReady()) {
+                    self.disposeChildren();
+                    return;
+                }
+            }
+            
+        }
 
         function loadJsonChildren() {
             self.json.children.forEach(childJSON => {
@@ -322,67 +324,86 @@ class OGC3DTile extends THREE.Object3D {
                 self.add(childTile);
             });
         }
-        function recurse() {
-            const childrenReadyCounter = countChildrenReady();
-            if (childrenReadyCounter == self.childrenTiles.length) { //all children loaded
-                if (self.hasMeshContent) {
-                    if (self.refinement === "ADD") { // if content is loaded
-                        if (self.meshContent) {
-                            self.changeContentVisibility(true);
-                            return true;
-                        }
-                        if (!self.meshContent) {
-                            return false;
-                        }
-                    } else {
-                        if (!!self.meshContent) {
-                            self.changeContentVisibility(false);
-                            return true;
-                        }else{
-                            false
-                        }
-                    }
-                } else {
-                    return true;
-                }
-            } else { //NOT all children loaded
-                if (self.hasMeshContent) {
-                    if (self.meshContent) {
-                        self.changeContentVisibility(true);
-                        return true;
-                    }
-                    if (!self.meshContent) {
-                        return false;
-                    }
-                } else {
-                    return true;
-                }
-            }
-        }
-        function countChildrenReady() {
-            let count = 0;
-            self.childrenTiles.every(child => {
-                let childReady = child.update(camera, frustum);
-                if (childReady) {
-                    count++;
-                } else {
-                    return false; // break out of loop
-                }
-                return true; // continue
-            });
-            return count;
-        }
+
     }
 
-    changeContentVisibility(visibility) {
-        if (!!this.meshContent.traverse) {
-            this.meshContent.traverse(function (element) {
-                if (element.material) element.material.visible = visibility;
+    /**
+     * Node is ready if it is outside frustum, if it was drawn at least once or if all it's children are ready
+     * @returns true if ready
+     */
+    isReady() {
+        // if outside frustum
+        if(!this.inFrustum) return true;
+
+        // if json is not done loading
+        if (this.hasUnloadedJSONContent) return false;
+
+        // if this tile has no mesh content or if it's marked as visible false, look at children
+        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility) && this.childrenTiles.length>0) {
+            var allChildrenReady = true;
+            this.childrenTiles.every(child => {
+                if (!child.isReady()) {
+                    allChildrenReady = false;
+                    return false;
+                }
+                return true;
             });
-        } else if (!!this.meshContent.scenes) {
-            this.meshContent.scenes.forEach(scene => scene.traverse(function (element) {
-                if (element.material) element.material.visible = visibility;
+            return allChildrenReady;
+        }
+
+        // if this tile has no mesh content
+        if(!this.hasMeshContent){
+            return true;
+        }
+        // if mesh content not yet loaded
+        if(!this.meshContent) {
+            return false;
+        }
+
+        // if this tile has been marked to hide it's content
+        if (!this.materialVisibility) {
+            return false;
+        }
+
+        // if all meshes have been displayed once
+        if (this.meshesDisplayed == this.meshesToDisplay) {
+            return true;
+        }
+
+        return false;
+        
+    }
+
+    
+
+    changeContentVisibility(visibility) {
+        const self = this;
+        if (self.materialVisibility == visibility) {
+            return;
+        }
+        self.materialVisibility = visibility
+        self.meshesToDisplay = 0;
+        self.meshesDisplayed = 0;
+        if (!!self.meshContent.traverse) {
+            self.meshContent.traverse(function (element) {
+                if (element.material) setMeshVisibility(element, visibility);
+            });
+        } else if (!!self.meshContent.scenes) {
+            self.meshContent.scenes.forEach(scene => scene.traverse(function (element) {
+                if (element.material) setMeshVisibility(element, visibility);
             }));
+        }
+
+        function setMeshVisibility(mesh, visibility) {
+            mesh.material.visible = visibility;
+            if (!!visibility) {
+                self.meshesToDisplay++;
+                mesh.onAfterRender = () => {
+                    delete mesh.onAfterRender;
+                    self.meshesDisplayed++;
+                };
+            }
+
         }
     }
     calculateUpdateMetric(camera, frustum) {
@@ -408,7 +429,9 @@ class OGC3DTile extends THREE.Object3D {
         if (this.boundingVolume instanceof OBB || this.boundingVolume instanceof THREE.Sphere) {
             // box
             const distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
-
+            if (distance == 0) {
+                return 0;
+            }
             return (distance / 100) / this.geometricErrorMultiplier;
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
@@ -419,9 +442,9 @@ class OGC3DTile extends THREE.Object3D {
 
     }
 
-    setGeometricErrorMultiplier(geometricErrorMultiplier){
+    setGeometricErrorMultiplier(geometricErrorMultiplier) {
         this.geometricErrorMultiplier = geometricErrorMultiplier;
-        this.childrenTiles.forEach(child=>child.setGeometricErrorMultiplier(geometricErrorMultiplier));
+        this.childrenTiles.forEach(child => child.setGeometricErrorMultiplier(geometricErrorMultiplier));
     }
 }
 export { OGC3DTile };

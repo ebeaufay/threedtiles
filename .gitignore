@@ -23,6 +23,12 @@ node_modules
 #build folder
 dist
 
+#test datasets
+yamato
+qingxie
+castleX
+castle
+
 # package-lock
 *package-lock.json
 

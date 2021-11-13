@@ -1,8 +1,10 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { LegacyGLTFLoader } from './LegacyGLTFLoader.js';
 import { Color, DoubleSide, BufferAttribute, Mesh } from "three";
 import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const gltfLoader = new GLTFLoader();
+const legacyGLTFLoader = new LegacyGLTFLoader();
 const B3DMDecoder = {
 	parseB3DM: (arrayBuffer, meshCallback) => {
 		const dataView = new DataView(arrayBuffer);
@@ -54,14 +56,15 @@ const B3DMDecoder = {
 					if (o.isMesh) {
 						if (!!meshCallback) {
 							meshCallback(o);
-						} else {
-							o.material.side = DoubleSide;
 						}
 
 					}
 				});
 				resolve(scene);
-			}, reject);
+			}, error=>{
+				console.error(error);
+				reject();
+			});
 		});
 	}
 }
@@ -126,7 +129,7 @@ function mergeColoredObject(scene) {
 				colors.push(threeColor.g);
 				colors.push(threeColor.b);
 			}
-			mesh.geometry.addAttribute('color', new BufferAttribute(new Float32Array(colors), 3));
+			mesh.geometry.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3));
 
 			fullColoredGeometriesToMerge.push(mesh.geometry);
 			});
