@@ -43,7 +43,7 @@ function initSkybox(controller, camera, scene) {
     })
     const mesh = new THREE.Mesh(geometry, materials);
     mesh.position.copy(camera.position);
-    controller.addEventListener("change", ()=>{
+    controller.addEventListener("change", () => {
         mesh.position.copy(camera.position);
     });
     scene.add(mesh);
@@ -62,14 +62,14 @@ function initLODMultiplierSlider(tileset) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFF0000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.1));
 
     var dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
     dirLight.position.set(-400, 500, -100);
     dirLight.target.position.set(0, 0, 0);
 
-    //scene.add(dirLight);
-    //scene.add(dirLight.target);
+    scene.add(dirLight);
+    scene.add(dirLight.target);
     return scene;
 }
 
@@ -126,26 +126,37 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json",
+        //url: "https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
         //url: "./yamato/tileset.json",
         //url: "./castleX/tileset.json",
-        geometricErrorMultiplier: 2.0,
+        geometricErrorMultiplier: 1.0,
         loadOutsideView: true,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             //mesh.material.wireframe = true;
-            mesh.material.side = THREE.FrontSide;
+            mesh.material.side = THREE.DoubleSide;
         }
     });
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), 100)
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5) // Z-UP to Y-UP
-
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
-    setInterval(function () {
-        ogc3DTile.update(camera);
-    }, 200);
+
+    var interval ;
+    document.addEventListener('keyup', (e) => {
+        if(!!interval){
+            clearInterval(interval);
+            interval = null;
+        }else{
+            interval = setInterval(function () {
+                ogc3DTile.update(camera);
+            }, 200);
+        }
+    });
+
+    
 
     scene.add(ogc3DTile)
     return ogc3DTile;
@@ -157,6 +168,7 @@ function initController(camera, dom) {
     controller.target.set(0, 0, 0);
     controller.minDistance = 1;
     controller.maxDistance = 150;
+    controller.update();
     return controller;
 }
 

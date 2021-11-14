@@ -60,7 +60,7 @@ class OGC3DTile extends THREE.Object3D {
             self.controller = new AbortController();
             fetch(properties.url, { signal: self.controller.signal }).then(result => {
                 if (!result.ok) {
-                    throw new Error(`couldn't load "${url}". Request failed with status ${result.status} : ${result.statusText}`);
+                    throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }
                 result.json().then(json => self.setup({ rootPath: path.dirname(properties.url), json: json }))
             });
@@ -147,7 +147,7 @@ class OGC3DTile extends THREE.Object3D {
                 self.controller = new AbortController();
                 fetch(url, { signal: self.controller.signal }).then(result => {
                     if (!result.ok) {
-                        throw new Error(`couldn't load "${url}". Request failed with status ${result.status} : ${result.statusText}`);
+                        throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                     }
                     if (url.endsWith("b3dm")) {// if the content is B3DM
                         result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
@@ -238,7 +238,7 @@ class OGC3DTile extends THREE.Object3D {
 
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
-            if(metric<0) return;
+            if(metric<0 && self.hasMeshContent) return;
             if (!self.hasMeshContent || metric < self.geometricError) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     loadJsonChildren();
