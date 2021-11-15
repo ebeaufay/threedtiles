@@ -432,7 +432,8 @@ class OGC3DTile extends THREE.Object3D {
             if (distance == 0) {
                 return 0;
             }
-            return (distance / 100) / this.geometricErrorMultiplier;
+            const scale = this.matrixWorld.getMaxScaleOnAxis ();
+            return ((distance / 100) / this.geometricErrorMultiplier)/scale;
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported

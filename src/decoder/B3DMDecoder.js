@@ -62,8 +62,26 @@ const B3DMDecoder = {
 				});
 				resolve(scene);
 			}, error=>{
-				console.error(error);
-				reject();
+				legacyGLTFLoader.parse(gltfBuffer, model => {
+
+					////TODO
+					//model.batchTable = b3dm.batchTable;
+					//model.featureTable = b3dm.featureTable;
+	
+					//model.scene.batchTable = b3dm.batchTable;
+					//model.scene.featureTable = b3dm.featureTable;
+	
+					//const scene = mergeColoredObject(model.scene);
+					model.scene.traverse((o) => {
+						if (o.isMesh) {
+							if (!!meshCallback) {
+								meshCallback(o);
+							}
+	
+						}
+					});
+					resolve(model.scene);
+				}, null);
 			});
 		});
 	}

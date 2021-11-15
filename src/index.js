@@ -62,14 +62,14 @@ function initLODMultiplierSlider(tileset) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFF0000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.1));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    var dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    /*var dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
     dirLight.position.set(-400, 500, -100);
     dirLight.target.position.set(0, 0, 0);
 
     scene.add(dirLight);
-    scene.add(dirLight.target);
+    scene.add(dirLight.target);*/
     return scene;
 }
 
@@ -130,6 +130,8 @@ function initTileset(scene) {
         url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
         //url: "./yamato/tileset.json",
         //url: "./castleX/tileset.json",
+        //url: "./hotel/tileset.json",
+        //url: "./wing/tileset.json",
         geometricErrorMultiplier: 1.0,
         loadOutsideView: true,
         meshCallback: mesh => {
@@ -141,6 +143,7 @@ function initTileset(scene) {
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), 100)
+    //ogc3DTile.scale.set(0.01,0.01,0.01);
     ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
 
@@ -167,7 +170,7 @@ function initController(camera, dom) {
 
     controller.target.set(0, 0, 0);
     controller.minDistance = 1;
-    controller.maxDistance = 150;
+    controller.maxDistance = 500;
     controller.update();
     return controller;
 }

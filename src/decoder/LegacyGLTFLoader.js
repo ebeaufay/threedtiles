@@ -431,6 +431,7 @@ const LegacyGLTFLoader = ( function () {
 	var WEBGL_TYPE = {
 		5126: Number,
 		//35674: THREE.Matrix2,
+		35670: Boolean,
 		35675: THREE.Matrix3,
 		35676: THREE.Matrix4,
 		35664: THREE.Vector2,
@@ -1099,7 +1100,8 @@ const LegacyGLTFLoader = ( function () {
 
 						}
 
-						var textureLoader = THREE.Loader.Handlers.get( sourceUri );
+						//var textureLoader = THREE.Loader.Handlers.get( sourceUri );
+						var textureLoader = THREE.DefaultLoadingManager.getHandler( sourceUri);
 
 						if ( textureLoader === null ) {
 
