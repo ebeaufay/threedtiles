@@ -1,9 +1,14 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from 'three';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { LegacyGLTFLoader } from './LegacyGLTFLoader.js';
 import { Color, DoubleSide, BufferAttribute, Mesh } from "three";
 import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const gltfLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath( '/src/draco/' );
+gltfLoader.setDRACOLoader( dracoLoader );
 const legacyGLTFLoader = new LegacyGLTFLoader();
 const B3DMDecoder = {
 	parseB3DM: (arrayBuffer, meshCallback) => {

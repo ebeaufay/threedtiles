@@ -11,7 +11,7 @@ const camera = initCamera();
 const ogc3DTiles = initTileset(scene);
 initLODMultiplierSlider(ogc3DTiles);
 const controller = initController(camera, domContainer);
-const skybox = initSkybox(controller, camera, scene);
+//const skybox = initSkybox(controller, camera, scene);
 
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
@@ -62,14 +62,14 @@ function initLODMultiplierSlider(tileset) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFF0000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
 
-    /*var dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(-400, 500, -100);
     dirLight.target.position.set(0, 0, 0);
 
     scene.add(dirLight);
-    scene.add(dirLight.target);*/
+    scene.add(dirLight.target);
     return scene;
 }
 
@@ -127,38 +127,46 @@ function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
         //url: "https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
         //url: "./yamato/tileset.json",
-        //url: "./castleX/tileset.json",
-        //url: "./hotel/tileset.json",
-        //url: "./wing/tileset.json",
-        geometricErrorMultiplier: 1.0,
+        url: "./test/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/arkcnfuk9fw/tileset.json",
+        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a73faxnydqk/tileset.json",
+        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/e63mubnpmg/tileset.json",
+        //url: "https://assets.cesium.com/697512/tileset.json?v=1",
+        //url:"https://a.3d.blc.shc.eu/WAB/base_layer/cesium_mesh_2020/tileset.json",
+        geometricErrorMultiplier: 1,
         loadOutsideView: true,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
-            //mesh.material.wireframe = true;
-            mesh.material.side = THREE.DoubleSide;
+            mesh.material.wireframe = false;
+            mesh.material.side = THREE.FrontSide;
         }
     });
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), 100)
     //ogc3DTile.scale.set(0.01,0.01,0.01);
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
 
     var interval ;
     document.addEventListener('keyup', (e) => {
+        if(!e.key || e.key !== "p") return;
         if(!!interval){
             clearInterval(interval);
             interval = null;
         }else{
-            interval = setInterval(function () {
-                ogc3DTile.update(camera);
-            }, 200);
+            startInterval();
         }
     });
-
+    function startInterval(){
+        interval = setInterval(function () {
+            ogc3DTile.update(camera);
+        }, 200);
+    }
+    startInterval();
     
 
     scene.add(ogc3DTile)

@@ -103,10 +103,10 @@ class OGC3DTile extends THREE.Object3D {
                 this.boundingVolume = new OBB(this.json.boundingVolume.box);
             } else if (!!this.json.boundingVolume.region) {
                 const region = this.json.boundingVolume.region;
-                this.boundingVolume = new THREE.Box3(new Vector3(region[0], region[2], region[4]), new Vector3(region[1], region[3], region[5]));
+                this.boundingVolume = new THREE.Box3(new THREE.Vector3(region[0], region[2], region[4]), new THREE.Vector3(region[1], region[3], region[5]));
             } else if (!!this.json.boundingVolume.sphere) {
                 const sphere = this.json.boundingVolume.sphere;
-                this.boundingVolume = new THREE.Sphere(new Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
+                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[2], -sphere[1]), sphere[3]);
             } else {
                 this.boundingVolume = properties.parentBoundingVolume;
             }
@@ -115,9 +115,9 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         if (!!this.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
-            if (!!this.json.content.uri && this.json.content.uri.endsWith("json")) {
+            if (!!this.json.content.uri && this.json.content.uri.includes("json")) {
                 this.hasUnloadedJSONContent = true;
-            } else if (!!this.json.content.url && this.json.content.url.endsWith("json")) {
+            } else if (!!this.json.content.url && this.json.content.url.includes("json")) {
                 this.hasUnloadedJSONContent = true;
             } else {
                 this.hasMeshContent = true;
@@ -149,7 +149,7 @@ class OGC3DTile extends THREE.Object3D {
                     if (!result.ok) {
                         throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                     }
-                    if (url.endsWith("b3dm")) {// if the content is B3DM
+                    if (url.includes("b3dm")) {// if the content is B3DM
                         result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
                             mesh.traverse((o) => {
                                 if (o.isMesh) {
@@ -161,7 +161,7 @@ class OGC3DTile extends THREE.Object3D {
 
 
                         }).catch(error => { });
-                    } else if (url.endsWith("json")) {// if the content is json
+                    } else if (url.includes("json")) {// if the content is json
                         result.json().then(json => {
                             // when json content is downloaded, it is inserted into this tile's original JSON as a child
                             // and the content object is deleted from the original JSON
