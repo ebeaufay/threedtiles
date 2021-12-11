@@ -93,6 +93,6 @@ I'll soon add a layer for 3DTiles.
 # Mesh to 3DTiles Converter
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
-It works for all types of meshes.
+It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures. 
 I'm keeping the code private for now but I'll convert any dataset you have for free.
 Contact: emericbeaufays@gmail.com
