@@ -23,6 +23,28 @@ node_modules
 #build folder
 dist
 
+#test datasets
+yamato
+qingxie
+castleX
+castle
+building
+cathedral
+firestation
+floreal
+hotel
+spaceship
+wing
+room
+zamek
+ayutthaya
+ayutthaya4
+ayutthaya20
+ayutthayaCluster
+test
+testout
+
+
 # package-lock
 *package-lock.json
 
