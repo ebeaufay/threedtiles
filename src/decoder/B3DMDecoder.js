@@ -56,8 +56,8 @@ const B3DMDecoder = {
 				//model.scene.batchTable = b3dm.batchTable;
 				//model.scene.featureTable = b3dm.featureTable;
 
-				const scene = mergeColoredObject(model.scene);
-				scene.traverse((o) => {
+				//const scene = mergeColoredObject(model.scene);
+				model.scene.traverse((o) => {
 					if (o.isMesh) {
 						if (!!meshCallback) {
 							meshCallback(o);
@@ -65,7 +65,7 @@ const B3DMDecoder = {
 
 					}
 				});
-				resolve(scene);
+				resolve(model.scene);
 			}, error=>{
 				legacyGLTFLoader.parse(gltfBuffer, model => {
 
@@ -93,13 +93,15 @@ const B3DMDecoder = {
 }
 
 /**
+ * //TODO find something else than this workaround
+ * 
  * Because B3DM doesn't support colored faces, they are usually encoded as separate meshes each one with a global color.
  * However, when a mesh has many different face colors, this becomes very inneficient.
  * This method doesn't fix the slow decoding of the GLTFLoader but at least merges meshes together and transfers the face color to vertex color 
  * which is much more efficient at render time. 
  * Textured meshes with the same texture are also merged and color is discarded
  * 
- * A better fix would be to do this within the GLTFLoader itself.
+ * Big assumption! all the meshes are assumed to have the same transformation matrix
  * 
  * @param {*} scene 
  * @returns 
@@ -164,6 +166,7 @@ function mergeColoredObject(scene) {
 	if(fullColoredGeometriesToMerge.length>0){
 		let mergedColoredGeometry = BufferGeometryUtils.mergeBufferGeometries(fullColoredGeometriesToMerge, false);
 		mergedColoredMesh = new Mesh(mergedColoredGeometry, coloredMeshMaterial);
+		//mergedColoredMesh.matrix = matrix;
 		for (const color in coloredMeshes) {
 			if (coloredMeshes.hasOwnProperty(color)) {
 				coloredMeshes[color].forEach(mesh => {
@@ -194,7 +197,9 @@ function mergeColoredObject(scene) {
 			});
 			
 			const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(geometries, false);
-			mergedTexturedMeshes.push(new Mesh(mergedGeometry, material));
+			const mesh = new Mesh(mergedGeometry, material);
+			//mesh.matrix = matrix;
+			mergedTexturedMeshes.push(mesh);
 			texturedMeshes[map].forEach(mesh => {
 				mesh.material.dispose();
 				mesh.geometry.dispose();
@@ -206,7 +211,7 @@ function mergeColoredObject(scene) {
 	if(!!mergedColoredMesh) scene.add(mergedColoredMesh);
 	mergedTexturedMeshes.forEach(mesh=>scene.add(mesh));
 	console.log();
-
+	scene.matrix = new THREE.Matrix4();
 	return scene;
 }
 

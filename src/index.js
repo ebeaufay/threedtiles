@@ -11,7 +11,7 @@ const camera = initCamera();
 const ogc3DTiles = initTileset(scene);
 initLODMultiplierSlider(ogc3DTiles);
 const controller = initController(camera, domContainer);
-//const skybox = initSkybox(controller, camera, scene);
+const skybox = initSkybox(controller, camera, scene);
 
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
@@ -62,14 +62,14 @@ function initLODMultiplierSlider(tileset) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFF0000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    /*var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(-400, 500, -100);
     dirLight.target.position.set(0, 0, 0);
 
     scene.add(dirLight);
-    scene.add(dirLight.target);
+    scene.add(dirLight.target);*/
     return scene;
 }
 
@@ -117,8 +117,8 @@ function initStats(dom) {
 
 function initCamera() {
     const camera = new THREE.PerspectiveCamera(30, window.offsetWidth / window.offsetHeight, 1, 10000);
-    camera.position.set(-50, 50, -50);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(-60, 5, -30);
+    camera.lookAt(-100, 0, 0);
 
     return camera;
 }
@@ -126,10 +126,10 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        //url: "https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
         //url: "./yamato/tileset.json",
-        url: "./test/tileset.json",
+        //url: "./castle/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/arkcnfuk9fw/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a73faxnydqk/tileset.json",
@@ -176,7 +176,7 @@ function initTileset(scene) {
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
-    controller.target.set(0, 0, 0);
+    controller.target.set(-20, -20, 35);
     controller.minDistance = 1;
     controller.maxDistance = 500;
     controller.update();
