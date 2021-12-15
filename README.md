@@ -87,8 +87,7 @@ ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 ```
 
 # Displaying meshes on a globe
-I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery and elevation.
-I'll soon add a layer for 3DTiles.
+I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
 
 # Mesh to 3DTiles Converter
 
