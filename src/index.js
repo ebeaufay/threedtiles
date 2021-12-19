@@ -62,14 +62,14 @@ function initLODMultiplierSlider(tileset) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFF0000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
 
-    /*var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(-400, 500, -100);
     dirLight.target.position.set(0, 0, 0);
 
     scene.add(dirLight);
-    scene.add(dirLight.target);*/
+    scene.add(dirLight.target);
     return scene;
 }
 
@@ -116,7 +116,7 @@ function initStats(dom) {
 
 
 function initCamera() {
-    const camera = new THREE.PerspectiveCamera(30, window.offsetWidth / window.offsetHeight, 1, 10000);
+    const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1, 10000);
     camera.position.set(-60, 5, -30);
     camera.lookAt(-100, 0, 0);
 
@@ -128,8 +128,8 @@ function initTileset(scene) {
     const ogc3DTile = new OGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
-        //url: "./yamato/tileset.json",
-        //url: "./castle/tileset.json",
+        //url: "./apartment/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinSubsetTiled/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/arkcnfuk9fw/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a73faxnydqk/tileset.json",
@@ -141,12 +141,14 @@ function initTileset(scene) {
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
-            mesh.material.side = THREE.FrontSide;
+            mesh.material.side = THREE.DoubleSide;
         }
     });
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
-    //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), 100)
+    //ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -10)
+    //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -65)
+    //ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -80)
     //ogc3DTile.scale.set(0.01,0.01,0.01);
     //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here

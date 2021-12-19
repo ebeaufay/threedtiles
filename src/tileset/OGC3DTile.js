@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OBB } from "../geometry/obb";
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
+import {Cache} from "../cache/Cache";
 const path = require('path');
 
 const tilesToLoad = [];
@@ -11,7 +12,7 @@ function scheduleLoadTile(tile) {
 setInterval(() => {
     const tile = tilesToLoad.shift();
     if (!!tile) tile.load();
-}, 0)
+}, 5)
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
 
@@ -28,7 +29,8 @@ class OGC3DTile extends THREE.Object3D {
      *   parentBoundingVolume: optional,
      *   parentRefinement: optional,
      *   geometricErrorMultiplier: Double,
-     *   loadOutsideView: Boolean
+     *   loadOutsideView: Boolean,
+     *   cache : Cache
      * } properties 
      */
     constructor(properties) {
@@ -49,7 +51,7 @@ class OGC3DTile extends THREE.Object3D {
         this.json; // the json corresponding to this tile
         this.materialVisibility = false;
         this.inFrustum = true;
-
+        this.level = properties.level? properties.level : 0;
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
 
@@ -239,7 +241,7 @@ class OGC3DTile extends THREE.Object3D {
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
             if(metric<0 && self.hasMeshContent) return;
-            if (!self.hasMeshContent || metric < self.geometricError) {
+            if (!self.hasMeshContent || (metric < self.geometricError && !!self.meshContent)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     loadJsonChildren();
                     return;
@@ -289,6 +291,8 @@ class OGC3DTile extends THREE.Object3D {
                 });
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
+                }else{
+                    self.changeContentVisibility(true);
                 }
             }
         }
@@ -318,7 +322,8 @@ class OGC3DTile extends THREE.Object3D {
                     rootPath: self.rootPath,
                     geometricErrorMultiplier: self.geometricErrorMultiplier,
                     meshCallback: self.meshCallback,
-                    loadOutsideView: self.loadOutsideView
+                    loadOutsideView: self.loadOutsideView,
+                    level:self.level+1
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -448,4 +453,28 @@ class OGC3DTile extends THREE.Object3D {
         this.childrenTiles.forEach(child => child.setGeometricErrorMultiplier(geometricErrorMultiplier));
     }
 }
-export { OGC3DTile };
+
+/**
+ * 
+ * @param {Integer} size a number of vertices 
+ */
+function createMeshCache(size = 5000000, meshCallback = ()=>{}){
+    /* return new Cache(
+        (url, self)=>{
+            fetch(url, { signal: self.controller.signal }).then(result => {
+                if (!result.ok) {
+                    throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
+                }
+                result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
+                    mesh.traverse((o) => {
+                        if (o.isMesh) {
+                            o.material.visible = false;
+                        }
+                    });
+                    return mesh;
+                }).catch(error => { });
+            }
+        }
+    ) */
+}
+export { OGC3DTile, createMeshCache };
