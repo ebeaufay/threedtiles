@@ -128,7 +128,6 @@ function initTileset(scene) {
     const ogc3DTile = new OGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
-        //url: "./apartment/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinSubsetTiled/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/arkcnfuk9fw/tileset.json",

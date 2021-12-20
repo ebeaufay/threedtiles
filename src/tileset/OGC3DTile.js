@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OBB } from "../geometry/obb";
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
-import {Cache} from "../cache/Cache";
+import { Cache } from "../cache/Cache";
 const path = require('path');
 
 const tilesToLoad = [];
@@ -51,7 +51,7 @@ class OGC3DTile extends THREE.Object3D {
         this.json; // the json corresponding to this tile
         this.materialVisibility = false;
         this.inFrustum = true;
-        this.level = properties.level? properties.level : 0;
+        this.level = properties.level ? properties.level : 0;
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
 
@@ -220,7 +220,7 @@ class OGC3DTile extends THREE.Object3D {
     }
 
 
-    update(camera){
+    update(camera) {
         const frustum = new THREE.Frustum();
         frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
         this._update(camera, frustum);
@@ -232,15 +232,15 @@ class OGC3DTile extends THREE.Object3D {
             var metric = self.calculateUpdateMetric(camera, frustum);
         }
 
+        updateNodeVisibility(metric);
         updateTree(metric);
         self.childrenTiles.forEach(child => child._update(camera, frustum));
-        updateNodeVisibility(metric);
         trimTree(metric);
 
 
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
-            if(metric<0 && self.hasMeshContent) return;
+            if (metric < 0 && self.hasMeshContent) return;
             if (!self.hasMeshContent || (metric < self.geometricError && !!self.meshContent)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     loadJsonChildren();
@@ -255,7 +255,7 @@ class OGC3DTile extends THREE.Object3D {
             if (!self.hasMeshContent) return;
 
             // mesh content not yet loaded
-            if(!self.meshContent) {
+            if (!self.meshContent) {
                 return;
             }
 
@@ -264,7 +264,7 @@ class OGC3DTile extends THREE.Object3D {
                 self.inFrustum = false;
                 self.changeContentVisibility(!!self.loadOutsideView);
                 return;
-            }else{
+            } else {
                 self.inFrustum = true;
             }
 
@@ -282,7 +282,7 @@ class OGC3DTile extends THREE.Object3D {
                 // if children are visible and have been displayed, can be hidden
                 var allChildrenReady = true;
                 self.childrenTiles.every(child => {
-                    
+
                     if (!child.isReady()) {
                         allChildrenReady = false;
                         return false;
@@ -291,8 +291,9 @@ class OGC3DTile extends THREE.Object3D {
                 });
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
-                }else{
-                    self.changeContentVisibility(true);
+                } else {
+                    //self.changeContentVisibility(true);
+                    
                 }
             }
         }
@@ -309,7 +310,7 @@ class OGC3DTile extends THREE.Object3D {
                     return;
                 }
             }
-            
+
         }
 
         function loadJsonChildren() {
@@ -323,7 +324,7 @@ class OGC3DTile extends THREE.Object3D {
                     geometricErrorMultiplier: self.geometricErrorMultiplier,
                     meshCallback: self.meshCallback,
                     loadOutsideView: self.loadOutsideView,
-                    level:self.level+1
+                    level: self.level + 1
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -338,13 +339,13 @@ class OGC3DTile extends THREE.Object3D {
      */
     isReady() {
         // if outside frustum
-        if(!this.inFrustum) return true;
+        if (!this.inFrustum) return true;
 
         // if json is not done loading
         if (this.hasUnloadedJSONContent) return false;
 
         // if this tile has no mesh content or if it's marked as visible false, look at children
-        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility) && this.childrenTiles.length>0) {
+        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility) && this.childrenTiles.length > 0) {
             var allChildrenReady = true;
             this.childrenTiles.every(child => {
                 if (!child.isReady()) {
@@ -357,11 +358,11 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         // if this tile has no mesh content
-        if(!this.hasMeshContent){
+        if (!this.hasMeshContent) {
             return true;
         }
         // if mesh content not yet loaded
-        if(!this.meshContent) {
+        if (!this.meshContent) {
             return false;
         }
 
@@ -376,10 +377,11 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         return false;
-        
+
     }
 
-    
+
+
 
     changeContentVisibility(visibility) {
         const self = this;
@@ -437,8 +439,8 @@ class OGC3DTile extends THREE.Object3D {
             if (distance == 0) {
                 return 0;
             }
-            const scale = this.matrixWorld.getMaxScaleOnAxis ();
-            return ((distance / 100) / this.geometricErrorMultiplier)/scale;
+            const scale = this.matrixWorld.getMaxScaleOnAxis();
+            return ((distance / 100) / this.geometricErrorMultiplier) / scale;
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported
@@ -458,7 +460,7 @@ class OGC3DTile extends THREE.Object3D {
  * 
  * @param {Integer} size a number of vertices 
  */
-function createMeshCache(size = 5000000, meshCallback = ()=>{}){
+function createMeshCache(size = 5000000, meshCallback = () => { }) {
     /* return new Cache(
         (url, self)=>{
             fetch(url, { signal: self.controller.signal }).then(result => {
