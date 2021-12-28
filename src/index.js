@@ -3,6 +3,12 @@ import * as THREE from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { OGC3DTile } from "./tileset/OGC3DTile";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import back from './images/skybox/back.png';
+import front from './images/skybox/front.png';
+import top from './images/skybox/top.png';
+import bottom from './images/skybox/bottom.png';
+import right from './images/skybox/right.png';
+import left from './images/skybox/left.png';
 
 
 const scene = initScene();
@@ -21,12 +27,12 @@ animate();
 function initSkybox(controller, camera, scene) {
     const geometry = new THREE.BoxGeometry(8000, 8000, 8000);
     const textures = [
-        loadTexture("./skybox/back.png"),
-        loadTexture("./skybox/front.png"),
-        loadTexture("./skybox/top.png"),
-        loadTexture("./skybox/bottom.png"),
-        loadTexture("./skybox/right.png"),
-        loadTexture("./skybox/left.png"),
+        loadTexture(back),
+        loadTexture(front),
+        loadTexture(top),
+        loadTexture(bottom),
+        loadTexture(right),
+        loadTexture(left),
     ];
     function loadTexture(url) {
         return new THREE.TextureLoader().load(url, (texture => {
@@ -117,8 +123,8 @@ function initStats(dom) {
 
 function initCamera() {
     const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1, 10000);
-    camera.position.set(-60, 5, -30);
-    camera.lookAt(-100, 0, 0);
+    camera.position.set(-60, 80, -30);
+    camera.lookAt(-100, 40, 0);
 
     return camera;
 }
@@ -126,15 +132,9 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinSubsetTiled/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/arkcnfuk9fw/tileset.json",
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a73faxnydqk/tileset.json",
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/e63mubnpmg/tileset.json",
-        //url: "https://assets.cesium.com/697512/tileset.json?v=1",
-        //url:"https://a.3d.blc.shc.eu/WAB/base_layer/cesium_mesh_2020/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinSubsetTiled/tileset.json",
         geometricErrorMultiplier: 1,
         loadOutsideView: true,
         meshCallback: mesh => {
@@ -148,7 +148,7 @@ function initTileset(scene) {
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -10)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -65)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -80)
-    //ogc3DTile.scale.set(0.01,0.01,0.01);
+    //ogc3DTile.scale.set(0.1,0.1,0.1);
     //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
 
@@ -177,7 +177,7 @@ function initTileset(scene) {
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
-    controller.target.set(-20, -20, 35);
+    controller.target.set(-20, 40, 35);
     controller.minDistance = 1;
     controller.maxDistance = 500;
     controller.update();

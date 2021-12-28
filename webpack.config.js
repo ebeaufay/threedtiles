@@ -83,19 +83,13 @@ module.exports = {
           }]
         },
         {
-          test: /\.(png|gif)$/,
-          use: [{
-            loader: "file-loader",
-            options: {
-              name: "images/[name].[contenthash].[ext]"
-            }
-          }]
-        }
+          test: /\.(png|svg|jpg|jpeg|gif)$/i,
+          type: 'asset/resource',
+        },
       ],
     },
     optimization: {
       minimizer: [new TerserPlugin({
-        cache: true,
         parallel: true,
         terserOptions: {
             ecma: undefined,
@@ -119,8 +113,14 @@ module.exports = {
     devServer: {
       hot: true,
       open: true,
-      openPage: "",
       port: DEFAULT_WEBPACK_PORT
+    },
+    resolve: {
+      extensions: [".js", ".jsx", ".json", ".ts", ".tsx"],// other stuff
+      fallback: {
+        "fs": false,
+        "path": require.resolve("path-browserify")
+      }
     }
   
 };
