@@ -58,7 +58,8 @@ In order to reach a steady 60 FPS, you can specify a TilesetStats object.
 This object is basically the Stats object from the Three.js samples without the UI component.
 It must be updated in the animate function and given to the tileset at construction.
 ```
-import TilesetStats from './tileset/TilesetStats';
+import TilesetStats from '@jdultra/threedtiles/src/tileset/TilesetStats';
+
 const tilesetStats = TilesetStats();
 
 const ogc3DTile = new OGC3DTile({
@@ -105,6 +106,8 @@ The limitation is that all the tilesets using the same cache will have the same 
 If a TilesetStats object is passed, it will be used to monitor the size of the cache when the browser allows it, otherwise, each cache is limitted to 1000 items.
 
 ```
+import { TileLoader } from "@jdultra/threedtiles/src/tileset/TileLoader";
+
 const ogc3DTile = new OGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         tileLoader: new TileLoader(mesh => {
