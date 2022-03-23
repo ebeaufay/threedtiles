@@ -1,18 +1,10 @@
 import * as THREE from 'three';
 import { OBB } from "../geometry/obb";
-import { B3DMDecoder } from "../decoder/B3DMDecoder";
-import { Cache } from "../cache/Cache";
+import { TileLoader } from "./TileLoader";
+import { v4 as uuidv4 } from "uuid";
+import { setIntervalAsync } from 'set-interval-async/dynamic';
+// import { clearIntervalAsync } from 'set-interval-async';
 const path = require('path');
-
-const tilesToLoad = [];
-function scheduleLoadTile(tile) {
-    tilesToLoad.push(tile);
-}
-
-setInterval(() => {
-    const tile = tilesToLoad.shift();
-    if (!!tile) tile.load();
-}, 5)
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
 
@@ -30,13 +22,39 @@ class OGC3DTile extends THREE.Object3D {
      *   parentRefinement: optional,
      *   geometricErrorMultiplier: Double,
      *   loadOutsideView: Boolean,
-     *   cache : Cache
+     *   tileLoader : TileLoader,
+     *   stats: TilesetStats
      * } properties 
      */
     constructor(properties) {
         super();
+        const self = this;
+        this.uuid = uuidv4();
+        if(!!properties.tileLoader){
+            this.tileLoader = properties.tileLoader;
+        }else{
+            this.tileLoader = new TileLoader(mesh=>{
+                mesh.material.wireframe = false;
+                mesh.material.side = THREE.DoubleSide;
+            });
+        }
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
+        if(properties.stats){
+            // Automatic geometric error multiplier
+            this.stats = properties.stats;
+            setIntervalAsync(()=>{
+                const framerate = self.stats.fps();
+                if(framerate<0) return;
+                if(framerate<58){
+                    self.setGeometricErrorMultiplier(Math.max(0.05, self.geometricErrorMultiplier - 0.05));
+                }else if(framerate>58){
+                    self.setGeometricErrorMultiplier(self.geometricErrorMultiplier + 0.05);
+                }
+                self.setGeometricErrorMultiplier(self.geometricErrorMultiplier * (self.stats.fps()/60));
+            }, 1000);
+        }
+
         this.meshCallback = properties.meshCallback;
         this.loadOutsideView = properties.loadOutsideView;
 
@@ -55,7 +73,6 @@ class OGC3DTile extends THREE.Object3D {
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
 
-        const self = this;
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
         } else if (properties.url) { // If only the url to the tileset.json is provided
@@ -95,9 +112,9 @@ class OGC3DTile extends THREE.Object3D {
         }
         // decode transform
         if (!!this.json.transform) {
-            //this.matrix = new THREE.Matrix4();
-            this.matrix.elements = this.json.transform;
-            this.updateWorldMatrix(false, false);
+            let mat = new THREE.Matrix4();
+            mat.elements = this.json.transform;
+            this.applyMatrix4(mat);
         }
         // decode volume
         if (!!this.json.boundingVolume) {
@@ -124,11 +141,13 @@ class OGC3DTile extends THREE.Object3D {
             } else {
                 this.hasMeshContent = true;
             }
-            scheduleLoadTile(this);
+            this.load();
+            //scheduleLoadTile(this);
         }
     }
     load() {
         var self = this;
+        if(self.deleted) return;
         if (!!self.json.content) {
             let url;
             if (!!self.json.content.uri) {
@@ -146,24 +165,24 @@ class OGC3DTile extends THREE.Object3D {
             }
 
             if (!!url) {
-                self.controller = new AbortController();
-                fetch(url, { signal: self.controller.signal }).then(result => {
-                    if (!result.ok) {
-                        throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
-                    }
-                    if (url.includes("b3dm")) {// if the content is B3DM
-                        result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
-                            mesh.traverse((o) => {
-                                if (o.isMesh) {
-                                    o.material.visible = false;
-                                }
-                            });
-                            self.add(mesh);
-                            self.meshContent = mesh;
-
-
-                        }).catch(error => { });
-                    } else if (url.includes("json")) {// if the content is json
+                if(url.includes(".b3dm")){
+                    self.contentURL = url;
+                    self.tileLoader.get(this.uuid, url, mesh=>{
+                        if(!!self.deleted) return;
+                        mesh.traverse((o) => {
+                            if (o.isMesh) {
+                                o.material.visible = false;
+                            }
+                        });
+                        self.add(mesh);
+                        self.meshContent = mesh;
+                    })
+                }else if(url.includes(".json")){
+                    self.controller = new AbortController();
+                    fetch(url, { signal: self.controller.signal }).then(result => {
+                        if (!result.ok) {
+                            throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
+                        }
                         result.json().then(json => {
                             // when json content is downloaded, it is inserted into this tile's original JSON as a child
                             // and the content object is deleted from the original JSON
@@ -173,50 +192,36 @@ class OGC3DTile extends THREE.Object3D {
                             delete self.json.content;
                             self.hasUnloadedJSONContent = false;
                         }).catch(error => { });
-                    }
-                }).catch(error => {
-                });
+                    }).catch(error => {});
+                }
+                
             }
         }
     }
 
-    disposeChildren() {
-        var self = this;
-
-        self.childrenTiles.forEach(tile => tile.traverse(function (element) {
+    dispose(){
+        
+        const self = this;
+        self.deleted = true;
+        this.traverse(function (element) {
+            if(!!element.contentURL){
+                self.tileLoader.invalidate(element.contentURL, element.uuid);
+            }
             if (!!element.controller) { // abort tile request
                 element.controller.abort();
             }
-            if (element.material) {
-                // dispose materials
-                if (element.material.length) {
-                    for (let i = 0; i < element.material.length; ++i) {
-                        element.material[i].dispose();
-                    }
-                }
-                else {
-                    element.material.dispose()
-                }
+            
+        });
+        this.parent = null;
+        this.dispatchEvent({ type: 'removed' });
+    }
+    disposeChildren() {
+        var self = this;
 
-            }
-            if (element.geometry) {
-                // dispose geometry
-                element.geometry.dispose();
-
-            }
-        }));
-        for (let i = 0; i < this.childrenTiles.length; i++) {
-
-            const object = this.childrenTiles[i];
-
-            object.parent = null;
-
-            object.dispatchEvent({ type: 'removed' });
-
-        }
-        this.childrenTiles = [];
-        this.children = [];
-        if (!!this.meshContent) this.children.push(this.meshContent);
+        self.childrenTiles.forEach(tile => tile.dispose());
+        self.childrenTiles = [];
+        self.children = [];
+        if (!!self.meshContent) self.children.push(self.meshContent);
     }
 
 
@@ -228,14 +233,14 @@ class OGC3DTile extends THREE.Object3D {
     _update(camera, frustum) {
         const self = this;
 
+        self.childrenTiles.forEach(child => child._update(camera, frustum));
         if (!!self.boundingVolume && !!self.geometricError) {
-            var metric = self.calculateUpdateMetric(camera, frustum);
+            self.metric = self.calculateUpdateMetric(camera, frustum);
         }
 
-        updateNodeVisibility(metric);
-        updateTree(metric);
-        self.childrenTiles.forEach(child => child._update(camera, frustum));
-        trimTree(metric);
+        updateNodeVisibility(self.metric);
+        updateTree(self.metric);
+        trimTree(self.metric);
 
 
         function updateTree(metric) {
@@ -322,9 +327,9 @@ class OGC3DTile extends THREE.Object3D {
                     json: childJSON,
                     rootPath: self.rootPath,
                     geometricErrorMultiplier: self.geometricErrorMultiplier,
-                    meshCallback: self.meshCallback,
                     loadOutsideView: self.loadOutsideView,
-                    level: self.level + 1
+                    level: self.level + 1,
+                    tileLoader: self.tileLoader
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -376,7 +381,7 @@ class OGC3DTile extends THREE.Object3D {
             return true;
         }
 
-        return false;
+        return true;
 
     }
 
@@ -455,28 +460,4 @@ class OGC3DTile extends THREE.Object3D {
         this.childrenTiles.forEach(child => child.setGeometricErrorMultiplier(geometricErrorMultiplier));
     }
 }
-
-/**
- * 
- * @param {Integer} size a number of vertices 
- */
-function createMeshCache(size = 5000000, meshCallback = () => { }) {
-    /* return new Cache(
-        (url, self)=>{
-            fetch(url, { signal: self.controller.signal }).then(result => {
-                if (!result.ok) {
-                    throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
-                }
-                result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
-                    mesh.traverse((o) => {
-                        if (o.isMesh) {
-                            o.material.visible = false;
-                        }
-                    });
-                    return mesh;
-                }).catch(error => { });
-            }
-        }
-    ) */
-}
-export { OGC3DTile, createMeshCache };
+export { OGC3DTile };

@@ -1,7 +1,9 @@
 import "regenerator-runtime/runtime.js";
 import * as THREE from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
+import TilesetStats from './tileset/TilesetStats';
 import { OGC3DTile } from "./tileset/OGC3DTile";
+import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import back from './images/skybox/back.png';
 import front from './images/skybox/front.png';
@@ -11,13 +13,14 @@ import right from './images/skybox/right.png';
 import left from './images/skybox/left.png';
 
 
+
 const scene = initScene();
+const tilesetStats = TilesetStats();
 const domContainer = initDomContainer("screen");
 const camera = initCamera();
 const ogc3DTiles = initTileset(scene);
-initLODMultiplierSlider(ogc3DTiles);
 const controller = initController(camera, domContainer);
-const skybox = initSkybox(controller, camera, scene);
+//const skybox = initSkybox(controller, camera, scene);
 
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
@@ -55,27 +58,32 @@ function initSkybox(controller, camera, scene) {
     scene.add(mesh);
     return mesh;
 }
-function initLODMultiplierSlider(tileset) {
-    var slider = document.getElementById("lodMultiplier");
-    var output = document.getElementById("multiplierValue");
-    output.innerHTML = slider.value;
-
-    slider.oninput = () => {
-        tileset.setGeometricErrorMultiplier(slider.value)
-        output.innerHTML = slider.value;
-    }
-}
 function initScene() {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xFF0000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
+    scene.background = new THREE.Color(0x000000);
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    dirLight.position.set(-400, 500, -100);
+    /* var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(1000, 0, 1000);
     dirLight.target.position.set(0, 0, 0);
 
-    scene.add(dirLight);
-    scene.add(dirLight.target);
+    let lightGroup = new THREE.Object3D();
+    lightGroup.add(dirLight);
+    lightGroup.add(dirLight.target);
+
+    scene.add(lightGroup);
+    //scene.add(dirLight.target);
+
+    let i = 0;
+    setInterval(()=>{
+        i+=0.1;
+        dirLight.position.copy(new THREE.Vector3(Math.sin(i)*1000, Math.cos(i)*1000, Math.cos(i)*1000));
+        dirLight.updateMatrixWorld();
+        dirLight.updateMatrix();
+        dirLight.target.updateMatrixWorld();
+        dirLight.target.updateMatrix();
+        //dirLight.needsUpdate = true;
+    }, 20); */
     return scene;
 }
 
@@ -115,16 +123,16 @@ function initRenderer(camera, dom) {
 }
 
 function initStats(dom) {
-    const stats = new Stats();
-    dom.appendChild(stats.dom);
+    const stats = Stats();
+    document.body.appendChild(stats.dom);
     return stats;
 }
 
 
 function initCamera() {
     const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1, 10000);
-    camera.position.set(-60, 80, -30);
-    camera.lookAt(-100, 40, 0);
+    camera.position.set(10, 10, 10);
+    //camera.lookAt(15, 25, 0);
 
     return camera;
 }
@@ -132,28 +140,34 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/castleX/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinSubsetTiled/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         geometricErrorMultiplier: 1,
         loadOutsideView: true,
-        meshCallback: mesh => {
+        tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-        }
+        }, tilesetStats),
+        stats: tilesetStats
     });
+    
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -10)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -65)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -80)
-    //ogc3DTile.scale.set(0.1,0.1,0.1);
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
+    //ogc3DTile.scale.set(0.0001,0.0001,0.0001);
+    // ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5) // Z-UP to Y-UP
+    // ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -16.5)
+    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), 0)
+    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -9.5)
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
+
+    
 
     var interval ;
     document.addEventListener('keyup', (e) => {
+        console.log(camera.position)
         if(!e.key || e.key !== "p") return;
         if(!!interval){
             clearInterval(interval);
@@ -165,10 +179,9 @@ function initTileset(scene) {
     function startInterval(){
         interval = setInterval(function () {
             ogc3DTile.update(camera);
-        }, 200);
+        }, 50);
     }
     startInterval();
-    
 
     scene.add(ogc3DTile)
     return ogc3DTile;
@@ -177,9 +190,9 @@ function initTileset(scene) {
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
-    controller.target.set(-20, 40, 35);
+    controller.target.set(-11.50895,0.058452500000001, 3.1369285);
     controller.minDistance = 1;
-    controller.maxDistance = 500;
+    controller.maxDistance = 5000;
     controller.update();
     return controller;
 }
@@ -190,7 +203,7 @@ function animate() {
 
     camera.updateMatrixWorld();
     renderer.render(scene, camera);
-
+    tilesetStats.update();
     stats.update();
 
 }

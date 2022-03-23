@@ -1,13 +1,10 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as THREE from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { LegacyGLTFLoader } from './LegacyGLTFLoader.js';
-import { Color, DoubleSide, BufferAttribute, Mesh } from "three";
-import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const gltfLoader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath( '/src/draco/' );
+dracoLoader.setDecoderPath( 'https://www.gstatic.com/draco/versioned/decoders/1.4.3/' );
 gltfLoader.setDRACOLoader( dracoLoader );
 const legacyGLTFLoader = new LegacyGLTFLoader();
 const B3DMDecoder = {
@@ -106,7 +103,7 @@ const B3DMDecoder = {
  * @param {*} scene 
  * @returns 
  */
-function mergeColoredObject(scene) {
+/*function mergeColoredObject(scene) {
 	
 	const coloredMeshes = {};
 	const texturedMeshes = {};
@@ -213,7 +210,7 @@ function mergeColoredObject(scene) {
 	console.log();
 	scene.matrix = new THREE.Matrix4();
 	return scene;
-}
+}*/
 
 export { B3DMDecoder }
 

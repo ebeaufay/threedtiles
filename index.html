@@ -4,53 +4,10 @@
 <head>
   <meta charset="utf-8" />
   <title>Three 3DTiles viewer sample</title>
-  <style>
-    .slidecontainer {
-      width: 100%;
-    }
-
-    .slider {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 15px;
-      border-radius: 5px;
-      background: #d3d3d3;
-      outline: none;
-      opacity: 0.7;
-      -webkit-transition: .2s;
-      transition: opacity .2s;
-    }
-
-    .slider:hover {
-      opacity: 1;
-    }
-
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      background: #0439aa;
-      cursor: pointer;
-    }
-
-    .slider::-moz-range-thumb {
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      background: #04AA6D;
-      cursor: pointer;
-    }
-  </style>
 </head>
 
 <body>
   <div id="screen"></div>
-  <div style="position: absolute; top: 1%; z-index: 100; right:1%; ">
-    <input type="range" min="0.1" max="4" value="1.0", step="0.1" class="slider" id="lodMultiplier" >
-    <p style="color: #0439aa;">LOD multiplier: <span id="multiplierValue"></span></p>
-  </div>
   <div style="position: absolute; bottom: 1%; z-index: 100;"> 
     <a href="https://openheritage3d.org/project.php?id=taz6-n215">ORIGINAL MODEL</a>
   </div>
