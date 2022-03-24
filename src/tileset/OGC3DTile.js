@@ -23,35 +23,39 @@ class OGC3DTile extends THREE.Object3D {
      *   geometricErrorMultiplier: Double,
      *   loadOutsideView: Boolean,
      *   tileLoader : TileLoader,
-     *   stats: TilesetStats
+     *   stats: TilesetStats,
+     *   meshCallback: function
      * } properties 
      */
     constructor(properties) {
         super();
         const self = this;
         this.uuid = uuidv4();
-        if(!!properties.tileLoader){
+        if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
-        }else{
-            this.tileLoader = new TileLoader(mesh=>{
-                mesh.material.wireframe = false;
-                mesh.material.side = THREE.DoubleSide;
-            });
+        } else {
+            this.tileLoader = new TileLoader(!properties.meshCallback ?
+                mesh => {
+                    mesh.material.wireframe = false;
+                    mesh.material.side = THREE.DoubleSide;
+                } : properties.meshCallback);
         }
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
-        if(properties.stats){
+        if (properties.stats) {
             // Automatic geometric error multiplier
             this.stats = properties.stats;
-            setIntervalAsync(()=>{
+
+            setIntervalAsync(() => {
+                if (!!document.hidden) return;
                 const framerate = self.stats.fps();
-                if(framerate<0) return;
-                if(framerate<58){
+                if (framerate < 0) return;
+                if (framerate < 58) {
                     self.setGeometricErrorMultiplier(Math.max(0.05, self.geometricErrorMultiplier - 0.05));
-                }else if(framerate>58){
+                } else if (framerate > 58) {
                     self.setGeometricErrorMultiplier(self.geometricErrorMultiplier + 0.05);
                 }
-                self.setGeometricErrorMultiplier(self.geometricErrorMultiplier * (self.stats.fps()/60));
+                console.log(self.geometricErrorMultiplier)
             }, 1000);
         }
 
@@ -147,7 +151,7 @@ class OGC3DTile extends THREE.Object3D {
     }
     load() {
         var self = this;
-        if(self.deleted) return;
+        if (self.deleted) return;
         if (!!self.json.content) {
             let url;
             if (!!self.json.content.uri) {
@@ -165,10 +169,10 @@ class OGC3DTile extends THREE.Object3D {
             }
 
             if (!!url) {
-                if(url.includes(".b3dm")){
+                if (url.includes(".b3dm")) {
                     self.contentURL = url;
-                    self.tileLoader.get(this.uuid, url, mesh=>{
-                        if(!!self.deleted) return;
+                    self.tileLoader.get(this.uuid, url, mesh => {
+                        if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
                                 o.material.visible = false;
@@ -177,7 +181,7 @@ class OGC3DTile extends THREE.Object3D {
                         self.add(mesh);
                         self.meshContent = mesh;
                     })
-                }else if(url.includes(".json")){
+                } else if (url.includes(".json")) {
                     self.controller = new AbortController();
                     fetch(url, { signal: self.controller.signal }).then(result => {
                         if (!result.ok) {
@@ -192,25 +196,25 @@ class OGC3DTile extends THREE.Object3D {
                             delete self.json.content;
                             self.hasUnloadedJSONContent = false;
                         }).catch(error => { });
-                    }).catch(error => {});
+                    }).catch(error => { });
                 }
-                
+
             }
         }
     }
 
-    dispose(){
-        
+    dispose() {
+
         const self = this;
         self.deleted = true;
         this.traverse(function (element) {
-            if(!!element.contentURL){
+            if (!!element.contentURL) {
                 self.tileLoader.invalidate(element.contentURL, element.uuid);
             }
             if (!!element.controller) { // abort tile request
                 element.controller.abort();
             }
-            
+
         });
         this.parent = null;
         this.dispatchEvent({ type: 'removed' });
@@ -298,7 +302,7 @@ class OGC3DTile extends THREE.Object3D {
                     self.changeContentVisibility(false);
                 } else {
                     //self.changeContentVisibility(true);
-                    
+
                 }
             }
         }

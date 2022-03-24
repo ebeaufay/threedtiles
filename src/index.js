@@ -5,12 +5,7 @@ import TilesetStats from './tileset/TilesetStats';
 import { OGC3DTile } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import back from './images/skybox/back.png';
-import front from './images/skybox/front.png';
-import top from './images/skybox/top.png';
-import bottom from './images/skybox/bottom.png';
-import right from './images/skybox/right.png';
-import left from './images/skybox/left.png';
+
 
 
 
@@ -20,70 +15,17 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera();
 const ogc3DTiles = initTileset(scene);
 const controller = initController(camera, domContainer);
-//const skybox = initSkybox(controller, camera, scene);
 
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 
 animate();
 
-function initSkybox(controller, camera, scene) {
-    const geometry = new THREE.BoxGeometry(8000, 8000, 8000);
-    const textures = [
-        loadTexture(back),
-        loadTexture(front),
-        loadTexture(top),
-        loadTexture(bottom),
-        loadTexture(right),
-        loadTexture(left),
-    ];
-    function loadTexture(url) {
-        return new THREE.TextureLoader().load(url, (texture => {
-            texture.wrapS = THREE.ClampToEdgeWrapping;
-            texture.wrapT = THREE.ClampToEdgeWrapping;
-            texture.magFilter = THREE.LinearFilter;
-            texture.minFilter = THREE.LinearFilter;
-        }))
 
-    }
-    const materials = [];
-    textures.forEach(tex => {
-        materials.push(new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide }));
-    })
-    const mesh = new THREE.Mesh(geometry, materials);
-    mesh.position.copy(camera.position);
-    controller.addEventListener("change", () => {
-        mesh.position.copy(camera.position);
-    });
-    scene.add(mesh);
-    return mesh;
-}
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
-
-    /* var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    dirLight.position.set(1000, 0, 1000);
-    dirLight.target.position.set(0, 0, 0);
-
-    let lightGroup = new THREE.Object3D();
-    lightGroup.add(dirLight);
-    lightGroup.add(dirLight.target);
-
-    scene.add(lightGroup);
-    //scene.add(dirLight.target);
-
-    let i = 0;
-    setInterval(()=>{
-        i+=0.1;
-        dirLight.position.copy(new THREE.Vector3(Math.sin(i)*1000, Math.cos(i)*1000, Math.cos(i)*1000));
-        dirLight.updateMatrixWorld();
-        dirLight.updateMatrix();
-        dirLight.target.updateMatrixWorld();
-        dirLight.target.updateMatrix();
-        //dirLight.needsUpdate = true;
-    }, 20); */
     return scene;
 }
 
@@ -132,7 +74,6 @@ function initStats(dom) {
 function initCamera() {
     const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1, 10000);
     camera.position.set(10, 10, 10);
-    //camera.lookAt(15, 25, 0);
 
     return camera;
 }
@@ -179,7 +120,7 @@ function initTileset(scene) {
     function startInterval(){
         interval = setInterval(function () {
             ogc3DTile.update(camera);
-        }, 50);
+        }, 25);
     }
     startInterval();
 
