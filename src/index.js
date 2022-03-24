@@ -7,8 +7,6 @@ import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 
-
-
 const scene = initScene();
 const tilesetStats = TilesetStats();
 const domContainer = initDomContainer("screen");
@@ -20,7 +18,6 @@ const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 
 animate();
-
 
 function initScene() {
     const scene = new THREE.Scene();

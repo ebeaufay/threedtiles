@@ -55,7 +55,6 @@ class OGC3DTile extends THREE.Object3D {
                 } else if (framerate > 58) {
                     self.setGeometricErrorMultiplier(self.geometricErrorMultiplier + 0.05);
                 }
-                console.log(self.geometricErrorMultiplier)
             }, 1000);
         }
 
