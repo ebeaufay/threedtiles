@@ -23,8 +23,9 @@ class OGC3DTile extends THREE.Object3D {
      *   geometricErrorMultiplier: Double,
      *   loadOutsideView: Boolean,
      *   tileLoader : TileLoader,
-     *   stats: TilesetStats,
-     *   meshCallback: function
+     *   meshCallback: function,
+     *   cameraOnLoad: camera,
+     *   parentTile: OGC3DTile
      * } properties 
      */
     constructor(properties) {
@@ -42,24 +43,11 @@ class OGC3DTile extends THREE.Object3D {
         }
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
-        if (properties.stats) {
-            // Automatic geometric error multiplier
-            this.stats = properties.stats;
-
-            setIntervalAsync(() => {
-                if (!!document.hidden) return;
-                const framerate = self.stats.fps();
-                if (framerate < 0) return;
-                if (framerate < 58) {
-                    self.setGeometricErrorMultiplier(Math.max(0.05, self.geometricErrorMultiplier - 0.05));
-                } else if (framerate > 58) {
-                    self.setGeometricErrorMultiplier(self.geometricErrorMultiplier + 0.05);
-                }
-            }, 1000);
-        }
 
         this.meshCallback = properties.meshCallback;
         this.loadOutsideView = properties.loadOutsideView;
+        this.cameraOnLoad = properties.cameraOnLoad;
+        this.parentTile = properties.parentTile;
 
         // declare properties specific to the tile for clarity
         this.childrenTiles = [];
@@ -179,23 +167,37 @@ class OGC3DTile extends THREE.Object3D {
                         });
                         self.add(mesh);
                         self.meshContent = mesh;
-                    })
+                    }, !self.cameraOnLoad ? () => 0 : () => {
+                        return self.calculateDistanceToCamera(self.cameraOnLoad);
+                    }, () => self.getSiblings(), self.level, self.uuid);
                 } else if (url.includes(".json")) {
-                    self.controller = new AbortController();
-                    fetch(url, { signal: self.controller.signal }).then(result => {
-                        if (!result.ok) {
-                            throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
-                        }
-                        result.json().then(json => {
-                            // when json content is downloaded, it is inserted into this tile's original JSON as a child
-                            // and the content object is deleted from the original JSON
-                            if (!self.json.children) self.json.children = [];
-                            json.rootPath = path.dirname(url);
-                            self.json.children.push(json);
-                            delete self.json.content;
-                            self.hasUnloadedJSONContent = false;
+                    self.tileLoader.get(this.uuid, url, json => {
+                        if (!!self.deleted) return;
+                        if (!self.json.children) self.json.children = [];
+                        json.rootPath = path.dirname(url);
+                        self.json.children.push(json);
+                        delete self.json.content;
+                        self.hasUnloadedJSONContent = false;
+                    });
+
+                    /* self.controller = new AbortController();
+                    setTimeout(() => {
+                        fetch(url, { signal: self.controller.signal }).then(result => {
+                            if (!result.ok) {
+                                throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
+                            }
+                            result.json().then(json => {
+                                // when json content is downloaded, it is inserted into this tile's original JSON as a child
+                                // and the content object is deleted from the original JSON
+                                if (!self.json.children) self.json.children = [];
+                                json.rootPath = path.dirname(url);
+                                self.json.children.push(json);
+                                delete self.json.content;
+                                self.hasUnloadedJSONContent = false;
+                            }).catch(error => { });
                         }).catch(error => { });
-                    }).catch(error => { });
+                    }, 0); */
+
                 }
 
             }
@@ -216,6 +218,7 @@ class OGC3DTile extends THREE.Object3D {
 
         });
         this.parent = null;
+        this.parentTile = null;
         this.dispatchEvent({ type: 'removed' });
     }
     disposeChildren() {
@@ -324,6 +327,7 @@ class OGC3DTile extends THREE.Object3D {
         function loadJsonChildren() {
             self.json.children.forEach(childJSON => {
                 let childTile = new OGC3DTile({
+                    parentTile: self,
                     parentGeometricError: self.geometricError,
                     parentBoundingVolume: self.boundingVolume,
                     parentRefinement: self.refinement,
@@ -332,7 +336,8 @@ class OGC3DTile extends THREE.Object3D {
                     geometricErrorMultiplier: self.geometricErrorMultiplier,
                     loadOutsideView: self.loadOutsideView,
                     level: self.level + 1,
-                    tileLoader: self.tileLoader
+                    tileLoader: self.tileLoader,
+                    cameraOnLoad: camera
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -455,9 +460,43 @@ class OGC3DTile extends THREE.Object3D {
             //throw Error("Region bounding volume not supported");
             return -1;
         }
-
     }
 
+    getSiblings() {
+        const self = this;
+        const tiles = [];
+        if (!self.parentTile) return tiles;
+        let p = self.parentTile;
+        while (!p.hasMeshContent && !!p.parentTile) {
+            p = p.parentTile;
+        }
+        p.childrenTiles.forEach(child => {
+            if (!!child && child != self) {
+                while (!child.hasMeshContent && !!child.childrenTiles[0]) {
+                    child = child.childrenTiles[0];
+                }
+                tiles.push(child);
+            }
+        });
+        return tiles;
+    }
+    calculateDistanceToCamera(camera) {
+        if (this.boundingVolume instanceof OBB) {
+            // box
+            tempSphere.copy(this.boundingVolume.sphere);
+            tempSphere.applyMatrix4(this.matrixWorld);
+            //if (!frustum.intersectsSphere(tempSphere)) return -1;
+        } else if (this.boundingVolume instanceof THREE.Sphere) {
+            //sphere
+            tempSphere.copy(this.boundingVolume);
+            tempSphere.applyMatrix4(this.matrixWorld);
+            //if (!frustum.intersectsSphere(tempSphere)) return -1;
+        }
+        if (this.boundingVolume instanceof THREE.Box3) {
+            return -1; // region not supported
+        }
+        return Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
+    }
     setGeometricErrorMultiplier(geometricErrorMultiplier) {
         this.geometricErrorMultiplier = geometricErrorMultiplier;
         this.childrenTiles.forEach(child => child.setGeometricErrorMultiplier(geometricErrorMultiplier));
