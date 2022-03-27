@@ -34,8 +34,7 @@ setInterval(function () {
 - callback on loaded geometry to assign a custom material or use the meshes for computations.
 - Optionally load low detail tiles outside of view frustum for correct shadows and basic mesh present when the camera moves quickly.
 - Share a cache between tileset instances
-- Automatically tune the geometric error multiplier to 60 FPS
-- Automatic scaling of the cache
+- Optimal tile load order
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -53,27 +52,6 @@ const ogc3DTile = new OGC3DTile({
 A lower value will result in lower detail tiles being loaded and a higher value results in higher detail tiles being loaded.
 A value of 1.0 is the default.
 
-#### Automatic Geometric error multiplier
-In order to reach a steady 60 FPS, you can specify a TilesetStats object. 
-This object is basically the Stats object from the Three.js samples without the UI component.
-It must be updated in the animate function and given to the tileset at construction.
-```
-import TilesetStats from '@jdultra/threedtiles/src/tileset/TilesetStats';
-
-const tilesetStats = TilesetStats();
-
-const ogc3DTile = new OGC3DTile({
-    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
-    stats: tilesetStats
-});
-
-function animate() {
-    
-    ...
-    
-    tilesetStats.update();
-}
-```
 
 
 ### load tiles outside of view
@@ -98,12 +76,14 @@ const ogc3DTile = new OGC3DTile({
         }
 });
 ```
+If using a shared cache between tilesets, check out the next section.
 
 ### Cache
 You may instanciate a cache through the TileLoader class and re-use it for several or all your tilesets. 
 The limitation is that all the tilesets using the same cache will have the same callback.
 
-If a TilesetStats object is passed, it will be used to monitor the size of the cache when the browser allows it, otherwise, each cache is limitted to 1000 items.
+The TileLoader constructor takes 2 arguments. The first is a callback for meshes (see above section) and the second is
+the maximum number of items in the cache (default is 1000).
 
 ```
 import { TileLoader } from "@jdultra/threedtiles/src/tileset/TileLoader";
@@ -114,7 +94,9 @@ const ogc3DTile = new OGC3DTile({
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-        }, tilesetStats),
+            }, 
+            2000
+        ),
         meshCallback: mesh => { mesh.material.wireframe = true;} // This callback will not be used as the callback provided to the TileLoader takes priority
     });
 ```
