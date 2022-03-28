@@ -4,6 +4,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { OGC3DTile } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { setIntervalAsync } from 'set-interval-async/dynamic';
 
 
 const scene = initScene();
@@ -76,14 +77,14 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
         geometricErrorMultiplier: 1.0,
         loadOutsideView: true,
         tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-        }, 2000)
+        }, 1000)
     });
     
 
@@ -112,7 +113,7 @@ function initTileset(scene) {
         }
     });
     function startInterval(){
-        interval = setInterval(function () {
+        interval = setIntervalAsync(function () {
             ogc3DTile.update(camera);
         }, 20);
     }

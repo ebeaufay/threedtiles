@@ -1,5 +1,6 @@
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
+import { setIntervalAsync } from 'set-interval-async/dynamic';
 
 const ready = [];
 const downloads = [];
@@ -8,29 +9,28 @@ const nextDownloads = [];
 
 function scheduleDownload(f) {
     downloads.unshift(f);
-    //setTimeout(()=>download(),0);
 }
 function download() {
     if (nextDownloads.length == 0) {
         getNextDownloads();
-        if (nextDownloads.length == 0) return;
+        if (nextDownloads.length == 0) return 0;
     }
     const nextDownload = nextDownloads.shift();
     if (!!nextDownload && nextDownload.shouldDoDownload()) {
         nextDownload.doDownload();
     }
+    return 1;
 }
 function meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
     ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
-    //setTimeout(()=>loadBatch(),1);
 }
 function loadBatch() {
     if (nextReady.length == 0) {
         getNextReady();
-        if (nextReady.length == 0) return;
+        if (nextReady.length == 0) return 0;
     }
     const data = nextReady.shift();
-    if (!data) return;
+    if (!data) return 0;
     const cache = data[0];
     const register = data[1];
     const key = data[2];
@@ -44,6 +44,7 @@ function loadBatch() {
             }
         });
     }
+    return 1;
 }
 
 function getNextDownloads() {
@@ -115,12 +116,22 @@ function getNextReady() {
         }
     }
 }
-setInterval(() => {
-    download()
-}, 1)
-setInterval(() => {
-    loadBatch()
-}, 1)
+setIntervalAsync(()=>{
+    const start = Date.now();
+    let uploaded = 0;
+    do{
+        uploaded = download();
+    }while(uploaded > 0 && (Date.now() - start)<= 2 )
+    
+},10);
+setIntervalAsync(()=>{
+    const start = Date.now();
+    let loaded = 0;
+    do{
+        loaded = loadBatch();
+    }while(loaded > 0 && (Date.now() - start)<= 2 )
+    
+},10);
 
 class TileLoader {
     constructor(meshCallback, maxCachedItems) {
@@ -208,7 +219,6 @@ class TileLoader {
         let i = 0;
 
         while (self.cache.size() > self.maxCachedItems && i < self.cache.size()) {
-            console.log(self.cache.size())
             i++;
             const entry = self.cache.head();
             const reg = self.register[entry.key];
