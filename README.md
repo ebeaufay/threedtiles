@@ -4,8 +4,6 @@
 
 demo : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
 
-Currently, the library is limmited to B3DM files.
-
 Adding a tileset to a scene is as easy as :
 
 ```
@@ -26,6 +24,8 @@ setInterval(function () {
     ogc3DTile.update(camera);
 }, 200);
 ```
+
+Currently, the library is limmited to B3DM files.
 
 ## Features
 
