@@ -11,6 +11,7 @@ const scene = initScene();
 const domContainer = initDomContainer("screen");
 const camera = initCamera();
 const ogc3DTiles = initTileset(scene);
+initLODMultiplierSlider(ogc3DTiles)
 const controller = initController(camera, domContainer);
 
 const stats = initStats(domContainer);
@@ -77,8 +78,8 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        geometricErrorMultiplier: 1.0,
+        url: "https://s3.us-east-2.wasabisys.com/construkted-assets/abza2qcouxm/tileset.json",//"https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        geometricErrorMultiplier: 0.8,
         loadOutsideView: true,
         tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
@@ -121,6 +122,17 @@ function initTileset(scene) {
 
     scene.add(ogc3DTile)
     return ogc3DTile;
+}
+
+function initLODMultiplierSlider(tileset) {
+    var slider = document.getElementById("lodMultiplier");
+    var output = document.getElementById("multiplierValue");
+    output.innerHTML = slider.value;
+
+    slider.oninput = () => {
+        tileset.setGeometricErrorMultiplier(slider.value)
+        output.innerHTML = slider.value;
+    }
 }
 
 function initController(camera, dom) {
