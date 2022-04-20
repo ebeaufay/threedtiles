@@ -78,16 +78,19 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://s3.us-east-2.wasabisys.com/construkted-assets/abza2qcouxm/tileset.json",//"https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
         geometricErrorMultiplier: 0.8,
         loadOutsideView: true,
         tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-        }, 1000)
+        }, 1000),
+        onLoadCallback: tileset => {
+            console.log(tileset.json)
+        }
     });
-    
+
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -10)
@@ -100,20 +103,20 @@ function initTileset(scene) {
     // ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -9.5)
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
 
-    
 
-    var interval ;
+
+    var interval;
     document.addEventListener('keyup', (e) => {
         console.log(camera.position)
-        if(!e.key || e.key !== "p") return;
-        if(!!interval){
+        if (!e.key || e.key !== "p") return;
+        if (!!interval) {
             clearInterval(interval);
             interval = null;
-        }else{
+        } else {
             startInterval();
         }
     });
-    function startInterval(){
+    function startInterval() {
         interval = setIntervalAsync(function () {
             ogc3DTile.update(camera);
         }, 20);
@@ -138,7 +141,7 @@ function initLODMultiplierSlider(tileset) {
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
-    controller.target.set(-11.50895,0.058452500000001, 3.1369285);
+    controller.target.set(-11.50895, 0.058452500000001, 3.1369285);
     controller.minDistance = 1;
     controller.maxDistance = 5000;
     controller.update();

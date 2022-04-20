@@ -25,7 +25,8 @@ class OGC3DTile extends THREE.Object3D {
      *   tileLoader : TileLoader,
      *   meshCallback: function,
      *   cameraOnLoad: camera,
-     *   parentTile: OGC3DTile
+     *   parentTile: OGC3DTile,
+     *   onLoadCallback: function
      * } properties 
      */
     constructor(properties) {
@@ -66,13 +67,17 @@ class OGC3DTile extends THREE.Object3D {
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
+            if (properties.onLoadCallback) properties.onLoadCallback(self);
         } else if (properties.url) { // If only the url to the tileset.json is provided
             self.controller = new AbortController();
             fetch(properties.url, { signal: self.controller.signal }).then(result => {
                 if (!result.ok) {
                     throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }
-                result.json().then(json => self.setup({ rootPath: path.dirname(properties.url), json: json }))
+                result.json().then(json => {
+                    self.setup({ rootPath: path.dirname(properties.url), json: json });
+                    if (properties.onLoadCallback) properties.onLoadCallback(self);
+                });
             });
         }
     }
