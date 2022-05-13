@@ -1,4 +1,4 @@
-# 3DTilesViewer
+# threedtiles
 
 3DTiles viewer for three.js
 
