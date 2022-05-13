@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "3.1.5",
+    "version": "3.2.0",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "tileset.js",
     "scripts": {
@@ -31,7 +31,7 @@
         "path-browserify": "^1.0.1",
         "regenerator-runtime": ">=0.13.7",
         "set-interval-async": "^2.0.3",
-        "three": "0.131.0",
+        "three": "0.140.2",
         "uuid": "^8.3.2"
     },
     "devDependencies": {

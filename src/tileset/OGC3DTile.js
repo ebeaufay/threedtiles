@@ -174,7 +174,7 @@ class OGC3DTile extends THREE.Object3D {
                         self.meshContent = mesh;
                     }, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
-                    }, () => self.getSiblings(), self.level, self.uuid);
+                    }, () => self.getSiblings(), self.level);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(this.uuid, url, json => {
                         if (!!self.deleted) return;

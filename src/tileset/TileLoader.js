@@ -6,20 +6,24 @@ const ready = [];
 const downloads = [];
 const nextReady = [];
 const nextDownloads = [];
+let concurentDownloads = 0;
 
 function scheduleDownload(f) {
     downloads.unshift(f);
 }
 function download() {
-    if (nextDownloads.length == 0) {
-        getNextDownloads();
-        if (nextDownloads.length == 0) return 0;
+    if(concurentDownloads<10){
+        if (nextDownloads.length == 0) {
+            getNextDownloads();
+            if (nextDownloads.length == 0) return;
+        }
+        const nextDownload = nextDownloads.shift();
+        if (!!nextDownload && nextDownload.shouldDoDownload()) {
+            nextDownload.doDownload();
+        }
     }
-    const nextDownload = nextDownloads.shift();
-    if (!!nextDownload && nextDownload.shouldDoDownload()) {
-        nextDownload.doDownload();
-    }
-    return 1;
+    
+    return;
 }
 function meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
     ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
@@ -117,11 +121,12 @@ function getNextReady() {
     }
 }
 setIntervalAsync(()=>{
-    const start = Date.now();
+    download();
+    /* const start = Date.now();
     let uploaded = 0;
     do{
         uploaded = download();
-    }while(uploaded > 0 && (Date.now() - start)<= 2 )
+    }while(uploaded > 0 && (Date.now() - start)<= 2 ) */
     
 },10);
 setIntervalAsync(()=>{
@@ -129,7 +134,7 @@ setIntervalAsync(()=>{
     let loaded = 0;
     do{
         loaded = loadBatch();
-    }while(loaded > 0 && (Date.now() - start)<= 2 )
+    }while(loaded > 0 && (Date.now() - start)<= 0 )
     
 },10);
 
@@ -141,7 +146,7 @@ class TileLoader {
         this.register = {};
     }
 
-    get(tileIdentifier, path, callback, distanceFunction, getSiblings, level, uuid) {
+    get(tileIdentifier, path, callback, distanceFunction, getSiblings, level) {
         const self = this;
         const key = simplifyPath(path);
 
@@ -160,12 +165,14 @@ class TileLoader {
 
         const cachedObject = self.cache.get(key);
         if (!!cachedObject) {
-            meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, uuid);
+            meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
         } else if (Object.keys(self.register[key]).length == 1) {
             let downloadFunction;
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
+                    concurentDownloads++;
                     fetch(path).then(result => {
+                        concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
@@ -173,14 +180,16 @@ class TileLoader {
                         result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
                             self.cache.put(key, mesh);
                             self.checkSize();
-                            meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, uuid);
+                            meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
 
                     });
                 }
             }else if (path.includes(".json")) {
                 downloadFunction = () => {
+                    concurentDownloads++;
                     fetch(path).then(result => {
+                        concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
@@ -201,7 +210,7 @@ class TileLoader {
                 "distanceFunction": distanceFunction,
                 "getSiblings": getSiblings,
                 "level": level,
-                "uuid": uuid
+                "uuid": tileIdentifier
             })
         }
     }

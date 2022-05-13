@@ -1,12 +1,12 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { LegacyGLTFLoader } from './LegacyGLTFLoader.js';
+//import { LegacyGLTFLoader } from './LegacyGLTFLoader.js';
 
 const gltfLoader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath( 'https://www.gstatic.com/draco/versioned/decoders/1.4.3/' );
 gltfLoader.setDRACOLoader( dracoLoader );
-const legacyGLTFLoader = new LegacyGLTFLoader();
+//const legacyGLTFLoader = new LegacyGLTFLoader();
 const B3DMDecoder = {
 	parseB3DM: (arrayBuffer, meshCallback) => {
 		const dataView = new DataView(arrayBuffer);
@@ -64,7 +64,8 @@ const B3DMDecoder = {
 				});
 				resolve(model.scene);
 			}, error=>{
-				legacyGLTFLoader.parse(gltfBuffer, model => {
+				console.error(error);
+				/* legacyGLTFLoader.parse(gltfBuffer, model => {
 
 					////TODO
 					//model.batchTable = b3dm.batchTable;
@@ -83,7 +84,7 @@ const B3DMDecoder = {
 						}
 					});
 					resolve(model.scene);
-				}, null);
+				}, null); */
 			});
 		});
 	}
