@@ -22,8 +22,10 @@ animate();
 function initScene() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaffcc);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
-    const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.2));
+    const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
+    directionalLight.position.set(100,100,100)
+    directionalLight.lookAt(-1,-1,-1)
     scene.add( directionalLight );
     return scene;
 }
@@ -71,8 +73,8 @@ function initStats(dom) {
 
 
 function initCamera() {
-    const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1, 10000);
-    camera.position.set(20, 10, 20);
+    const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 0.1, 1000);
+    camera.position.set(-10, 5, 20);
 
     return camera;
 }
@@ -80,29 +82,26 @@ function initCamera() {
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/house3/tileset.json",
         //url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 1.0,
-        loadOutsideView: true,
+        geometricErrorMultiplier: 1,
+        loadOutsideView: false,
         tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
-            //mesh.material.wireframe = true;
+            mesh.material.wireframe = false;
             //mesh.material = new THREE.MeshBasicMaterial({color:new THREE.Color("rgb("+Math.floor(Math.random()*256)+", "+Math.floor(Math.random()*256)+", "+Math.floor(Math.random()*256)+")")})
             mesh.material.side = THREE.DoubleSide;
-        }, 1000),
-        onLoadCallback: tileset => {
-            console.log(tileset.json)
-        }
+        }, 1000)
     });
 
 
     
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
-    //ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -10)
-    //ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -65)
-    //ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -80)
-    ogc3DTile.scale.set(1,1,1);
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5) // Z-UP to Y-UP
+    // ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -2177749.59059337)
+    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), 4388730.67973434)
+    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), 4070064.60934734)
+    //ogc3DTile.scale.set(0.001,0.001,0.001);
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
     // ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -16.5)
     // ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), 0)
     // ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -9.5)

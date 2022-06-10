@@ -12,17 +12,19 @@ function scheduleDownload(f) {
     downloads.unshift(f);
 }
 function download() {
-    if(concurentDownloads<10){
-        if (nextDownloads.length == 0) {
-            getNextDownloads();
-            if (nextDownloads.length == 0) return;
-        }
+    if (nextDownloads.length == 0) {
+        getNextDownloads();
+        if (nextDownloads.length == 0) return;
+    }
+    while (nextDownloads.length > 0 && concurentDownloads < 500) {
         const nextDownload = nextDownloads.shift();
         if (!!nextDownload && nextDownload.shouldDoDownload()) {
             nextDownload.doDownload();
         }
     }
-    
+
+
+
     return;
 }
 function meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
@@ -60,11 +62,11 @@ function getNextDownloads() {
             downloads.splice(i, 1);
             continue;
         }
-        if(!downloads[i].distanceFunction){ // if no distance function, must be a json, give absolute priority!
+        if (!downloads[i].distanceFunction) { // if no distance function, must be a json, give absolute priority!
             nextDownloads.push(downloads.splice(i, 1)[0]);
         }
     }
-    if(nextDownloads.length>0) return;
+    if (nextDownloads.length > 0) return;
     for (let i = downloads.length - 1; i >= 0; i--) {
         const dist = downloads[i].distanceFunction();
         if (dist < smallestDistance) {
@@ -92,12 +94,12 @@ function getNextReady() {
     let smallestDistance = Number.MAX_VALUE;
     let closest = -1;
     for (let i = ready.length - 1; i >= 0; i--) {
-        
-        if(!ready[i][3]){// if no distance function, must be a json, give absolute priority!
-            nextReady.push(ready.splice(i,1)[0]);
+
+        if (!ready[i][3]) {// if no distance function, must be a json, give absolute priority!
+            nextReady.push(ready.splice(i, 1)[0]);
         }
     }
-    if(nextReady.length>0) return;
+    if (nextReady.length > 0) return;
     for (let i = ready.length - 1; i >= 0; i--) {
         const dist = ready[i][3]();
         if (dist < smallestDistance) {
@@ -120,23 +122,23 @@ function getNextReady() {
         }
     }
 }
-setIntervalAsync(()=>{
+setIntervalAsync(() => {
     download();
     /* const start = Date.now();
     let uploaded = 0;
     do{
         uploaded = download();
     }while(uploaded > 0 && (Date.now() - start)<= 2 ) */
-    
-},10);
-setIntervalAsync(()=>{
+
+}, 10);
+setIntervalAsync(() => {
     const start = Date.now();
     let loaded = 0;
-    do{
+    do {
         loaded = loadBatch();
-    }while(loaded > 0 && (Date.now() - start)<= 0 )
-    
-},10);
+    } while (loaded > 0 && (Date.now() - start) <= 1)
+
+}, 10);
 
 class TileLoader {
     constructor(meshCallback, maxCachedItems) {
@@ -185,7 +187,7 @@ class TileLoader {
 
                     });
                 }
-            }else if (path.includes(".json")) {
+            } else if (path.includes(".json")) {
                 downloadFunction = () => {
                     concurentDownloads++;
                     fetch(path).then(result => {

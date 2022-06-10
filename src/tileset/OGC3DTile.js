@@ -2,9 +2,7 @@ import * as THREE from 'three';
 import { OBB } from "../geometry/obb";
 import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
-import { setIntervalAsync } from 'set-interval-async/dynamic';
-// import { clearIntervalAsync } from 'set-interval-async';
-const path = require('path');
+import * as path from "path-browserify"
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
 
@@ -185,24 +183,6 @@ class OGC3DTile extends THREE.Object3D {
                         self.hasUnloadedJSONContent = false;
                     });
 
-                    /* self.controller = new AbortController();
-                    setTimeout(() => {
-                        fetch(url, { signal: self.controller.signal }).then(result => {
-                            if (!result.ok) {
-                                throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
-                            }
-                            result.json().then(json => {
-                                // when json content is downloaded, it is inserted into this tile's original JSON as a child
-                                // and the content object is deleted from the original JSON
-                                if (!self.json.children) self.json.children = [];
-                                json.rootPath = path.dirname(url);
-                                self.json.children.push(json);
-                                delete self.json.content;
-                                self.hasUnloadedJSONContent = false;
-                            }).catch(error => { });
-                        }).catch(error => { });
-                    }, 0); */
-
                 }
 
             }
@@ -321,10 +301,9 @@ class OGC3DTile extends THREE.Object3D {
                 return;
             }
             if (metric >= self.geometricError) {
-                if (self.isReady()) {
-                    self.disposeChildren();
-                    return;
-                }
+                self.disposeChildren();
+                updateNodeVisibility();
+                return;
             }
 
         }
@@ -458,7 +437,7 @@ class OGC3DTile extends THREE.Object3D {
                 return 0;
             }
             const scale = this.matrixWorld.getMaxScaleOnAxis();
-            return ((distance / 100) / this.geometricErrorMultiplier) / scale;
+            return ((distance / 100) / this.geometricErrorMultiplier) * scale;
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported
