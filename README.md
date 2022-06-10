@@ -2,7 +2,11 @@
 
 3DTiles viewer for three.js
 
-demo : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
+Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
+
+IFC : https://storage.googleapis.com/jdultra.com/ifc/index.html
+
+Occlusion culling : https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html
 
 Adding a tileset to a scene is as easy as :
 
@@ -113,6 +117,11 @@ ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -450);
 ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 ...
 ```
+
+### Occlusion culling
+Occlusion culling is curently only available as a demo. 
+The reason is that it requires a specific render pass hence the setup is a little more complex.
+I can expose this feature upon request.
 
 # Displaying meshes on a globe
 I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
