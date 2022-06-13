@@ -6,7 +6,7 @@ Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
 
 IFC : https://storage.googleapis.com/jdultra.com/ifc/index.html
 
-Occlusion culling : https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html
+Occlusion culling : [https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html](https://storage.googleapis.com/www.jdultra.com/occlusion/index.html)
 
 Adding a tileset to a scene is as easy as :
 
