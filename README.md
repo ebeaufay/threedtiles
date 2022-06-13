@@ -119,9 +119,8 @@ ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 ```
 
 ### Occlusion culling
-Occlusion culling is curently only available as a demo. 
-The reason is that it requires a specific render pass hence the setup is a little more complex.
-I can expose this feature upon request.
+Occlusion culling prevents the refinment of data that is hidden by other data, like a wall. It can almost double the frame-rate for interior scenes.
+Occlusion culling is curently only available as a demo. I'll eventually expose this feature, feel free to request it.
 
 # Displaying meshes on a globe
 I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
