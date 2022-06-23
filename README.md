@@ -39,6 +39,7 @@ Currently, the library is limmited to B3DM files.
 - Optionally load low detail tiles outside of view frustum for correct shadows and basic mesh present when the camera moves quickly.
 - Share a cache between tileset instances
 - Optimal tile load order
+- Occlusion culling (demo)
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
