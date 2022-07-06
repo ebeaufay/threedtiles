@@ -117,11 +117,53 @@ const ogc3DTile = new OGC3DTile({
 ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -450);
 ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 ...
-```
+
 
 ### Occlusion culling
-Occlusion culling prevents the refinment of data that is hidden by other data, like a wall. It can almost double the frame-rate for interior scenes.
-Occlusion culling is curently only available as a demo. I'll eventually expose this feature, feel free to request it.
+Occlusion culling prevents the refinment of data that is hidden by other data, like a wall. It can have a big impact on frame-rate and loading speed for interior scenes.
+A word of warning: activating occlusion culling causes an extra render-pass and as such, has an impact on frame-rate. It will be most beneficial on interior scenes where most of the data is occluded by walls.
+
+
+First, instantiate an OcclusionCullingService:
+```
+const occlusionCullingService = new OcclusionCullingService();
+```
+
+This service must be passed to every OGC3DTiles object like so:
+```
+const ogc3DTile = new OGC3DTile({
+        url: "path/to/tileset.json",
+        occlusionCullingService: occlusionCullingService
+    });
+```
+
+Then, you must update the occlusionCullingService within your render loop:
+```
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+    occlusionCullingService.update(scene, renderer, camera)
+}
+```
+
+Finally, you may want to set what side of the faces are drawn in the occlusion pass. By default, THREE.FrontSide is used:
+
+```
+const occlusionCullingService = new OcclusionCullingService();
+occlusionCullingService.setSide(THREE.DoubleSide);
+```
+
+
+### static tilesets (Performance tip)
+When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
+This will skip recalculating the transformation matrix of every tile each frame and give a few extra frames per second.
+
+```
+const ogc3DTile = new OGC3DTile({
+        url: "path/to/tileset.json",
+        static: true
+    });
+```
 
 # Displaying meshes on a globe
 I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
