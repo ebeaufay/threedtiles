@@ -6,7 +6,7 @@ Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
 
 IFC : https://storage.googleapis.com/jdultra.com/ifc/index.html
 
-Occlusion culling : https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html
+Occlusion culling : [https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html](https://storage.googleapis.com/www.jdultra.com/occlusion/index.html)
 
 Adding a tileset to a scene is as easy as :
 
@@ -39,6 +39,7 @@ Currently, the library is limmited to B3DM files.
 - Optionally load low detail tiles outside of view frustum for correct shadows and basic mesh present when the camera moves quickly.
 - Share a cache between tileset instances
 - Optimal tile load order
+- Occlusion culling (demo)
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -119,9 +120,8 @@ ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 ```
 
 ### Occlusion culling
-Occlusion culling is curently only available as a demo. 
-The reason is that it requires a specific render pass hence the setup is a little more complex.
-I can expose this feature upon request.
+Occlusion culling prevents the refinment of data that is hidden by other data, like a wall. It can almost double the frame-rate for interior scenes.
+Occlusion culling is curently only available as a demo. I'll eventually expose this feature, feel free to request it.
 
 # Displaying meshes on a globe
 I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
