@@ -9,6 +9,7 @@ import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
 
 
 const occlusionCullingService = new OcclusionCullingService();
+occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
 const domContainer = initDomContainer("screen");
 const camera = initCamera();
@@ -93,7 +94,7 @@ function initTileset(scene) {
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
         }, 1000),
-        occlusionCullingService:occlusionCullingService
+        occlusionCullingService: occlusionCullingService
     });
 
 
@@ -153,11 +154,7 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-    // scene.updateMatrixWorld(true);
-    // scene.updateWorldMatrix(false, true);
-    // scene.updateMatrix();
     renderer.render(scene, camera);
-    //console.log(scene.children.length);
     occlusionCullingService.update(scene, renderer, camera)
     stats.update();
 

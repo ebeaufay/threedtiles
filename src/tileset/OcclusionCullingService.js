@@ -27,7 +27,7 @@ class OcclusionCullingService {
     constructor() {
         this.cullMap = [];
         this.cullMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
-        this.cullMaterial.side = THREE.DoubleSide;
+        this.cullMaterial.side = THREE.FrontSide;
         this.cullTarget = this.createCullTarget();
         this.cullPixels = new Uint8Array(4 * this.cullTarget.width * this.cullTarget.height);
     }
