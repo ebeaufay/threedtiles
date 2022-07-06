@@ -3,6 +3,7 @@ import { OBB } from "../geometry/obb";
 import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
+import { clamp } from "three/src/math/MathUtils";
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
 
@@ -24,12 +25,19 @@ class OGC3DTile extends THREE.Object3D {
      *   meshCallback: function,
      *   cameraOnLoad: camera,
      *   parentTile: OGC3DTile,
-     *   onLoadCallback: function
+     *   onLoadCallback: function,
+     *   occlusionCullingService: OcclusionCullingService,
+     *   static: Boolean
      * } properties 
      */
     constructor(properties) {
         super();
         const self = this;
+
+        if(properties.static){
+            this.matrixAutoUpdate = false;
+        }
+        
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
@@ -47,6 +55,12 @@ class OGC3DTile extends THREE.Object3D {
         this.loadOutsideView = properties.loadOutsideView;
         this.cameraOnLoad = properties.cameraOnLoad;
         this.parentTile = properties.parentTile;
+        this.occlusionCullingService = properties.occlusionCullingService;
+        if (this.occlusionCullingService) {
+            this.color = new THREE.Color();
+            this.color.setHex(Math.random() * 0xffffff);
+            this.colorID = clamp(self.color.r * 255, 0, 255) << 16 ^ clamp(self.color.g * 255, 0, 255) << 8 ^ clamp(self.color.b * 255, 0, 255) << 0;
+        }
 
         // declare properties specific to the tile for clarity
         this.childrenTiles = [];
@@ -62,6 +76,8 @@ class OGC3DTile extends THREE.Object3D {
         this.level = properties.level ? properties.level : 0;
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
+
+        this.layers.disable(0);
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
@@ -165,10 +181,20 @@ class OGC3DTile extends THREE.Object3D {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
+                                if (self.occlusionCullingService) {
+                                    const position = o.geometry.attributes.position;
+                                    const colors = [];
+                                    for (let i = 0; i < position.count; i++) {
+                                        colors.push(self.color.r, self.color.g, self.color.b);
+                                    }
+                                    o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                                }
                                 o.material.visible = false;
                             }
                         });
+                        
                         self.add(mesh);
+                        self.updateWorldMatrix(false, true);
                         self.meshContent = mesh;
                     }, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
@@ -192,6 +218,7 @@ class OGC3DTile extends THREE.Object3D {
     dispose() {
 
         const self = this;
+        self.childrenTiles.forEach(tile => tile.dispose());
         self.deleted = true;
         this.traverse(function (element) {
             if (!!element.contentURL) {
@@ -224,19 +251,24 @@ class OGC3DTile extends THREE.Object3D {
     _update(camera, frustum) {
         const self = this;
 
-        self.childrenTiles.forEach(child => child._update(camera, frustum));
+        const visibilityBeforeUpdate = self.materialVisibility;
+
         if (!!self.boundingVolume && !!self.geometricError) {
             self.metric = self.calculateUpdateMetric(camera, frustum);
         }
+        self.childrenTiles.forEach(child => child._update(camera, frustum));
 
         updateNodeVisibility(self.metric);
         updateTree(self.metric);
-        trimTree(self.metric);
+        trimTree(self.metric, visibilityBeforeUpdate);
 
 
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
             if (metric < 0 && self.hasMeshContent) return;
+            if (self.occlusionCullingService && self.hasMeshContent && !self.occlusionCullingService.hasID(self.colorID)) {
+                return;
+            }
             if (!self.hasMeshContent || (metric < self.geometricError && !!self.meshContent)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     loadJsonChildren();
@@ -276,7 +308,7 @@ class OGC3DTile extends THREE.Object3D {
                 self.changeContentVisibility(true);
             } else if (metric < self.geometricError) { // Ideal LOD is past this one
                 // if children are visible and have been displayed, can be hidden
-                var allChildrenReady = true;
+                let allChildrenReady = true;
                 self.childrenTiles.every(child => {
 
                     if (!child.isReady()) {
@@ -287,17 +319,26 @@ class OGC3DTile extends THREE.Object3D {
                 });
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
-                } else {
-                    //self.changeContentVisibility(true);
-
                 }
             }
         }
 
-        function trimTree(metric) {
+        function trimTree(metric, visibilityBeforeUpdate) {
             if (!self.hasMeshContent) return;
-            if (metric < 0) { // outside frustum
+            if (!self.inFrustum) { // outside frustum
                 self.disposeChildren();
+                updateNodeVisibility(metric);
+                return;
+            }
+            if (self.occlusionCullingService &&
+                !visibilityBeforeUpdate &&
+                self.hasMeshContent &&
+                self.meshContent &&
+                self.meshesToDisplay == self.meshesDisplayed &&
+                self.areAllChildrenLoadedAndHidden()) {
+
+                self.disposeChildren();
+                updateNodeVisibility(metric);
                 return;
             }
             if (metric >= self.geometricError) {
@@ -321,13 +362,44 @@ class OGC3DTile extends THREE.Object3D {
                     loadOutsideView: self.loadOutsideView,
                     level: self.level + 1,
                     tileLoader: self.tileLoader,
-                    cameraOnLoad: camera
+                    cameraOnLoad: camera,
+                    occlusionCullingService:self.occlusionCullingService
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
             });
         }
 
+    }
+
+    areAllChildrenLoadedAndHidden() {
+        let allLoadedAndHidden = true;
+        const self = this;
+        this.childrenTiles.every(child => {
+            if (child.hasMeshContent) {
+                if(child.childrenTiles.length>0){
+                    allLoadedAndHidden = false;
+                    return false;
+                }
+                if (!child.inFrustum ) {
+                    return true;
+                };
+                if (!child.materialVisibility || child.meshesToDisplay != child.meshesDisplayed) {
+                    allLoadedAndHidden = false;
+                    return false;
+                } else if (self.occlusionCullingService.hasID(child.colorID)) {
+                    allLoadedAndHidden = false;
+                    return false;
+                }
+            } else {
+                if (!child.areAllChildrenLoadedAndHidden()) {
+                    allLoadedAndHidden = false;
+                    return false;
+                }
+            }
+            return true;
+        });
+        return allLoadedAndHidden;
     }
 
     /**
@@ -382,6 +454,13 @@ class OGC3DTile extends THREE.Object3D {
 
     changeContentVisibility(visibility) {
         const self = this;
+        if(self.hasMeshContent && self.meshContent){
+            if(visibility){
+                self.layers.enable(0);
+            }else{
+                self.layers.disable(0);
+            }
+        }
         if (self.materialVisibility == visibility) {
             return;
         }
@@ -437,7 +516,7 @@ class OGC3DTile extends THREE.Object3D {
                 return 0;
             }
             const scale = this.matrixWorld.getMaxScaleOnAxis();
-            return ((distance / 100) / this.geometricErrorMultiplier) * scale;
+            return (((distance / Math.pow(scale, 2)) / 100) / this.geometricErrorMultiplier);
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported

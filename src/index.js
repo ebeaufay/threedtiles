@@ -5,8 +5,10 @@ import { OGC3DTile } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { setIntervalAsync } from 'set-interval-async/dynamic';
+import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
 
 
+const occlusionCullingService = new OcclusionCullingService();
 const scene = initScene();
 const domContainer = initDomContainer("screen");
 const camera = initCamera();
@@ -17,10 +19,12 @@ const controller = initController(camera, domContainer);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 
+
 animate();
 
 function initScene() {
     const scene = new THREE.Scene();
+    scene.matrixAutoUpdate = false;
     scene.background = new THREE.Color(0xaaffcc);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 0.2));
     const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
@@ -41,11 +45,9 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
-    renderer.antialias = true;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
-
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.autoClear = false;
 
@@ -75,36 +77,32 @@ function initStats(dom) {
 function initCamera() {
     const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 0.1, 1000);
     camera.position.set(-10, 5, 20);
-
+    camera.matrixAutoUpdate = true;
     return camera;
 }
 
 function initTileset(scene) {
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/house3/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 1,
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        //url: "http://localhost:8081/tileset.json",
+        geometricErrorMultiplier: 0.5,
         loadOutsideView: false,
         tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
-            //mesh.material = new THREE.MeshBasicMaterial({color:new THREE.Color("rgb("+Math.floor(Math.random()*256)+", "+Math.floor(Math.random()*256)+", "+Math.floor(Math.random()*256)+")")})
             mesh.material.side = THREE.DoubleSide;
-        }, 1000)
+        }, 1000),
+        occlusionCullingService:occlusionCullingService
     });
 
 
     
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
-    // ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -2177749.59059337)
-    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), 4388730.67973434)
-    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), 4070064.60934734)
-    //ogc3DTile.scale.set(0.001,0.001,0.001);
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
-    // ogc3DTile.translateOnAxis(new THREE.Vector3(1,0,0), -16.5)
-    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), 0)
-    // ogc3DTile.translateOnAxis(new THREE.Vector3(0,0,1), -9.5)
+    //-172683.125,301451.125,1367762.21875
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    
+    
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
 
 
@@ -155,10 +153,14 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-
-    camera.updateMatrixWorld();
+    // scene.updateMatrixWorld(true);
+    // scene.updateWorldMatrix(false, true);
+    // scene.updateMatrix();
     renderer.render(scene, camera);
+    //console.log(scene.children.length);
+    occlusionCullingService.update(scene, renderer, camera)
     stats.update();
+
 
 }
 
