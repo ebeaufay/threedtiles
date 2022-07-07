@@ -39,7 +39,7 @@ Currently, the library is limmited to B3DM files.
 - Optionally load low detail tiles outside of view frustum for correct shadows and basic mesh present when the camera moves quickly.
 - Share a cache between tileset instances
 - Optimal tile load order
-- Occlusion culling (demo)
+- Occlusion culling
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -60,8 +60,8 @@ A value of 1.0 is the default.
 
 
 ### load tiles outside of view
-By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles.
-Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles around the view so that there are no gaps in the mesh when the camera moves or when displaying shadows.
+By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles and the user might see some holes in the model.
+Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles outside the view so that there are no gaps in the mesh when the camera moves. This also allows displaying shadows correctly.
 
 ```
 const ogc3DTile = new OGC3DTile({
@@ -172,5 +172,5 @@ I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe w
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
 It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures. 
-I'm keeping the code private for now but I'll convert any dataset you have for free.
+I'm keeping the code private for now but feel free to contact me about it.
 Contact: emericbeaufays@gmail.com
