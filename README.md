@@ -116,7 +116,7 @@ const ogc3DTile = new OGC3DTile({
 
 ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -450);
 ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
-...
+```
 
 
 ### Occlusion culling
