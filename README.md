@@ -78,6 +78,7 @@ const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
     meshCallback: mesh => {
             mesh.material.wireframe = true;
+            mesh.material.side = THREE.DoubleSide;
         }
 });
 ```
@@ -148,7 +149,7 @@ function animate() {
 }
 ```
 
-Finally, you may want to set what side of the faces are drawn in the occlusion pass. By default, THREE.FrontSide is used:
+Finally, if you are drawing the back-side of faces or both-sides (see Callback section), you'll need to specify it for the occlusion pass too. By default, THREE.FrontSide is used:
 
 ```
 const occlusionCullingService = new OcclusionCullingService();
