@@ -121,7 +121,9 @@ ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 
 ### Occlusion culling
 Occlusion culling prevents the refinment of data that is hidden by other data, like a wall. It can have a big impact on frame-rate and loading speed for interior scenes.
-A word of warning: activating occlusion culling causes an extra render-pass and as such, has an impact on frame-rate. It will be most beneficial on interior scenes where most of the data is occluded by walls.
+
+A word of warning: activating occlusion culling causes an extra render-pass and as such, has an impact on frame-rate. 
+It will be most beneficial on interior scenes where most of the data is occluded by walls. All the tiles that don't need to be downloaded or drawn will balance out the cost of the extra render pass.
 
 
 First, instantiate an OcclusionCullingService:
