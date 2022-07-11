@@ -136,7 +136,7 @@ setIntervalAsync(() => {
     let loaded = 0;
     do {
         loaded = loadBatch();
-    } while (loaded > 0 && (Date.now() - start) <= 1)
+    } while (loaded > 0 && (Date.now() - start) <= 0)
 
 }, 10);
 

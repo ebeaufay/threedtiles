@@ -32,6 +32,7 @@ function initScene() {
     directionalLight.position.set(100,100,100)
     directionalLight.lookAt(-1,-1,-1)
     scene.add( directionalLight );
+    scene.autoUpdate = false;
     return scene;
 }
 
@@ -94,14 +95,15 @@ function initTileset(scene) {
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
         }, 1000),
-        occlusionCullingService: occlusionCullingService
+        occlusionCullingService: occlusionCullingService,
+        static: false
     });
 
 
     
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
-    //-172683.125,301451.125,1367762.21875
     //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    //// If the OGC3DTile object is marked as "static" (constructorParameter), these operations will not work.
     
     
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here

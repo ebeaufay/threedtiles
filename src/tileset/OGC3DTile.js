@@ -34,9 +34,7 @@ class OGC3DTile extends THREE.Object3D {
         super();
         const self = this;
 
-        if(properties.static){
-            this.matrixAutoUpdate = false;
-        }
+        
         
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
@@ -56,12 +54,15 @@ class OGC3DTile extends THREE.Object3D {
         this.cameraOnLoad = properties.cameraOnLoad;
         this.parentTile = properties.parentTile;
         this.occlusionCullingService = properties.occlusionCullingService;
+        this.static = properties.static;
         if (this.occlusionCullingService) {
             this.color = new THREE.Color();
             this.color.setHex(Math.random() * 0xffffff);
             this.colorID = clamp(self.color.r * 255, 0, 255) << 16 ^ clamp(self.color.g * 255, 0, 255) << 8 ^ clamp(self.color.b * 255, 0, 255) << 0;
         }
-
+        if(this.static){
+            this.matrixAutoUpdate = false;
+        }
         // declare properties specific to the tile for clarity
         this.childrenTiles = [];
         this.meshContent;
@@ -181,6 +182,7 @@ class OGC3DTile extends THREE.Object3D {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
+                                o.layers.disable(0);
                                 if (self.occlusionCullingService) {
                                     const position = o.geometry.attributes.position;
                                     const colors = [];
@@ -189,12 +191,16 @@ class OGC3DTile extends THREE.Object3D {
                                     }
                                     o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                                 }
+                                if(self.static){
+                                    o.matrixAutoUpdate = false;
+                                }
                                 o.material.visible = false;
                             }
                         });
                         
                         self.add(mesh);
                         self.updateWorldMatrix(false, true);
+                        // mesh.layers.disable(0);
                         self.meshContent = mesh;
                     }, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
@@ -363,7 +369,8 @@ class OGC3DTile extends THREE.Object3D {
                     level: self.level + 1,
                     tileLoader: self.tileLoader,
                     cameraOnLoad: camera,
-                    occlusionCullingService:self.occlusionCullingService
+                    occlusionCullingService:self.occlusionCullingService,
+                    static: self.static
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -456,9 +463,18 @@ class OGC3DTile extends THREE.Object3D {
         const self = this;
         if(self.hasMeshContent && self.meshContent){
             if(visibility){
-                self.layers.enable(0);
+                
+                self.meshContent.traverse((o) => {
+                    if (o.isMesh) {
+                        o.layers.enable(0);
+                    }
+                });
             }else{
-                self.layers.disable(0);
+                self.meshContent.traverse((o) => {
+                    if (o.isMesh) {
+                        o.layers.disable(0);
+                    }
+                });
             }
         }
         if (self.materialVisibility == visibility) {
