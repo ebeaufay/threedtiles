@@ -71,6 +71,21 @@ const ogc3DTile = new OGC3DTile({
 ```
 
 ### Callback
+
+#### onLoadCallback
+Add a callback that is called once when the first tile is loaded and geometry is available.
+This can be useful to position the tileset at a specific location when it is not centered on origin for example.
+
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    onLoadCallback: tilese => {
+            console.log(tileset.boundingVolume);
+        }
+});
+```
+
+#### Mesh callback
 Add a callback on loaded tiles in order to set a material or do some logic on the meshes.
 
 ```
