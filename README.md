@@ -1,6 +1,6 @@
 # threedtiles
 
-3DTiles viewer for three.js
+The fastest 3DTiles viewer for three.js
 
 Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
 
