@@ -157,7 +157,7 @@ occlusionCullingService.setSide(THREE.DoubleSide);
 ```
 
 
-### static tilesets (Performance tip)
+### static tilesets and other performance tips
 When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
 This will skip recalculating the transformation matrix of every tile each frame and give a few extra frames per second.
 
@@ -166,6 +166,12 @@ const ogc3DTile = new OGC3DTile({
         url: "path/to/tileset.json",
         static: true
     });
+```
+
+Either way, it's advised to set the autoUpdate property of the scene to false and update the matrices manually whenever you move things around.
+
+```
+scene.autoUpdate = false;
 ```
 
 # Projects that use this library
