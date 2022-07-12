@@ -168,8 +168,12 @@ const ogc3DTile = new OGC3DTile({
     });
 ```
 
-# Displaying meshes on a globe
-I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
+# Projects that use this library
+https://github.com/ebeaufay/UltraGlobe allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
+
+Don't hesitate to tell me if you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
+Contact: emericbeaufays@gmail.com
+
 
 # Mesh to 3DTiles Converter
 
