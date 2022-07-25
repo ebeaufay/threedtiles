@@ -26,7 +26,7 @@ It's up to the user to call updates on the tileset. You might call them whenever
 ```
 setInterval(function () {
     ogc3DTile.update(camera);
-}, 200);
+}, 20);
 ```
 
 Currently, the library is limmited to B3DM files.
