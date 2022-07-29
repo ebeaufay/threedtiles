@@ -1,152 +1,168 @@
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
 import { setIntervalAsync } from 'set-interval-async/dynamic';
+import { initial } from 'lodash';
+import * as THREE from 'three';
 
-const ready = [];
-const downloads = [];
-const nextReady = [];
-const nextDownloads = [];
 let concurentDownloads = 0;
-
-function scheduleDownload(f) {
-    downloads.unshift(f);
-}
-function download() {
-    if (nextDownloads.length == 0) {
-        getNextDownloads();
-        if (nextDownloads.length == 0) return;
-    }
-    while (nextDownloads.length > 0 && concurentDownloads < 500) {
-        const nextDownload = nextDownloads.shift();
-        if (!!nextDownload && nextDownload.shouldDoDownload()) {
-            nextDownload.doDownload();
-        }
-    }
-
-
-
-    return;
-}
-function meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
-    ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
-}
-function loadBatch() {
-    if (nextReady.length == 0) {
-        getNextReady();
-        if (nextReady.length == 0) return 0;
-    }
-    const data = nextReady.shift();
-    if (!data) return 0;
-    const cache = data[0];
-    const register = data[1];
-    const key = data[2];
-    const mesh = cache.get(key);
-    if (!!mesh && !!register[key]) {
-        Object.keys(register[key]).forEach(tile => {
-            const callback = register[key][tile];
-            if (!!callback) {
-                callback(mesh);
-                register[key][tile] = null;
-            }
-        });
-    }
-    return 1;
-}
-
-function getNextDownloads() {
-    let smallestLevel = Number.MAX_VALUE;
-    let smallestDistance = Number.MAX_VALUE;
-    let closest = -1;
-    for (let i = downloads.length - 1; i >= 0; i--) {
-        if (!downloads[i].shouldDoDownload()) {
-            downloads.splice(i, 1);
-            continue;
-        }
-        if (!downloads[i].distanceFunction) { // if no distance function, must be a json, give absolute priority!
-            nextDownloads.push(downloads.splice(i, 1)[0]);
-        }
-    }
-    if (nextDownloads.length > 0) return;
-    for (let i = downloads.length - 1; i >= 0; i--) {
-        const dist = downloads[i].distanceFunction();
-        if (dist < smallestDistance) {
-            smallestDistance = dist;
-            closest = i;
-        } else if (dist == smallestDistance && downloads[i].level < smallestLevel) {
-            smallestLevel = downloads[i].level;
-            closest = i
-        }
-    }
-    if (closest >= 0) {
-        const closestItem = downloads.splice(closest, 1).pop();
-        nextDownloads.push(closestItem);
-        const siblings = closestItem.getSiblings();
-        for (let i = downloads.length - 1; i >= 0; i--) {
-            if (siblings.includes(downloads[i].uuid)) {
-                nextDownloads.push(downloads.splice(i, 1).pop());
-            }
-        }
-    }
-}
-
-function getNextReady() {
-    let smallestLevel = Number.MAX_VALUE;
-    let smallestDistance = Number.MAX_VALUE;
-    let closest = -1;
-    for (let i = ready.length - 1; i >= 0; i--) {
-
-        if (!ready[i][3]) {// if no distance function, must be a json, give absolute priority!
-            nextReady.push(ready.splice(i, 1)[0]);
-        }
-    }
-    if (nextReady.length > 0) return;
-    for (let i = ready.length - 1; i >= 0; i--) {
-        const dist = ready[i][3]();
-        if (dist < smallestDistance) {
-            smallestDistance = dist;
-            smallestLevel = ready[i][5]
-            closest = i
-        } else if (dist == smallestDistance && ready[i][5] < smallestLevel) {
-            smallestLevel = ready[i][5]
-            closest = i
-        }
-    }
-    if (closest >= 0) {
-        const closestItem = ready.splice(closest, 1).pop();
-        nextReady.push(closestItem);
-        const siblings = closestItem[4]();
-        for (let i = ready.length - 1; i >= 0; i--) {
-            if (siblings.includes(ready[i][6])) {
-                nextready.push(ready.splice(i, 1).pop());
-            }
-        }
-    }
-}
-setIntervalAsync(() => {
-    download();
-    /* const start = Date.now();
-    let uploaded = 0;
-    do{
-        uploaded = download();
-    }while(uploaded > 0 && (Date.now() - start)<= 2 ) */
-
-}, 10);
-setIntervalAsync(() => {
-    const start = Date.now();
-    let loaded = 0;
-    do {
-        loaded = loadBatch();
-    } while (loaded > 0 && (Date.now() - start) <= 0)
-
-}, 10);
 
 class TileLoader {
     constructor(meshCallback, maxCachedItems) {
         this.meshCallback = meshCallback;
         this.cache = new LinkedHashMap();
-        this.maxCachedItems = !!maxCachedItems ? maxCachedItems : 1000;
+        this.maxCachedItems = !!maxCachedItems ? maxCachedItems : 100;
         this.register = {};
+
+
+        this.ready = [];
+        this.downloads = [];
+        this.nextReady = [];
+        this.nextDownloads = [];
+        this.init();
     }
+
+    init(){
+        
+        const self = this;
+        setIntervalAsync(() => {
+            self.download();
+            /* const start = Date.now();
+            let uploaded = 0;
+            do{
+                uploaded = download();
+            }while(uploaded > 0 && (Date.now() - start)<= 2 ) */
+        
+        }, 10);
+        setIntervalAsync(() => {
+            const start = Date.now();
+            let loaded = 0;
+            do {
+                loaded = self.loadBatch();
+            } while (loaded > 0 && (Date.now() - start) <= 0)
+        
+        }, 10);
+    }
+
+    scheduleDownload(f) {
+        this.downloads.unshift(f);
+    }
+    download() {
+        if (this.nextDownloads.length == 0) {
+            this.getNextDownloads();
+            if (this.nextDownloads.length == 0) return;
+        }
+        while (this.nextDownloads.length > 0 && concurentDownloads < 500) {
+            const nextDownload = this.nextDownloads.shift();
+            if (!!nextDownload && nextDownload.shouldDoDownload()) {
+                nextDownload.doDownload();
+            }
+        }
+    
+    
+    
+        return;
+    }
+    meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
+        this.ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
+    }
+    loadBatch() {
+        if (this.nextReady.length == 0) {
+            this.getNextReady();
+            if (this.nextReady.length == 0) return 0;
+        }
+        const data = this.nextReady.shift();
+        if (!data) return 0;
+        const cache = data[0];
+        const register = data[1];
+        const key = data[2];
+        const mesh = cache.get(key);
+        if(mesh instanceof THREE.InstancedMesh){
+            console.log("instanced");
+        }else{
+            console.log(" not instanced");
+        }
+        if (!!mesh && !!register[key]) {
+            Object.keys(register[key]).forEach(tile => {
+                const callback = register[key][tile];
+                if (!!callback) {
+                    callback(mesh);
+                    register[key][tile] = null;
+                }
+            });
+        }
+        return 1;
+    }
+    
+    getNextDownloads() {
+        let smallestLevel = Number.MAX_VALUE;
+        let smallestDistance = Number.MAX_VALUE;
+        let closest = -1;
+        for (let i = this.downloads.length - 1; i >= 0; i--) {
+            if (!this.downloads[i].shouldDoDownload()) {
+                this.downloads.splice(i, 1);
+                continue;
+            }
+            if (!this.downloads[i].distanceFunction) { // if no distance function, must be a json, give absolute priority!
+                this.nextDownloads.push(this.downloads.splice(i, 1)[0]);
+            }
+        }
+        if (this.nextDownloads.length > 0) return;
+        for (let i = this.downloads.length - 1; i >= 0; i--) {
+            const dist = this.downloads[i].distanceFunction();
+            if (dist < smallestDistance) {
+                smallestDistance = dist;
+                closest = i;
+            } else if (dist == smallestDistance && this.downloads[i].level < smallestLevel) {
+                smallestLevel = this.downloads[i].level;
+                closest = i
+            }
+        }
+        if (closest >= 0) {
+            const closestItem = this.downloads.splice(closest, 1).pop();
+            this.nextDownloads.push(closestItem);
+            const siblings = closestItem.getSiblings();
+            for (let i = this.downloads.length - 1; i >= 0; i--) {
+                if (siblings.includes(this.downloads[i].uuid)) {
+                    this.nextDownloads.push(this.downloads.splice(i, 1).pop());
+                }
+            }
+        }
+    }
+    
+    getNextReady() {
+        let smallestLevel = Number.MAX_VALUE;
+        let smallestDistance = Number.MAX_VALUE;
+        let closest = -1;
+        for (let i = this.ready.length - 1; i >= 0; i--) {
+    
+            if (!this.ready[i][3]) {// if no distance function, must be a json, give absolute priority!
+                this.nextReady.push(this.ready.splice(i, 1)[0]);
+            }
+        }
+        if (this.nextReady.length > 0) return;
+        for (let i = this.ready.length - 1; i >= 0; i--) {
+            const dist = this.ready[i][3]();
+            if (dist < smallestDistance) {
+                smallestDistance = dist;
+                smallestLevel = this.ready[i][5]
+                closest = i
+            } else if (dist == smallestDistance && this.ready[i][5] < smallestLevel) {
+                smallestLevel = this.ready[i][5]
+                closest = i
+            }
+        }
+        if (closest >= 0) {
+            const closestItem = this.ready.splice(closest, 1).pop();
+            this.nextReady.push(closestItem);
+            const siblings = closestItem[4]();
+            for (let i = this.ready.length - 1; i >= 0; i--) {
+                if (siblings.includes(this.ready[i][6])) {
+                    this.nextready.push(this.ready.splice(i, 1).pop());
+                }
+            }
+        }
+    }
+
 
     get(tileIdentifier, path, callback, distanceFunction, getSiblings, level) {
         const self = this;
@@ -167,7 +183,7 @@ class TileLoader {
 
         const cachedObject = self.cache.get(key);
         if (!!cachedObject) {
-            meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+            this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
         } else if (Object.keys(self.register[key]).length == 1) {
             let downloadFunction;
             if (path.includes(".b3dm")) {
@@ -182,7 +198,7 @@ class TileLoader {
                         result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
                             self.cache.put(key, mesh);
                             self.checkSize();
-                            meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                            this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
 
                     });
@@ -199,12 +215,12 @@ class TileLoader {
                         result.json().then(json => {
                             self.cache.put(key, json);
                             self.checkSize();
-                            meshReceived(self.cache, self.register, key);
+                            this.meshReceived(self.cache, self.register, key);
                         });
                     });
                 }
             }
-            scheduleDownload({
+            this.scheduleDownload({
                 "shouldDoDownload": () => {
                     return !!self.register[key] && Object.keys(self.register[key]).length > 0;
                 },

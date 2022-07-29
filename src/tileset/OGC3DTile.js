@@ -34,8 +34,6 @@ class OGC3DTile extends THREE.Object3D {
         super();
         const self = this;
 
-        
-        
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
@@ -45,10 +43,10 @@ class OGC3DTile extends THREE.Object3D {
                     mesh.material.wireframe = false;
                     mesh.material.side = THREE.DoubleSide;
                 } : properties.meshCallback);
-        }
-        // set properties general to the entire tileset
-        this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
-
+            }
+            // set properties general to the entire tileset
+            this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
+            
         this.meshCallback = properties.meshCallback;
         this.loadOutsideView = properties.loadOutsideView;
         this.cameraOnLoad = properties.cameraOnLoad;
