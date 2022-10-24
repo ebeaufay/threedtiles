@@ -193,7 +193,7 @@ scene.autoUpdate = false;
 https://github.com/ebeaufay/UltraGlobe allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
 
 Don't hesitate to tell me if you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
-Contact: emericbeaufays@gmail.com
+Contact: emeric.beaufays@jdultra.com
 
 
 # Mesh to 3DTiles Converter
@@ -201,4 +201,4 @@ Contact: emericbeaufays@gmail.com
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
 It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures. 
 I'm keeping the code private for now but feel free to contact me about it.
-Contact: emericbeaufays@gmail.com
+Contact: emeric.beaufays@jdultra.com
