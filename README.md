@@ -1,6 +1,6 @@
-# threedtiles
+# T H R E E D T I L E S : http://www.jdultra.com/
 
-http://www.jdultra.com/
+
 
 The fastest 3DTiles viewer for three.js
 
