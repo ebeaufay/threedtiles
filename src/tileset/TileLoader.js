@@ -76,11 +76,7 @@ class TileLoader {
         const register = data[1];
         const key = data[2];
         const mesh = cache.get(key);
-        if(mesh instanceof THREE.InstancedMesh){
-            console.log("instanced");
-        }else{
-            console.log(" not instanced");
-        }
+        
         if (!!mesh && !!register[key]) {
             Object.keys(register[key]).forEach(tile => {
                 const callback = register[key][tile];
@@ -164,10 +160,16 @@ class TileLoader {
     }
 
 
-    get(tileIdentifier, path, callback, distanceFunction, getSiblings, level) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level) {
         const self = this;
         const key = simplifyPath(path);
 
+        const realAbortController = new AbortController();
+        abortController.signal.addEventListener("abort", ()=>{
+            if(!self.register[key] || Object.keys(self.register[key]).length == 0){
+                realAbortController.abort();
+            }
+        })
 
         if (!path.includes(".b3dm") && !path.includes(".json")) {
             console.error("the 3DTiles cache can only be used to load B3DM and json data");
@@ -189,40 +191,47 @@ class TileLoader {
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    fetch(path).then(result => {
+                    fetch(path, {signal: realAbortController.signal}).then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
-                        result.arrayBuffer().then(buffer => B3DMDecoder.parseB3DM(buffer, self.meshCallback)).then(mesh => {
-                            self.cache.put(key, mesh);
+                        return result.arrayBuffer();
+
+                    })
+                    .then(resultArrayBuffer=>{
+                        return B3DMDecoder.parseB3DM(resultArrayBuffer, self.meshCallback);
+                    })
+                    .then(mesh=>{
+                        self.cache.put(key, mesh);
                             self.checkSize();
                             this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                        });
-
-                    });
+                    })
+                    .catch(()=>{});;
                 }
             } else if (path.includes(".json")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    fetch(path).then(result => {
+                    fetch(path, {signal: realAbortController.signal}).then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
-                        result.json().then(json => {
-                            self.cache.put(key, json);
-                            self.checkSize();
-                            this.meshReceived(self.cache, self.register, key);
-                        });
-                    });
+                        return result.json();
+                        
+                    }).then(json => {
+                        self.cache.put(key, json);
+                        self.checkSize();
+                        this.meshReceived(self.cache, self.register, key);
+                    })
+                    .catch(e=>console.error("tile download aborted"));
                 }
             }
             this.scheduleDownload({
                 "shouldDoDownload": () => {
-                    return !!self.register[key] && Object.keys(self.register[key]).length > 0;
+                    return !abortController.signal.aborted && !!self.register[key] && Object.keys(self.register[key]).length > 0;
                 },
                 "doDownload": downloadFunction,
                 "distanceFunction": distanceFunction,

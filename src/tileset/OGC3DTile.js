@@ -76,14 +76,14 @@ class OGC3DTile extends THREE.Object3D {
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
 
+        this.abortController = new AbortController();
         this.layers.disable(0);
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
             if (properties.onLoadCallback) properties.onLoadCallback(self);
         } else if (properties.url) { // If only the url to the tileset.json is provided
-            self.controller = new AbortController();
-            fetch(properties.url, { signal: self.controller.signal }).then(result => {
+            fetch(properties.url, { signal: self.abortController.signal }).then(result => {
                 if (!result.ok) {
                     throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }
@@ -176,7 +176,7 @@ class OGC3DTile extends THREE.Object3D {
             if (!!url) {
                 if (url.includes(".b3dm")) {
                     self.contentURL = url;
-                    self.tileLoader.get(this.uuid, url, mesh => {
+                    self.tileLoader.get(self.abortController,this.uuid, url, mesh => {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
@@ -204,7 +204,7 @@ class OGC3DTile extends THREE.Object3D {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(), self.level);
                 } else if (url.includes(".json")) {
-                    self.tileLoader.get(this.uuid, url, json => {
+                    self.tileLoader.get(self.abortController,this.uuid, url, json => {
                         if (!!self.deleted) return;
                         if (!self.json.children) self.json.children = [];
                         json.rootPath = path.dirname(url);
@@ -228,8 +228,8 @@ class OGC3DTile extends THREE.Object3D {
             if (!!element.contentURL) {
                 self.tileLoader.invalidate(element.contentURL, element.uuid);
             }
-            if (!!element.controller) { // abort tile request
-                element.controller.abort();
+            if (!!element.abortController) { // abort tile request
+                element.abortController.abort();
             }
 
         });

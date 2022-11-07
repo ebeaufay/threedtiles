@@ -26,13 +26,13 @@ animate();
 function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
-    scene.background = new THREE.Color(0xaaffcc);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.2));
-    const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
+    scene.background = new THREE.Color(0xaaccee);
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.6));
+    const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.4 );
     directionalLight.position.set(100,100,100)
     directionalLight.lookAt(-1,-1,-1)
     scene.add( directionalLight );
-    scene.autoUpdate = false;
+    scene.autoUpdate = true;
     return scene;
 }
 
@@ -77,33 +77,37 @@ function initStats(dom) {
 
 
 function initCamera() {
-    const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 0.1, 1000);
-    camera.position.set(-10, 5, 20);
+    const camera = new THREE.PerspectiveCamera(40, window.offsetWidth / window.offsetHeight, 0.1, 6000);
+    camera.position.set(1400,100,1400);
     camera.matrixAutoUpdate = true;
     return camera;
 }
 
 function initTileset(scene) {
 
+    const tileLoader = new TileLoader(mesh => {
+        //// Insert code to be called on every newly decoded mesh e.g.:
+        mesh.material.wireframe = false;
+        mesh.material.side = THREE.DoubleSide;
+    }, 1000)
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        //url: "http://localhost:8081/tileset.json",
-        geometricErrorMultiplier: 0.5,
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        geometricErrorMultiplier: 0.02,
         loadOutsideView: false,
-        tileLoader: new TileLoader(mesh => {
-            //// Insert code to be called on every newly decoded mesh e.g.:
-            mesh.material.wireframe = false;
-            mesh.material.side = THREE.DoubleSide;
-        }, 1000),
-        occlusionCullingService: occlusionCullingService,
-        static: false
+        tileLoader: tileLoader,
+        //occlusionCullingService: occlusionCullingService,
+        static: false,
+        
     });
+    
 
 
     
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
     //// If the OGC3DTile object is marked as "static" (constructorParameter), these operations will not work.
+    
     
     
     //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
@@ -113,17 +117,27 @@ function initTileset(scene) {
     var interval;
     document.addEventListener('keyup', (e) => {
         console.log(camera.position)
-        if (!e.key || e.key !== "p") return;
-        if (!!interval) {
-            clearInterval(interval);
-            interval = null;
-        } else {
-            startInterval();
+        if (!!e.key && e.key !== "p"){
+
+            if (!!interval) {
+                clearInterval(interval);
+                interval = null;
+            } else {
+                startInterval();
+            }
         }
+        if (!!e.key && e.key !== "l"){
+
+            console.log("new THREE.Vector3(" + camera.position.x + "," + camera.position.y + "," + camera.position.z + ")");
+                console.log("new THREE.Quaternion(" + camera.quaternion.x + "," + camera.quaternion.y + "," + camera.quaternion.z + "," + camera.quaternion.w + ")");
+
+        }
+        
     });
     function startInterval() {
         interval = setIntervalAsync(function () {
             ogc3DTile.update(camera);
+            
         }, 20);
     }
     startInterval();
@@ -157,11 +171,10 @@ function initController(camera, dom) {
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
-    occlusionCullingService.update(scene, renderer, camera)
+    //occlusionCullingService.update(scene, renderer, camera)
     stats.update();
-
-
 }
+
 
 
 
