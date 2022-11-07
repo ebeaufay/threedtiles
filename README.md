@@ -1,6 +1,8 @@
-# threedtiles
+# T H R E E D T I L E S : http://www.jdultra.com/
 
-3DTiles viewer for three.js
+
+
+The fastest 3DTiles viewer for three.js
 
 Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
 
@@ -26,7 +28,7 @@ It's up to the user to call updates on the tileset. You might call them whenever
 ```
 setInterval(function () {
     ogc3DTile.update(camera);
-}, 200);
+}, 20);
 ```
 
 Currently, the library is limmited to B3DM files.
@@ -71,6 +73,21 @@ const ogc3DTile = new OGC3DTile({
 ```
 
 ### Callback
+
+#### onLoadCallback
+Add a callback that is called once when the first tile is loaded and geometry is available.
+This can be useful to position the tileset at a specific location when it is not centered on origin for example.
+
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    onLoadCallback: tilese => {
+            console.log(tileset.boundingVolume);
+        }
+});
+```
+
+#### Mesh callback
 Add a callback on loaded tiles in order to set a material or do some logic on the meshes.
 
 ```
@@ -157,7 +174,7 @@ occlusionCullingService.setSide(THREE.DoubleSide);
 ```
 
 
-### static tilesets (Performance tip)
+### static tilesets and other performance tips
 When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
 This will skip recalculating the transformation matrix of every tile each frame and give a few extra frames per second.
 
@@ -168,12 +185,22 @@ const ogc3DTile = new OGC3DTile({
     });
 ```
 
-# Displaying meshes on a globe
-I'm working on this project in parallel https://github.com/ebeaufay/UltraGlobe which allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
+Either way, it's advised to set the autoUpdate property of the scene to false and update the matrices manually whenever you move things around.
+
+```
+scene.autoUpdate = false;
+```
+
+# Projects that use this library
+https://github.com/ebeaufay/UltraGlobe allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
+
+Don't hesitate to tell me if you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
+Contact: emeric.beaufays@jdultra.com
+
 
 # Mesh to 3DTiles Converter
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
 It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures. 
 I'm keeping the code private for now but feel free to contact me about it.
-Contact: emericbeaufays@gmail.com
+Contact: emeric.beaufays@jdultra.com
