@@ -4,11 +4,13 @@
 
 The fastest 3DTiles viewer for three.js
 
-Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
+[Photogrametry](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
 
-IFC : https://storage.googleapis.com/jdultra.com/ifc/index.html
+[IFC](https://storage.googleapis.com/jdultra.com/ifc/index.html)
 
-Occlusion culling : [https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html](https://storage.googleapis.com/www.jdultra.com/occlusion/index.html)
+[GlTF with PBR material](https://www.jdultra.com/pbr/)
+
+[Occlusion culling](https://www.jdultra.com/occlusion/index.html)
 
 Adding a tileset to a scene is as easy as :
 
