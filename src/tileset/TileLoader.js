@@ -26,12 +26,6 @@ class TileLoader {
         const self = this;
         setIntervalAsync(() => {
             self.download();
-            /* const start = Date.now();
-            let uploaded = 0;
-            do{
-                uploaded = download();
-            }while(uploaded > 0 && (Date.now() - start)<= 2 ) */
-        
         }, 10);
         setIntervalAsync(() => {
             const start = Date.now();
@@ -57,9 +51,6 @@ class TileLoader {
                 nextDownload.doDownload();
             }
         }
-    
-    
-    
         return;
     }
     meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {

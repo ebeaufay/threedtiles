@@ -1,92 +1,91 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-//import { LegacyGLTFLoader } from './LegacyGLTFLoader.js';
+import * as THREE from 'three';
 
 const gltfLoader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath( 'https://www.gstatic.com/draco/versioned/decoders/1.4.3/' );
-gltfLoader.setDRACOLoader( dracoLoader );
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+gltfLoader.setDRACOLoader(dracoLoader);
+const dummy = new THREE.Object3D();
 //const legacyGLTFLoader = new LegacyGLTFLoader();
-const B3DMDecoder = {
-	parseB3DM: (arrayBuffer, meshCallback) => {
-		const dataView = new DataView(arrayBuffer);
 
-		const magic =
-			String.fromCharCode(dataView.getUint8(0)) +
-			String.fromCharCode(dataView.getUint8(1)) +
-			String.fromCharCode(dataView.getUint8(2)) +
-			String.fromCharCode(dataView.getUint8(3));
-		console.assert(magic === 'b3dm');
+function parseB3DM(arrayBuffer, meshCallback) {
+	const dataView = new DataView(arrayBuffer);
 
-		const version = dataView.getUint32(4, true);
-		console.assert(version === 1);
+	const magic =
+		String.fromCharCode(dataView.getUint8(0)) +
+		String.fromCharCode(dataView.getUint8(1)) +
+		String.fromCharCode(dataView.getUint8(2)) +
+		String.fromCharCode(dataView.getUint8(3));
+	console.assert(magic === 'b3dm');
 
-		const byteLength = dataView.getUint32(8, true);
-		console.assert(byteLength === arrayBuffer.byteLength);
+	const version = dataView.getUint32(4, true);
+	console.assert(version === 1);
 
-		const featureTableJSONByteLength = dataView.getUint32(12, true);
-		const featureTableBinaryByteLength = dataView.getUint32(16, true);
-		const batchTableJSONByteLength = dataView.getUint32(20, true);
-		const batchTableBinaryByteLength = dataView.getUint32(24, true);
+	const byteLength = dataView.getUint32(8, true);
+	console.assert(byteLength === arrayBuffer.byteLength);
 
-		const featureTableStart = 28;
-		//const featureTable = new FeatureTable( arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength );
+	const featureTableJSONByteLength = dataView.getUint32(12, true);
+	const featureTableBinaryByteLength = dataView.getUint32(16, true);
+	const batchTableJSONByteLength = dataView.getUint32(20, true);
+	const batchTableBinaryByteLength = dataView.getUint32(24, true);
 
-		const batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength;
-		//const batchTable = new BatchTable( arrayBuffer, featureTable.getData( 'BATCH_LENGTH' ), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength );
+	const featureTableStart = 28;
+	//const featureTable = new FeatureTable( arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength );
 
-		const glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
-		const glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
+	const batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength;
+	//const batchTable = new BatchTable( arrayBuffer, featureTable.getData( 'BATCH_LENGTH' ), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength );
 
-
-		const gltfBuffer = glbBytes.slice().buffer;
+	const glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
+	const glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
 
 
-		return new Promise((resolve, reject) => {
+	const gltfBuffer = glbBytes.slice().buffer;
 
-			gltfLoader.parse(gltfBuffer, null, model => {
 
-				////TODO
-				//model.batchTable = b3dm.batchTable;
-				//model.featureTable = b3dm.featureTable;
+	return new Promise((resolve, reject) => {
 
-				//model.scene.batchTable = b3dm.batchTable;
-				//model.scene.featureTable = b3dm.featureTable;
+		gltfLoader.parse(gltfBuffer, null, model => {
 
-				//const scene = mergeColoredObject(model.scene);
-				model.scene.traverse((o) => {
-					if (o.isMesh) {
-						if (!!meshCallback) {
-							meshCallback(o);
-						}
+			////TODO
+			//model.batchTable = b3dm.batchTable;
+			//model.featureTable = b3dm.featureTable;
 
+			//model.scene.batchTable = b3dm.batchTable;
+			//model.scene.featureTable = b3dm.featureTable;
+
+			//const scene = mergeColoredObject(model.scene);
+			model.scene.traverse((o) => {
+				if (o.isMesh) {
+					if (!!meshCallback) {
+						meshCallback(o);
 					}
-				});
-				resolve(model.scene);
-			}, error=>{
-				console.error(error);
-				/* legacyGLTFLoader.parse(gltfBuffer, model => {
 
-					////TODO
-					//model.batchTable = b3dm.batchTable;
-					//model.featureTable = b3dm.featureTable;
-	
-					//model.scene.batchTable = b3dm.batchTable;
-					//model.scene.featureTable = b3dm.featureTable;
-	
-					//const scene = mergeColoredObject(model.scene);
-					model.scene.traverse((o) => {
-						if (o.isMesh) {
-							if (!!meshCallback) {
-								meshCallback(o);
-							}
-	
-						}
-					});
-					resolve(model.scene);
-				}, null); */
+				}
 			});
+			resolve(model.scene);
+		}, error => {
+			console.error(error);
 		});
+	});
+}
+
+const B3DMDecoder = {
+	parseB3DM: parseB3DM,
+	parseB3DMInstanced: (arrayBuffer, meshCallback, maxCount) => { // expects GLTF with one node level
+
+		return parseB3DM(arrayBuffer, meshCallback).then(mesh => {
+			let instancedMesh;
+			mesh.traverse(child => {
+				if (child.isMesh) {
+					instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, maxCount);
+					instancedMesh.baseMatrix = child.matrix;
+					//console.log(child.matrix.elements[12])
+				}
+			});
+			return instancedMesh;
+		});
+
 	}
 }
 
