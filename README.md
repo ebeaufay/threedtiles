@@ -4,11 +4,11 @@
 
 The fastest 3DTiles viewer for three.js
 
-Photogrametry : https://ebeaufay.github.io/ThreedTilesViewer.github.io/
+[Photogrametry (OBJ conversion)](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
 
-IFC : https://storage.googleapis.com/jdultra.com/ifc/index.html
+[PBR material (GlTF conversion)](https://www.jdultra.com/pbr/)
 
-Occlusion culling : [https://storage.googleapis.com/jdultra.com/occlusionCulling/index.html](https://storage.googleapis.com/www.jdultra.com/occlusion/index.html)
+[Occlusion culling (IFC conversion)](https://www.jdultra.com/occlusion/index.html)
 
 Adding a tileset to a scene is as easy as :
 
@@ -140,8 +140,8 @@ ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI*0.5);
 ### Occlusion culling
 Occlusion culling prevents the refinment of data that is hidden by other data, like a wall. It can have a big impact on frame-rate and loading speed for interior scenes.
 
-A word of warning: activating occlusion culling causes an extra render-pass and as such, has an impact on frame-rate. 
-It will be most beneficial on interior scenes where most of the data is occluded by walls. All the tiles that don't need to be downloaded or drawn will balance out the cost of the extra render pass.
+A word of warning: activating occlusion culling has an impact on frame-rate. 
+It will be most beneficial on interior scenes where most of the data is occluded by walls. All the tiles that don't need to be downloaded or drawn will balance out the cost of the occlusion logic.
 
 
 First, instantiate an OcclusionCullingService:
