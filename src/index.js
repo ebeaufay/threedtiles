@@ -11,8 +11,8 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
-import { InstancedOGC3DTile} from "./tileset/instanced/InstancedOGC3DTile.js"
-import { InstancedTileLoader} from "./tileset/instanced/InstancedTileLoader.js"
+import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
+import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 
 import { B3DMDecoder } from "./decoder/B3DMDecoder";
 
@@ -71,7 +71,7 @@ function initScene() {
     scene.matrixAutoUpdate = false;
     scene.background = new THREE.Color(0x000000);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 0.2));
-    
+
     const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
     light.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: 0xbbbbff })));
@@ -201,20 +201,20 @@ function initTileset(scene) {
     return ogc3DTile;
 }
 
-function createInstancedTileLoader(scene){
+function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, mesh => {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
         mesh.material.side = THREE.FrontSide;
     }, 1000, 1000);
 }
-function initInstancedTilesets(instancedTileLoader){
+function initInstancedTilesets(instancedTileLoader) {
 
     const instancedTilesets = [];
 
-    for(let x = 0; x<10; x++){
-        for(let y = 0; y<10; y++){
-            for(let z = 0; z<10; z++){
+    for (let x = 0; x < 10; x++) {
+        for (let y = 0; y < 10; y++) {
+            for (let z = 0; z < 10; z++) {
                 const tileset = new InstancedOGC3DTile({
                     url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
                     //url: "http://localhost:8080/tileset.json",
@@ -223,25 +223,29 @@ function initInstancedTilesets(instancedTileLoader){
                     tileLoader: instancedTileLoader,
                     static: false,
                 });
-                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50*x)
-                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 15*y)
-                tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 25*z)
+                tileset.rotateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
+                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * x)
+                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 50 * y)
+                tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
                 scene.add(tileset);
                 instancedTilesets.push(tileset);
 
-                idleCallback();
 
-                function idleCallback(){
-                    tileset.update(camera);
-                    setTimeout(()=>{
-                        window.requestIdleCallback(idleCallback,{timeout:50})
-                    },20)
-                    
-                }
             }
         }
     }
 
+    idleCallback();
+
+    function idleCallback() {
+        instancedTilesets.forEach(tileset=>{
+            tileset.update(camera);
+        })
+        setTimeout(() => {
+            window.requestIdleCallback(idleCallback, { timeout: 50 })
+        }, 20)
+
+    }
     initLODMultiplierSlider(instancedTilesets);
 }
 
@@ -251,7 +255,7 @@ function initLODMultiplierSlider(instancedTilesets) {
     output.innerHTML = slider.value;
 
     slider.oninput = () => {
-        instancedTilesets.forEach(tileset=>{
+        instancedTilesets.forEach(tileset => {
             tileset.setGeometricErrorMultiplier(slider.value)
         })
         output.innerHTML = slider.value;
