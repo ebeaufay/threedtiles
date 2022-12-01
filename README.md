@@ -10,6 +10,8 @@ The fastest 3DTiles viewer for three.js
 
 [Occlusion culling (IFC conversion)](https://www.jdultra.com/occlusion/index.html)
 
+[Instanced Tileset] (https://www.jdultra.com/instanced/index.html)
+
 Adding a tileset to a scene is as easy as :
 
 ```
@@ -42,6 +44,7 @@ Currently, the library is limmited to B3DM files.
 - Share a cache between tileset instances
 - Optimal tile load order
 - Occlusion culling
+- Instanced tilesets
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -173,6 +176,10 @@ const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 ```
 
+### Instanced Tilesets
+Using InstancedTileLoader and InstancedOGC3DTile allows displaying the same Tileset at many different places with little impact on performance.
+Each Tileset is independent in terms of it's position, orientation and level of detail but each tile is created as an "InstancedMesh" giving much 
+higher performance when displaying the same Tileset many times.
 
 ### static tilesets and other performance tips
 When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
