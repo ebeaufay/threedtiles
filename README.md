@@ -10,7 +10,7 @@ The fastest 3DTiles viewer for three.js
 
 [Occlusion culling (IFC conversion)](https://www.jdultra.com/occlusion/index.html)
 
-[Instanced Tileset] (https://www.jdultra.com/instanced/index.html)
+[Instanced Tileset (pilot a swarm of highly detailed spaceships)](https://www.jdultra.com/instanced/index.html)
 
 Adding a tileset to a scene is as easy as :
 
