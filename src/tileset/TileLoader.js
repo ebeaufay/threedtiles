@@ -81,7 +81,6 @@ class TileLoader {
     }
     
     getNextDownloads() {
-        let smallestLevel = Number.MAX_VALUE;
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
@@ -95,13 +94,10 @@ class TileLoader {
         }
         if (this.nextDownloads.length > 0) return;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
-            const dist = this.downloads[i].distanceFunction();
+            const dist = this.downloads[i].distanceFunction()*this.downloads[i].level;
             if (dist < smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
-            } else if (dist == smallestDistance && this.downloads[i].level < smallestLevel) {
-                smallestLevel = this.downloads[i].level;
-                closest = i
             }
         }
         if (closest >= 0) {
@@ -117,7 +113,6 @@ class TileLoader {
     }
     
     getNextReady() {
-        let smallestLevel = Number.MAX_VALUE;
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
@@ -128,13 +123,9 @@ class TileLoader {
         }
         if (this.nextReady.length > 0) return;
         for (let i = this.ready.length - 1; i >= 0; i--) {
-            const dist = this.ready[i][3]();
+            const dist = this.ready[i][3]() * this.ready[i][5];
             if (dist < smallestDistance) {
                 smallestDistance = dist;
-                smallestLevel = this.ready[i][5]
-                closest = i
-            } else if (dist == smallestDistance && this.ready[i][5] < smallestLevel) {
-                smallestLevel = this.ready[i][5]
                 closest = i
             }
         }

@@ -110,7 +110,6 @@ class InstancedTileLoader {
     }
 
     getNextReady() {
-        let smallestLevel = Number.MAX_VALUE;
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
@@ -121,13 +120,9 @@ class InstancedTileLoader {
         }
         if (this.nextReady.length > 0) return;
         for (let i = this.ready.length - 1; i >= 0; i--) {
-            const dist = this.ready[i].distanceFunction();
+            const dist = this.ready[i].distanceFunction() * this.ready[i].level;
             if (dist < smallestDistance) {
                 smallestDistance = dist;
-                smallestLevel = this.ready[i].level
-                closest = i
-            } else if (dist == smallestDistance && this.ready[i].level < smallestLevel) {
-                smallestLevel = this.ready[i].level
                 closest = i
             }
         }
@@ -216,7 +211,6 @@ class InstancedTileLoader {
 
     
     getNextDownloads() {
-        let smallestLevel = Number.MAX_VALUE;
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
@@ -232,13 +226,10 @@ class InstancedTileLoader {
         if (this.nextDownloads.length > 0) return;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
             const download = this.downloads[i];
-            const dist = download.distanceFunction();
+            const dist = download.distanceFunction()*download.level;
             if (dist < smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
-            } else if (dist == smallestDistance && download.level < smallestLevel) {
-                smallestLevel = download.level;
-                closest = i
             }
         }
         if (closest >= 0) {

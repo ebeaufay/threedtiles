@@ -58,12 +58,12 @@ animate();
 
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.5, 0);
+    //const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.5, 0);
 
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
-    composer.addPass(bloomPass);
+    //composer.addPass(bloomPass);
     return composer;
 }
 function initScene() {
@@ -146,9 +146,9 @@ function initTileset(scene) {
         mesh.material.side = THREE.FrontSide;
     }, 1000)
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        geometricErrorMultiplier: 1.0,
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        geometricErrorMultiplier: 0.1,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -160,7 +160,7 @@ function initTileset(scene) {
 
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
     //// If the OGC3DTile object is marked as "static" (constructorParameter), these operations will not work.
 
 
