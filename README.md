@@ -177,9 +177,57 @@ occlusionCullingService.setSide(THREE.DoubleSide);
 ```
 
 ### Instanced Tilesets
+
+<p align="center">
+  <img src="https://storage.googleapis.com/jdultra-website/assets/instancedPic.png" width="800" style="display: block; margin: 0 auto"/>
+</p>
+
 Using InstancedTileLoader and InstancedOGC3DTile allows displaying the same Tileset at many different places with little impact on performance.
 Each Tileset is independent in terms of it's position, orientation and level of detail but each tile is created as an "InstancedMesh" giving much 
 higher performance when displaying the same Tileset many times.
+
+```
+// First create the InstancedTileLoader that will manage caching
+const instancedTileLoader = new InstancedTileLoader(scene, mesh => {
+    //// Insert code to be called on every newly decoded mesh e.g.:
+    mesh.material.wireframe = false;
+    mesh.material.side = THREE.DoubleSide;
+}, 
+1000, // cache size as in the number of tiles cached in memory
+100, // max number of tilesets from the same source
+);
+
+// then create some tilesets
+const instancedTilesets = [];
+for (let i = 0; i < 100; i++) {
+    const tileset = new InstancedOGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
+    geometricErrorMultiplier: 1.0,
+    loadOutsideView: false,
+    tileLoader: instancedTileLoader,
+    static: false });
+    
+    tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * i);
+    scene.add(tileset);
+    instancedTilesets.push(tileset);
+}
+
+//setup an update loop for the LODs
+setInterval(() => {
+    instancedTilesets[updateIndex].update(camera);
+    updateIndex= (updateIndex+1)%instancedTilesets.length;
+},50);
+
+//in the animate function, you also need to update the instancedTileLoader
+function animate() {
+    requestAnimationFrame(animate);
+    instancedTileLoader.update();
+    
+    ... // rest of render loop
+}
+animate();
+
+```
 
 ### static tilesets and other performance tips
 When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
