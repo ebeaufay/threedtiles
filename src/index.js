@@ -70,9 +70,9 @@ function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
     scene.background = new THREE.Color(0x000000);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.2));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    const light = new THREE.PointLight(0xbbbbff, 2, 5000);
+    /*const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
     light.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: 0xbbbbff })));
     scene.add(light);
@@ -83,7 +83,7 @@ function initScene() {
     const sphere2 = new THREE.SphereGeometry(2, 16, 8);
     light2.add(new THREE.Mesh(sphere2, new THREE.MeshBasicMaterial({ color: 0xffbbbb })));
     scene.add(light2);
-    light2.position.set(200, 100, -100);
+    light2.position.set(200, 100, -100);*/
 
     scene.matrixWorldAutoUpdate = true;
     return scene;
@@ -132,8 +132,8 @@ function initStats(dom) {
 
 
 function initCamera() {
-    const camera = new THREE.PerspectiveCamera(40, window.offsetWidth / window.offsetHeight, 1, 100000);
-    camera.position.set(100, 10, 100);
+    const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1.0, 100000);
+    camera.position.set(-800, 800, 800);
     camera.matrixAutoUpdate = true;
     return camera;
 }
@@ -143,12 +143,14 @@ function initTileset(scene) {
     const tileLoader = new TileLoader(mesh => {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
-        mesh.material.side = THREE.FrontSide;
+        mesh.material.side = THREE.DoubleSide;
     }, 1000)
     const ogc3DTile = new OGC3DTile({
+        //url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
         url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        geometricErrorMultiplier: 0.1,
+        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ands2ty8orz/tileset.json",
+        geometricErrorMultiplier: 0.01,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -161,6 +163,7 @@ function initTileset(scene) {
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    //ogc3DTile.scale.set(10.0,10.0,10.0)
     //// If the OGC3DTile object is marked as "static" (constructorParameter), these operations will not work.
 
 
@@ -205,28 +208,29 @@ function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, mesh => {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
-        mesh.material.side = THREE.FrontSide;
-    }, 1000, 1000);
+        mesh.material.side = THREE.DoubleSide;
+    }, 1000, 125);
 }
 function initInstancedTilesets(instancedTileLoader) {
 
     const instancedTilesets = [];
 
-    for (let x = 0; x < 10; x++) {
-        for (let y = 0; y < 10; y++) {
-            for (let z = 0; z < 10; z++) {
+    for (let x = 0; x < 5; x++) {
+        for (let y = 0; y < 5; y++) {
+            for (let z = 0; z < 5; z++) {
                 const tileset = new InstancedOGC3DTile({
-                    url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
+                    //url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
+                    url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
                     //url: "http://localhost:8080/tileset.json",
-                    geometricErrorMultiplier: 0.5,
-                    loadOutsideView: false,
+                    geometricErrorMultiplier: 0.001,
+                    loadOutsideView: true,
                     tileLoader: instancedTileLoader,
                     static: false,
                 });
-                tileset.rotateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
-                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * x)
-                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 50 * y)
-                tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
+                tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 3500 * x)
+                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 3500 * y)
+                //tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
                 scene.add(tileset);
                 instancedTilesets.push(tileset);
 
@@ -234,19 +238,19 @@ function initInstancedTilesets(instancedTileLoader) {
             }
         }
     }
-
-    idleCallback();
-
-    function idleCallback() {
-        instancedTilesets.forEach(tileset=>{
-            tileset.update(camera);
-        })
-        setTimeout(() => {
-            window.requestIdleCallback(idleCallback, { timeout: 50 })
-        }, 20)
-
+    function now() {
+        return (typeof performance === 'undefined' ? Date : performance).now(); // see #10732
     }
-    initLODMultiplierSlider(instancedTilesets);
+    let updateIndex = 0;
+    setInterval(() => {
+        let startTime = now();
+        do{
+            instancedTilesets[updateIndex].update(camera);
+            updateIndex= (updateIndex+1)%instancedTilesets.length;
+        }while(updateIndex < instancedTilesets.length && now()-startTime<4);
+    },50);
+    
+    //initLODMultiplierSlider(instancedTilesets);
 }
 
 function initLODMultiplierSlider(instancedTilesets) {
@@ -256,7 +260,7 @@ function initLODMultiplierSlider(instancedTilesets) {
 
     slider.oninput = () => {
         instancedTilesets.forEach(tileset => {
-            tileset.setGeometricErrorMultiplier(slider.value)
+            tileset.setGeometricErrorMultiplier(slider.value*0.1)
         })
         output.innerHTML = slider.value;
     }

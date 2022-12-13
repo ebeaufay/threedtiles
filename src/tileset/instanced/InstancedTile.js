@@ -457,7 +457,8 @@ class InstancedTile extends THREE.Object3D {
                 return 0;
             }
             const scale = this.master.matrixWorld.getMaxScaleOnAxis();
-            return (((distance / Math.pow(scale, 2)) / 100) / this.master.geometricErrorMultiplier);
+            //return (((distance / Math.pow(scale, 2)) / 100) / this.master.geometricErrorMultiplier);
+            return Math.pow(distance, 2) /(this.master.geometricErrorMultiplier*this.geometricError*Math.pow(scale,2.0)*35);
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported
