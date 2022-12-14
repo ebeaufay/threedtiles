@@ -69,6 +69,7 @@ function initComposer(scene, camera, renderer) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
+    scene.matrixWorldAutoUpdate = false;
     scene.background = new THREE.Color(0x000000);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
@@ -85,7 +86,7 @@ function initScene() {
     scene.add(light2);
     light2.position.set(200, 100, -100);*/
 
-    scene.matrixWorldAutoUpdate = true;
+    
     return scene;
 }
 
@@ -209,28 +210,29 @@ function createInstancedTileLoader(scene) {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
-    }, 1000, 125);
+    }, 1000, 3375);
 }
 function initInstancedTilesets(instancedTileLoader) {
 
     const instancedTilesets = [];
 
-    for (let x = 0; x < 5; x++) {
-        for (let y = 0; y < 5; y++) {
-            for (let z = 0; z < 5; z++) {
+    for (let x = 0; x < 15; x++) {
+        for (let y = 0; y < 15; y++) {
+            for (let z = 0; z < 15; z++) {
                 const tileset = new InstancedOGC3DTile({
-                    //url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
-                    url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+                    url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
+                    //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
                     //url: "http://localhost:8080/tileset.json",
-                    geometricErrorMultiplier: 0.001,
+                    geometricErrorMultiplier: 1.0,
                     loadOutsideView: true,
                     tileLoader: instancedTileLoader,
-                    static: false,
+                    static: true,
                 });
-                tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
-                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 3500 * x)
-                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 3500 * y)
-                //tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
+                //tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * x)
+                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 50 * y)
+                tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
+                tileset.updateMatrix()
                 scene.add(tileset);
                 instancedTilesets.push(tileset);
 
@@ -238,17 +240,21 @@ function initInstancedTilesets(instancedTileLoader) {
             }
         }
     }
+
+    scene.updateMatrixWorld(true)
     function now() {
-        return (typeof performance === 'undefined' ? Date : performance).now(); // see #10732
+        return (typeof performance === 'undefined' ? Date : performance).now();
     }
     let updateIndex = 0;
     setInterval(() => {
         let startTime = now();
         do{
-            instancedTilesets[updateIndex].update(camera);
+            const frustum = new THREE.Frustum();
+            frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+            instancedTilesets[updateIndex].update(camera, frustum);
             updateIndex= (updateIndex+1)%instancedTilesets.length;
         }while(updateIndex < instancedTilesets.length && now()-startTime<4);
-    },50);
+    },40);
     
     //initLODMultiplierSlider(instancedTilesets);
 }

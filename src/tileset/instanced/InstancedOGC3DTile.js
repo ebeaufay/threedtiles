@@ -32,9 +32,17 @@ class InstancedOGC3DTile extends THREE.Object3D {
         }
     }
 
-    update(camera){
-        const frustum = new THREE.Frustum();
-        frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    update(camera, frustum){
+        if(!!frustum){
+            this.tileset._update(camera, frustum);
+        }else{
+            const frustum = new THREE.Frustum();
+            frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+            this.tileset._update(camera, frustum);
+        }
+        
+    }
+    updateWithFrustum(camera, frustum){
         this.tileset._update(camera, frustum);
     }
 

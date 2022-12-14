@@ -23,8 +23,7 @@ class InstancedTile extends THREE.Object3D {
      *   meshCallback: function,
      *   cameraOnLoad: camera,
      *   parentTile: OGC3DTile,
-     *   onLoadCallback: function,
-     *   static: Boolean
+     *   onLoadCallback: function
      * } properties 
      */
     constructor(properties) {
@@ -333,7 +332,6 @@ class InstancedTile extends THREE.Object3D {
                     level: self.level + 1,
                     tileLoader: self.tileLoader,
                     cameraOnLoad: camera,
-                    static: self.static,
                     master: self.master
                 });
                 self.childrenTiles.push(childTile);
