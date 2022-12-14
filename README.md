@@ -205,9 +205,11 @@ for (let i = 0; i < 100; i++) {
     geometricErrorMultiplier: 1.0,
     loadOutsideView: false,
     tileLoader: instancedTileLoader,
-    static: false });
+    static: true // when static is set to true, don't forget to call InstancedOGC3DTile#updateMatrix manually
+    });
     
     tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * i);
+    tileset.updateMatrix();
     scene.add(tileset);
     instancedTilesets.push(tileset);
 }
@@ -240,16 +242,50 @@ const ogc3DTile = new OGC3DTile({
     });
 ```
 
-Either way, it's advised to set the autoUpdate property of the scene to false and update the matrices manually whenever you move things around.
+Either way, it's advised to set the autoUpdate property of the scene to false and call Scene#updateMatrixWorld manually whenever you move things around.
 
 ```
-scene.autoUpdate = false;
+scene.matrixAutoUpdate = false;
+scene.matrixWorldAutoUpdate = false;
+
+// and when objects move:
+scene.updateMatrixWorld(true);
+
 ```
+#### tileset update loop
+Updating a single tileset via OGC3DTile#update or InstancedOGC3DTile#update is quite fast, even when the tree is deep.
+For a single tileset, it's safe to call it regularly with a setInterval:
+```
+function startInterval() {
+        interval = setIntervalAsync(function () {
+            ogc3DTile.update(camera);
+        }, 20);
+    }
+```
+
+However, with instancedTilesets, you may have hundreds or even thousands of LOD trees that need to be updated individually. In order to preserve frame-rate,
+you may want to implement something a little smarter that yields the CPU to the render loop. In the example below, the process tries to update as many tilesets as it can in under 4 ms.
+
+```
+function now() {
+    return (typeof performance === 'undefined' ? Date : performance).now();
+}
+let updateIndex = 0;
+setInterval(() => {
+    let startTime = now();
+    do{
+        instancedTilesets[updateIndex].update(camera);
+        updateIndex= (updateIndex+1)%instancedTilesets.length;
+    }while(updateIndex < instancedTilesets.length && now()-startTime<4);
+},50);
+```
+
+window#requestIdleCallback is also a good option but the rate of updates becomes slightly unpredictable.
 
 # Projects that use this library
 https://github.com/ebeaufay/UltraGlobe allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
 
-Don't hesitate to tell me if you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
+If you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
 Contact: emeric.beaufays@jdultra.com
 
 
@@ -257,5 +293,5 @@ Contact: emeric.beaufays@jdultra.com
 
 I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
 It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures. 
-I'm keeping the code private for now but feel free to contact me about it.
+The code is not open source but feel free to contact me for a trial.
 Contact: emeric.beaufays@jdultra.com
