@@ -20,7 +20,8 @@ import { OGC3DTile } from "./tileset/OGC3DTile";
 ...
 
 const ogc3DTile = new OGC3DTile({
-    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json"
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer
 });
 
 scene.add(ogc3DTile);
@@ -56,6 +57,7 @@ you may also set this value at initialization:
 ```
 const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
     geometricErrorMultiplier: 2.0
 });
 ```
@@ -71,6 +73,7 @@ Instead of this behaviour, you can force the lowest possible LODs to be loaded f
 ```
 const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
     loadOutsideView: true
 });
 ```
@@ -84,6 +87,7 @@ This can be useful to position the tileset at a specific location when it is not
 ```
 const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
     onLoadCallback: tilese => {
             console.log(tileset.boundingVolume);
         }
@@ -96,6 +100,7 @@ Add a callback on loaded tiles in order to set a material or do some logic on th
 ```
 const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
     meshCallback: mesh => {
             mesh.material.wireframe = true;
             mesh.material.side = THREE.DoubleSide;
@@ -116,6 +121,7 @@ import { TileLoader } from "@jdultra/threedtiles/src/tileset/TileLoader";
 
 const ogc3DTile = new OGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+        renderer: renderer,
         tileLoader: new TileLoader(mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
@@ -133,6 +139,7 @@ The OGC 3DTile object is a regular three.js Object3D so it can be transformed vi
 ```
 const ogc3DTile = new OGC3DTile({
     url: "https://ebeaufay.github.io/ThreedTilesViewer.github.io/momoyama/tileset.json"
+    renderer: renderer,
 });
 
 ogc3DTile.translateOnAxis(new THREE.Vector3(0,1,0), -450);
@@ -156,6 +163,7 @@ This service must be passed to every OGC3DTiles object like so:
 ```
 const ogc3DTile = new OGC3DTile({
         url: "path/to/tileset.json",
+        renderer: renderer,
         occlusionCullingService: occlusionCullingService
     });
 ```
@@ -201,11 +209,12 @@ const instancedTileLoader = new InstancedTileLoader(scene, mesh => {
 const instancedTilesets = [];
 for (let i = 0; i < 100; i++) {
     const tileset = new InstancedOGC3DTile({
-    url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
-    geometricErrorMultiplier: 1.0,
-    loadOutsideView: false,
-    tileLoader: instancedTileLoader,
-    static: true // when static is set to true, don't forget to call InstancedOGC3DTile#updateMatrix manually
+        url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
+        renderer: renderer,
+        geometricErrorMultiplier: 1.0,
+        loadOutsideView: false,
+        tileLoader: instancedTileLoader,
+        static: true // when static is set to true, don't forget to call InstancedOGC3DTile#updateMatrix manually
     });
     
     tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * i);
@@ -238,6 +247,7 @@ This will skip recalculating the transformation matrix of every tile each frame 
 ```
 const ogc3DTile = new OGC3DTile({
         url: "path/to/tileset.json",
+        renderer: renderer,
         static: true
     });
 ```
