@@ -5,7 +5,7 @@ import * as path from "path-browserify";
 import * as _ from "lodash";
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
-
+const rendererSize = new THREE.Vector2();
 
 class InstancedTile extends THREE.Object3D {
 
@@ -250,7 +250,7 @@ class InstancedTile extends THREE.Object3D {
             // If this tile does not have mesh content but it has children
             if (metric < 0 && self.hasMeshContent) return;
             
-            if ((!self.hasMeshContent && self.rootPath) || (metric < self.geometricError && !!self.meshContent)) {
+            if ((!self.hasMeshContent && self.rootPath) || (metric < self.master.geometricErrorMultiplier * self.geometricError && !!self.meshContent)) {
                 if (!!self.json && !!self.jsonChildren && self.childrenTiles.length != self.jsonChildren.length) {
                     loadJsonChildren();
                     return;
@@ -284,10 +284,10 @@ class InstancedTile extends THREE.Object3D {
             }
 
             // has children
-            if (metric >= self.geometricError) { // Ideal LOD or before ideal lod
+            if (metric >= self.master.geometricErrorMultiplier * self.geometricError) { // Ideal LOD or before ideal lod
 
                 self.changeContentVisibility(true);
-            } else if (metric < self.geometricError) { // Ideal LOD is past this one
+            } else if (metric < self.master.geometricErrorMultiplier * self.geometricError) { // Ideal LOD is past this one
                 // if children are visible and have been displayed, can be hidden
                 let allChildrenReady = true;
                 self.childrenTiles.every(child => {
@@ -311,7 +311,7 @@ class InstancedTile extends THREE.Object3D {
                 updateNodeVisibility(metric);
                 return;
             }
-            if (metric >= self.geometricError) {
+            if (metric >= self.master.geometricErrorMultiplier * self.geometricError) {
                 self.disposeChildren();
                 updateNodeVisibility();
                 return;
@@ -455,8 +455,18 @@ class InstancedTile extends THREE.Object3D {
                 return 0;
             }
             const scale = this.master.matrixWorld.getMaxScaleOnAxis();
-            //return (((distance / Math.pow(scale, 2)) / 100) / this.master.geometricErrorMultiplier);
-            return Math.pow(distance, 2) /(this.master.geometricErrorMultiplier*this.geometricError*Math.pow(scale,2.0)*35);
+
+            this.master.renderer.getDrawingBufferSize(rendererSize);
+            let s = rendererSize.y;
+            let fov = camera.fov;
+            if(camera.aspect < 1){
+                fov *= camera.aspect;
+                s = rendererSize.x;
+            }
+
+            let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
+            
+            return (window.devicePixelRatio * 16 * lambda) / (s * scale);
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported

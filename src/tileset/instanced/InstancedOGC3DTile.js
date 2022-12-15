@@ -19,12 +19,14 @@ class InstancedOGC3DTile extends THREE.Object3D {
      *   cameraOnLoad: camera,
      *   parentTile: OGC3DTile,
      *   onLoadCallback: function,
+     *   renderer: Renderer
      *   static: Boolean
      * } properties 
      */
     constructor(properties) {
         super();
         properties.master = this;
+        this.renderer = properties.renderer;
         this.geometricErrorMultiplier = properties.geometricErrorMultiplier? properties.geometricErrorMultiplier:1.0;
         this.tileset = new InstancedTile(properties);
         if (properties.static) {

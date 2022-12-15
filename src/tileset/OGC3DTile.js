@@ -6,7 +6,7 @@ import * as path from "path-browserify"
 import { clamp } from "three/src/math/MathUtils";
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
-
+const rendererSize = new THREE.Vector2();
 
 class OGC3DTile extends THREE.Object3D {
 
@@ -27,7 +27,8 @@ class OGC3DTile extends THREE.Object3D {
      *   parentTile: OGC3DTile,
      *   onLoadCallback: function,
      *   occlusionCullingService: OcclusionCullingService,
-     *   static: Boolean
+     *   static: Boolean,
+     *   renderer: Renderer
      * } properties 
      */
     constructor(properties) {
@@ -43,10 +44,11 @@ class OGC3DTile extends THREE.Object3D {
                     mesh.material.wireframe = false;
                     mesh.material.side = THREE.DoubleSide;
                 } : properties.meshCallback);
-            }
-            // set properties general to the entire tileset
-            this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
-            
+        }
+        // set properties general to the entire tileset
+        this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
+
+        this.renderer = properties.renderer;
         this.meshCallback = properties.meshCallback;
         this.loadOutsideView = properties.loadOutsideView;
         this.cameraOnLoad = properties.cameraOnLoad;
@@ -58,7 +60,7 @@ class OGC3DTile extends THREE.Object3D {
             this.color.setHex(Math.random() * 0xffffff);
             this.colorID = clamp(self.color.r * 255, 0, 255) << 16 ^ clamp(self.color.g * 255, 0, 255) << 8 ^ clamp(self.color.b * 255, 0, 255) << 0;
         }
-        if(this.static){
+        if (this.static) {
             this.matrixAutoUpdate = false;
         }
         // declare properties specific to the tile for clarity
@@ -176,7 +178,7 @@ class OGC3DTile extends THREE.Object3D {
             if (!!url) {
                 if (url.includes(".b3dm")) {
                     self.contentURL = url;
-                    self.tileLoader.get(self.abortController,this.uuid, url, mesh => {
+                    self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
@@ -189,13 +191,13 @@ class OGC3DTile extends THREE.Object3D {
                                     }
                                     o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                                 }
-                                if(self.static){
+                                if (self.static) {
                                     o.matrixAutoUpdate = false;
                                 }
                                 //o.material.visible = false;
                             }
                         });
-                        
+
                         self.add(mesh);
                         self.updateWorldMatrix(false, true);
                         // mesh.layers.disable(0);
@@ -204,7 +206,7 @@ class OGC3DTile extends THREE.Object3D {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(), self.level);
                 } else if (url.includes(".json")) {
-                    self.tileLoader.get(self.abortController,this.uuid, url, json => {
+                    self.tileLoader.get(self.abortController, this.uuid, url, json => {
                         if (!!self.deleted) return;
                         if (!self.json.children) self.json.children = [];
                         json.rootPath = path.dirname(url);
@@ -273,7 +275,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.occlusionCullingService && self.hasMeshContent && !self.occlusionCullingService.hasID(self.colorID)) {
                 return;
             }
-            if (!self.hasMeshContent || (metric < self.geometricError && !!self.meshContent)) {
+            if (!self.hasMeshContent || (metric < self.geometricErrorMultiplier * self.geometricError && !!self.meshContent)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     loadJsonChildren();
                     return;
@@ -307,10 +309,10 @@ class OGC3DTile extends THREE.Object3D {
             }
 
             // has children
-            if (metric >= self.geometricError) { // Ideal LOD or before ideal lod
+            if (metric >= self.geometricErrorMultiplier * self.geometricError) { // Ideal LOD or before ideal lod
 
                 self.changeContentVisibility(true);
-            } else if (metric < self.geometricError) { // Ideal LOD is past this one
+            } else if (metric < self.geometricErrorMultiplier * self.geometricError) { // Ideal LOD is past this one
                 // if children are visible and have been displayed, can be hidden
                 let allChildrenReady = true;
                 self.childrenTiles.every(child => {
@@ -345,7 +347,7 @@ class OGC3DTile extends THREE.Object3D {
                 updateNodeVisibility(metric);
                 return;
             }
-            if (metric >= self.geometricError) {
+            if (metric >= self.geometricErrorMultiplier * self.geometricError) {
                 self.disposeChildren();
                 updateNodeVisibility();
                 return;
@@ -367,7 +369,8 @@ class OGC3DTile extends THREE.Object3D {
                     level: self.level + 1,
                     tileLoader: self.tileLoader,
                     cameraOnLoad: camera,
-                    occlusionCullingService:self.occlusionCullingService,
+                    occlusionCullingService: self.occlusionCullingService,
+                    renderer: self.renderer,
                     static: self.static
                 });
                 self.childrenTiles.push(childTile);
@@ -382,11 +385,11 @@ class OGC3DTile extends THREE.Object3D {
         const self = this;
         this.childrenTiles.every(child => {
             if (child.hasMeshContent) {
-                if(child.childrenTiles.length>0){
+                if (child.childrenTiles.length > 0) {
                     allLoadedAndHidden = false;
                     return false;
                 }
-                if (!child.inFrustum ) {
+                if (!child.inFrustum) {
                     return true;
                 };
                 if (!child.materialVisibility || child.meshesToDisplay != child.meshesDisplayed) {
@@ -459,15 +462,15 @@ class OGC3DTile extends THREE.Object3D {
 
     changeContentVisibility(visibility) {
         const self = this;
-        if(self.hasMeshContent && self.meshContent){
-            if(visibility){
-                
+        if (self.hasMeshContent && self.meshContent) {
+            if (visibility) {
+
                 self.meshContent.traverse((o) => {
                     if (o.isMesh) {
                         o.layers.enable(0);
                     }
                 });
-            }else{
+            } else {
                 self.meshContent.traverse((o) => {
                     if (o.isMesh) {
                         o.layers.disable(0);
@@ -530,8 +533,18 @@ class OGC3DTile extends THREE.Object3D {
                 return 0;
             }
             const scale = this.matrixWorld.getMaxScaleOnAxis();
-            return Math.pow(distance, 2) /(this.geometricErrorMultiplier*this.geometricError*Math.pow(scale,2.0)*35);
-            //return (((distance / Math.pow(scale, 2)) / 100) / this.geometricErrorMultiplier);
+            this.renderer.getDrawingBufferSize(rendererSize);
+            let s = rendererSize.y;
+            let fov = camera.fov;
+            if(camera.aspect < 1){
+                fov *= camera.aspect;
+                s = rendererSize.x;
+            }
+
+            let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
+            
+            return (window.devicePixelRatio * 16 * lambda) / (s * scale);
+
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
             // Region not supported

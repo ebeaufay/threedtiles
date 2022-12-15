@@ -21,7 +21,9 @@ occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
 
 const domContainer = initDomContainer("screen");
-const camera = initCamera();
+const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
+const stats = initStats(domContainer);
+const renderer = initRenderer(camera, domContainer);
 //const ogc3DTiles = initTileset(scene);
 
 
@@ -30,8 +32,6 @@ initInstancedTilesets(instancedTileLoader);
 
 const controller = initController(camera, domContainer);
 
-const stats = initStats(domContainer);
-const renderer = initRenderer(camera, domContainer);
 const composer = initComposer(scene, camera, renderer);
 
 
@@ -69,8 +69,8 @@ function initComposer(scene, camera, renderer) {
 function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
-    scene.matrixWorldAutoUpdate = false;
-    scene.background = new THREE.Color(0x000000);
+    //scene.matrixWorldAutoUpdate = false;
+    scene.background = new THREE.Color(0x404040);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
     /*const light = new THREE.PointLight(0xbbbbff, 2, 5000);
@@ -132,9 +132,10 @@ function initStats(dom) {
 }
 
 
-function initCamera() {
-    const camera = new THREE.PerspectiveCamera(70, window.offsetWidth / window.offsetHeight, 1.0, 100000);
-    camera.position.set(-800, 800, 800);
+function initCamera(width, height) {
+    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 100000);
+    camera.position.set(-400.060421028462592,-14.561785966685625,700.123058268059668);
+    
     camera.matrixAutoUpdate = true;
     return camera;
 }
@@ -145,17 +146,22 @@ function initTileset(scene) {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
+        mesh.material.metalness = 0.0
     }, 1000)
     const ogc3DTile = new OGC3DTile({
         //url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
         url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ands2ty8orz/tileset.json",
+        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/an7opcnyije/tileset.json",
+        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ands2ty8orz/tileset.json",
+        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/a88b3sungng/tileset.json",
         geometricErrorMultiplier: 0.01,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
+        renderer: renderer
 
     });
 
@@ -164,7 +170,7 @@ function initTileset(scene) {
 
     //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
     ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
-    //ogc3DTile.scale.set(10.0,10.0,10.0)
+    ogc3DTile.scale.set(100.0,100.0,100.0)
     //// If the OGC3DTile object is marked as "static" (constructorParameter), these operations will not work.
 
 
@@ -227,6 +233,7 @@ function initInstancedTilesets(instancedTileLoader) {
                     loadOutsideView: true,
                     tileLoader: instancedTileLoader,
                     static: true,
+                    renderer: renderer
                 });
                 //tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
                 tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * x)
@@ -275,7 +282,7 @@ function initLODMultiplierSlider(instancedTilesets) {
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
-    controller.target.set(0, 0, 0);
+    controller.target.set(0,0,0);
     controller.minDistance = 0.01;
     controller.maxDistance = 100000;
     controller.update();
