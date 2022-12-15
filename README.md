@@ -68,7 +68,7 @@ A value of 1.0 is the default.
 
 ### load tiles outside of view
 By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles and the user might see some holes in the model.
-Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles outside the view so that there are no gaps in the mesh when the camera moves. This also allows displaying shadows correctly.
+Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles outside the view so that there are no gaps in the mesh when the camera moves. This also allows displaying shadows from parts of the scene that are not in the view.
 
 ```
 const ogc3DTile = new OGC3DTile({
