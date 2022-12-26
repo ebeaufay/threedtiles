@@ -24,11 +24,10 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-//const ogc3DTiles = initTileset(scene);
+const ogc3DTiles = initTileset(scene, 1.0);
 
-
-const instancedTileLoader = createInstancedTileLoader(scene);
-initInstancedTilesets(instancedTileLoader);
+//const instancedTileLoader = createInstancedTileLoader(scene);
+//initInstancedTilesets(instancedTileLoader);
 
 const controller = initController(camera, domContainer);
 
@@ -70,10 +69,10 @@ function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
-    scene.background = new THREE.Color(0x404040);
+    scene.background = new THREE.Color(0xffffff);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    /*const light = new THREE.PointLight(0xbbbbff, 2, 5000);
+    /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
     light.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: 0xbbbbff })));
     scene.add(light);
@@ -84,7 +83,7 @@ function initScene() {
     const sphere2 = new THREE.SphereGeometry(2, 16, 8);
     light2.add(new THREE.Mesh(sphere2, new THREE.MeshBasicMaterial({ color: 0xffbbbb })));
     scene.add(light2);
-    light2.position.set(200, 100, -100);*/
+    light2.position.set(200, 100, -100); */
 
     
     return scene;
@@ -133,14 +132,14 @@ function initStats(dom) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 100000);
-    camera.position.set(-400.060421028462592,-14.561785966685625,700.123058268059668);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    camera.position.set(0,20,1);
     
     camera.matrixAutoUpdate = true;
     return camera;
 }
 
-function initTileset(scene) {
+function initTileset(scene, gem) {
 
     const tileLoader = new TileLoader(mesh => {
         //// Insert code to be called on every newly decoded mesh e.g.:
@@ -149,14 +148,8 @@ function initTileset(scene) {
         mesh.material.metalness = 0.0
     }, 1000)
     const ogc3DTile = new OGC3DTile({
-        //url: "http://localhost:8080/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ands2ty8orz/tileset.json",
-        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/an7opcnyije/tileset.json",
-        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ands2ty8orz/tileset.json",
-        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/a88b3sungng/tileset.json",
-        geometricErrorMultiplier: 0.01,
+        url: "http://localhost:8080/tileset.json",
+        geometricErrorMultiplier: gem,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -164,89 +157,50 @@ function initTileset(scene) {
         renderer: renderer
 
     });
+    setIntervalAsync(function () {
+        ogc3DTile.update(camera);
 
-
-
-
-    //// The OGC3DTile object is a threejs Object3D so you may do all the usual opperations like transformations e.g.:
+    }, 20);
     ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
-    ogc3DTile.scale.set(100.0,100.0,100.0)
-    //// If the OGC3DTile object is marked as "static" (constructorParameter), these operations will not work.
-
-
-
-    //// It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here
-
-
-
-    var interval;
-    document.addEventListener('keyup', (e) => {
-        console.log(camera.position)
-        if (!!e.key && e.key !== "p") {
-
-            if (!!interval) {
-                clearInterval(interval);
-                interval = null;
-            } else {
-                startInterval();
-            }
-        }
-        if (!!e.key && e.key !== "l") {
-
-            console.log("new THREE.Vector3(" + camera.position.x + "," + camera.position.y + "," + camera.position.z + ")");
-            console.log("new THREE.Quaternion(" + camera.quaternion.x + "," + camera.quaternion.y + "," + camera.quaternion.z + "," + camera.quaternion.w + ")");
-
-        }
-
-    });
-    function startInterval() {
-        interval = setIntervalAsync(function () {
-            ogc3DTile.update(camera);
-
-        }, 20);
-    }
-    startInterval();
-
-    scene.add(ogc3DTile)
+    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
+    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP
+    scene.add(ogc3DTile);
+    
     return ogc3DTile;
 }
+
 
 function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, mesh => {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
-    }, 1000, 3375);
+    }, 0, 1);
 }
 function initInstancedTilesets(instancedTileLoader) {
 
+    /*new GLTFLoader().load('http://localhost:8080/test.glb', function ( gltf ) {
+        scene.add(gltf.scene);
+    } );*/
+
     const instancedTilesets = [];
 
-    for (let x = 0; x < 15; x++) {
-        for (let y = 0; y < 15; y++) {
-            for (let z = 0; z < 15; z++) {
-                const tileset = new InstancedOGC3DTile({
-                    url: "https://storage.googleapis.com/ogc-3d-tiles/droneship/tileset.json",
-                    //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-                    //url: "http://localhost:8080/tileset.json",
-                    geometricErrorMultiplier: 1.0,
-                    loadOutsideView: true,
-                    tileLoader: instancedTileLoader,
-                    static: true,
-                    renderer: renderer
-                });
-                //tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
-                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * x)
-                tileset.translateOnAxis(new THREE.Vector3(0, 1, 0), 50 * y)
-                tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 50 * z)
-                tileset.updateMatrix()
-                scene.add(tileset);
-                instancedTilesets.push(tileset);
-
-
-            }
-        }
-    }
+    
+        const tileset = new InstancedOGC3DTile({
+            //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+            //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ab13lasdc9i/tileset.json",
+            url: "http://localhost:8080/tileset.json",
+            geometricErrorMultiplier: 0.1,
+            loadOutsideView: true,
+            tileLoader: instancedTileLoader,
+            static: true,
+            renderer: renderer
+        });
+        tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+        
+        tileset.updateMatrix()
+        scene.add(tileset);
+        instancedTilesets.push(tileset);
 
     scene.updateMatrixWorld(true)
     function now() {
@@ -292,7 +246,7 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-    instancedTileLoader.update();
+    //instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();
