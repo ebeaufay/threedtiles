@@ -4,8 +4,13 @@ import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify";
 import * as _ from "lodash";
 
-const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0, 1));
+const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
+const tempVec1 = new THREE.Vector3(0, 0, 0);
+const tempVec2 = new THREE.Vector3(0, 0, 0);
+const upVector = new THREE.Vector3(0, 1, 0);
 const rendererSize = new THREE.Vector2();
+const tempQuaternion = new THREE.Quaternion();
+const tempMatrix = new THREE.Matrix4();
 
 class InstancedTile extends THREE.Object3D {
 
@@ -23,7 +28,8 @@ class InstancedTile extends THREE.Object3D {
      *   meshCallback: function,
      *   cameraOnLoad: camera,
      *   parentTile: OGC3DTile,
-     *   onLoadCallback: function
+     *   onLoadCallback: function,
+     *   centerModel: Boolean
      * } properties 
      */
     constructor(properties) {
@@ -76,7 +82,36 @@ class InstancedTile extends THREE.Object3D {
                 //json = JSON.parse(JSON.stringify(json))
                 const p = path.dirname(url);
                 self.setup({ rootPath: p, json: json });
+                if (!!properties.centerModel) {
+                    const tempSphere = new THREE.Sphere();
+                    if (self.boundingVolume instanceof OBB) {
+                        // box
+                        tempSphere.copy(self.boundingVolume.sphere);
+                    } else if (self.boundingVolume instanceof THREE.Sphere) {
+                        //sphere
+                        tempSphere.copy(self.boundingVolume);
+                    }
+
+                    //tempSphere.applyMatrix4(self.matrixWorld);
+                    if (!!this.json.boundingVolume.region) {
+                        self.transformWGS84ToCartesian(
+                            (self.json.boundingVolume.region[0] + self.json.boundingVolume.region[2]) * 0.5,
+                            (self.json.boundingVolume.region[1] + self.json.boundingVolume.region[3]) * 0.5,
+                            (self.json.boundingVolume.region[4] + self.json.boundingVolume.region[5]) * 0.5,
+                            tempVec1);
+                        tempVec2.set(tempVec1.x, tempVec1.z, -tempVec1.y);
+                        
+                        tempQuaternion.setFromUnitVectors(tempVec2.normalize(), upVector.normalize());
+                        self.master.applyQuaternion(tempQuaternion);
+                        self.master.updateWorldMatrix(false, false)
+                    }
+                    tempMatrix.makeTranslation(-tempSphere.center.x * self.scale.x, -tempSphere.center.y * self.scale.y, -tempSphere.center.z * self.scale.z);
+                    //self.master.applyMatrix4(tempMatrix);
+                    self.master.matrix.multiply(tempMatrix);
+		            self.master.matrix.decompose( self.master.position, self.master.quaternion, self.master.scale );
+                }
                 if (properties.onLoadCallback) properties.onLoadCallback(self);
+
             }
             self.tileLoader.get(self.abortController, properties.url, self.uuid, self);
 
@@ -132,7 +167,10 @@ class InstancedTile extends THREE.Object3D {
                 this.boundingVolume = new OBB(this.json.boundingVolume.box);
             } else if (!!this.json.boundingVolume.region) {
                 const region = this.json.boundingVolume.region;
-                this.boundingVolume = new THREE.Box3(new THREE.Vector3(region[0], region[2], region[4]), new THREE.Vector3(region[1], region[3], region[5]));
+                this.transformWGS84ToCartesian(region[0], region[1], region[4], tempVec1);
+                this.transformWGS84ToCartesian(region[2], region[3], region[5], tempVec2);
+                tempVec1.lerp(tempVec2, 0.5);
+                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.z, -tempVec1.y), tempVec1.distanceTo(tempVec2));
             } else if (!!this.json.boundingVolume.sphere) {
                 const sphere = this.json.boundingVolume.sphere;
                 this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[2], -sphere[1]), sphere[3]);
@@ -188,6 +226,8 @@ class InstancedTile extends THREE.Object3D {
 
             }
         }
+        self.matrixWorldNeedsUpdate = true;
+        self.updateWorldMatrix(true,true)
     }
 
     loadMesh(mesh) {
@@ -440,11 +480,9 @@ class InstancedTile extends THREE.Object3D {
             tempSphere.copy(this.boundingVolume);
             tempSphere.applyMatrix4(this.master.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
-        } else if (this.boundingVolume instanceof THREE.Box3) {
-            // Region
-            // Region not supported
-            //throw Error("Region bounding volume not supported");
-            return -1;
+        } else {
+            console.error("unsupported shape");
+            return -1
         }
 
         /////// return metric based on geometric error and distance
@@ -505,8 +543,8 @@ class InstancedTile extends THREE.Object3D {
             tempSphere.applyMatrix4(this.master.matrixWorld);
             //if (!frustum.intersectsSphere(tempSphere)) return -1;
         }
-        if (this.boundingVolume instanceof THREE.Box3) {
-            return -1; // region not supported
+        else {
+            console.error("unsupported shape")
         }
         return Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
     }
@@ -514,6 +552,22 @@ class InstancedTile extends THREE.Object3D {
     getWorldMatrix(){
         const self = this;
         return self.master.matrixWorld;
+    }
+
+    transformWGS84ToCartesian(lon, lat, h, sfct) {
+        const a = 6378137.0;
+        const e = 0.006694384442042;
+        const N = a / (Math.sqrt(1.0 - (e * Math.pow(Math.sin(lat), 2))));
+        const cosLat = Math.cos(lat);
+        const cosLon = Math.cos(lon);
+        const sinLat = Math.sin(lat);
+        const sinLon = Math.sin(lon);
+        const nPh = (N + h);
+        const x = nPh * cosLat * cosLon;
+        const y = nPh * cosLat * sinLon;
+        const z = (0.993305615557957 * N + h) * sinLat;
+
+        sfct.set(x, y, z);
     }
 }
 export { InstancedTile };

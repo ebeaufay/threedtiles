@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { InstancedMesh } from 'three';
 
+const t = new THREE.Matrix4();
 class MeshTile{
     constructor(scene){
         const self = this;
@@ -60,7 +61,12 @@ class MeshTile{
                 self.instancedTiles[i].meshContent = self.instancedMesh;
                 if(self.instancedTiles[i].materialVisibility && !!self.instancedTiles[i].meshContent){
                     self.instancedMesh.count++;
-                    self.instancedMesh.setMatrixAt(self.instancedMesh.count-1, self.reuseableMatrix.multiplyMatrices(self.instancedTiles[i].getWorldMatrix(), self.instancedMesh.baseMatrix) )
+                    self.reuseableMatrix.set(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+                    self.reuseableMatrix.multiply(self.instancedTiles[i].master.matrixWorld);
+                    self.reuseableMatrix.multiply(self.instancedMesh.baseMatrix);
+                    self.instancedMesh.setMatrixAt(self.instancedMesh.count-1, self.reuseableMatrix );
+                    self.instancedMesh.getMatrixAt(0, t);
+                    console.log()
                 }
                 
             }

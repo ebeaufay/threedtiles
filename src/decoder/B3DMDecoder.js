@@ -1,9 +1,11 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import * as THREE from 'three';
+import {FeatureTable, BatchTable} from './FeatureTable';
 
 const gltfLoader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
+const tempMatrix = new THREE.Matrix4();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
 gltfLoader.setDRACOLoader(dracoLoader);
 const dummy = new THREE.Object3D();
@@ -31,10 +33,10 @@ function parseB3DM(arrayBuffer, meshCallback) {
 	const batchTableBinaryByteLength = dataView.getUint32(24, true);
 
 	const featureTableStart = 28;
-	//const featureTable = new FeatureTable( arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength );
+	const featureTable = new FeatureTable(arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength);
 
 	const batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength;
-	//const batchTable = new BatchTable( arrayBuffer, featureTable.getData( 'BATCH_LENGTH' ), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength );
+	const batchTable = new BatchTable(arrayBuffer, featureTable.getData('BATCH_LENGTH'), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength);
 
 	const glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
 	const glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
@@ -48,6 +50,7 @@ function parseB3DM(arrayBuffer, meshCallback) {
 		gltfLoader.parse(gltfBuffer, null, model => {
 
 			////TODO
+
 			//model.batchTable = b3dm.batchTable;
 			//model.featureTable = b3dm.featureTable;
 
@@ -55,6 +58,15 @@ function parseB3DM(arrayBuffer, meshCallback) {
 			//model.scene.featureTable = b3dm.featureTable;
 
 			//const scene = mergeColoredObject(model.scene);
+
+			//model.scene.applyMatrix4(ytozUpMatrix);
+
+			const rtcCenter = featureTable.getData('RTC_CENTER');
+			if (rtcCenter) {
+				tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[2], -rtcCenter[1])
+				model.scene.applyMatrix4(tempMatrix);
+			}
+			
 			model.scene.traverse((o) => {
 				if (o.isMesh) {
 					if (!!meshCallback) {
@@ -76,11 +88,11 @@ const B3DMDecoder = {
 
 		return parseB3DM(arrayBuffer, meshCallback).then(mesh => {
 			let instancedMesh;
+			mesh.updateWorldMatrix(false, true)
 			mesh.traverse(child => {
 				if (child.isMesh) {
 					instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, maxCount);
-					instancedMesh.baseMatrix = child.matrix;
-					//console.log(child.matrix.elements[12])
+					instancedMesh.baseMatrix = child.matrixWorld;
 				}
 			});
 			return instancedMesh;

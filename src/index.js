@@ -14,7 +14,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 
-import { B3DMDecoder } from "./decoder/B3DMDecoder";
 
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
@@ -32,24 +31,6 @@ const ogc3DTiles = initTileset(scene, 1.0);
 const controller = initController(camera, domContainer);
 
 const composer = initComposer(scene, camera, renderer);
-
-
-/* fetch("https://storage.googleapis.com/ogc-3d-tiles/droneship/1/2007.b3dm").then(result => {
-    
-    if (!result.ok) {
-        console.error("could not load tile with path : " + path)
-        throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
-    }
-    return result.arrayBuffer();
-
-})
-.then(resultArrayBuffer=>{
-    return B3DMDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, 1);
-})
-.then(mesh=>{
-    scene.add(mesh)
-        
-}) */
 
 
 animate();
@@ -85,7 +66,7 @@ function initScene() {
     scene.add(light2);
     light2.position.set(200, 100, -100); */
 
-    
+
     return scene;
 }
 
@@ -132,9 +113,10 @@ function initStats(dom) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-    camera.position.set(0,20,1);
-    
+    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 100000);
+    camera.position.set(10000,0,0);
+    camera.lookAt(0,0,0);
+
     camera.matrixAutoUpdate = true;
     return camera;
 }
@@ -146,26 +128,31 @@ function initTileset(scene, gem) {
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
         mesh.material.metalness = 0.0
-    }, 1000)
+    }, 100)
     const ogc3DTile = new OGC3DTile({
-        url: "http://localhost:8080/tileset.json",
+        //url: "https://sampledata.luciad.com/data/ogc3dtiles/LucerneAirborneMesh/tileset.json",
+        url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
+        //url: "http://localhost:8082/tileset.json",
         geometricErrorMultiplier: gem,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
+        centerModel:true,
         renderer: renderer
 
     });
     setIntervalAsync(function () {
         ogc3DTile.update(camera);
-
     }, 20);
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
+    /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
-    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP
+    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP */
     scene.add(ogc3DTile);
-    
+
     return ogc3DTile;
 }
 
@@ -175,6 +162,7 @@ function createInstancedTileLoader(scene) {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
+        mesh.material.metalness = 0.0;
     }, 0, 1);
 }
 function initInstancedTilesets(instancedTileLoader) {
@@ -185,22 +173,24 @@ function initInstancedTilesets(instancedTileLoader) {
 
     const instancedTilesets = [];
 
-    
-        const tileset = new InstancedOGC3DTile({
-            //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-            //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ab13lasdc9i/tileset.json",
-            url: "http://localhost:8080/tileset.json",
-            geometricErrorMultiplier: 0.1,
-            loadOutsideView: true,
-            tileLoader: instancedTileLoader,
-            static: true,
-            renderer: renderer
-        });
-        tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
-        
-        tileset.updateMatrix()
-        scene.add(tileset);
-        instancedTilesets.push(tileset);
+
+    const tileset = new InstancedOGC3DTile({
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        //url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
+        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ab13lasdc9i/tileset.json",
+        url: "http://localhost:8081/tileset.json",
+        geometricErrorMultiplier: 1.0,
+        loadOutsideView: true,
+        tileLoader: instancedTileLoader,
+        static: false,
+        centerModel:true,
+        renderer: renderer
+    });
+    //tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+
+    tileset.updateMatrix()
+    scene.add(tileset);
+    instancedTilesets.push(tileset);
 
     scene.updateMatrixWorld(true)
     function now() {
@@ -209,14 +199,14 @@ function initInstancedTilesets(instancedTileLoader) {
     let updateIndex = 0;
     setInterval(() => {
         let startTime = now();
-        do{
+        do {
             const frustum = new THREE.Frustum();
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
             instancedTilesets[updateIndex].update(camera, frustum);
-            updateIndex= (updateIndex+1)%instancedTilesets.length;
-        }while(updateIndex < instancedTilesets.length && now()-startTime<4);
-    },40);
-    
+            updateIndex = (updateIndex + 1) % instancedTilesets.length;
+        } while (updateIndex < instancedTilesets.length && now() - startTime < 4);
+    }, 40);
+
     //initLODMultiplierSlider(instancedTilesets);
 }
 
@@ -227,7 +217,7 @@ function initLODMultiplierSlider(instancedTilesets) {
 
     slider.oninput = () => {
         instancedTilesets.forEach(tileset => {
-            tileset.setGeometricErrorMultiplier(slider.value*0.1)
+            tileset.setGeometricErrorMultiplier(slider.value * 0.1)
         })
         output.innerHTML = slider.value;
     }
@@ -237,7 +227,10 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     controller.target.set(0,0,0);
-    controller.minDistance = 0.01;
+//controller.target.set(0,0,0);
+
+
+    controller.minDistance = 0.1;
     controller.maxDistance = 100000;
     controller.update();
     return controller;
