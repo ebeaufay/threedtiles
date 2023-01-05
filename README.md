@@ -89,11 +89,12 @@ This can be useful to position the tileset at a specific location when it is not
 const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
     renderer: renderer,
-    onLoadCallback: tilese => {
-            console.log(tileset.boundingVolume);
+    onLoadCallback: tileset => {
+            console.log(tileset.json.boundingVolume);
         }
 });
 ```
+Note that the callback is called with the OGC3DTile object as parameter and that this object has a "json" property giving you access to the original tileset.json with it's transform, geometric error, bounding volume, etc...
 
 #### Mesh callback
 Add a callback on loaded tiles in order to set a material or do some logic on the meshes.
