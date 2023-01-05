@@ -46,6 +46,7 @@ Currently, the library is limmited to B3DM files.
 - Optimal tile load order
 - Occlusion culling
 - Instanced tilesets
+- Center tileset and re-orient geolocated data
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -239,6 +240,19 @@ function animate() {
 animate();
 
 ```
+### Center tileset and re-orient geolocated data
+
+OGC3DTiles data is not necessarily centered on the origin and when it's georeferenced, it's also rotated relative to the cartesian coordinate system.
+The optional property "centerModel" will center the model on the origin. In the case of georeferenced models, identified as those using the "region" bounding volume, it will also rotate it so that it's up-axis alligns with the y axis.
+
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    centerModel:true
+});
+```
+This property is also available for instanced models.
 
 ### static tilesets and other performance tips
 When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
