@@ -228,7 +228,9 @@ class TileLoader {
 
     invalidate(path, tileIdentifier) {
         const key = simplifyPath(path);
-        delete this.register[key][tileIdentifier];
+        if(!!this.register[key]){
+            delete this.register[key][tileIdentifier];
+        }
     }
 
     checkSize() {

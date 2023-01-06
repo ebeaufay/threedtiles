@@ -23,7 +23,7 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 4.0);
+const ogc3DTiles = initTileset(scene, 1.0);
 
 //const instancedTileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(instancedTileLoader);
@@ -51,7 +51,7 @@ function initScene() {
     //scene.matrixWorldAutoUpdate = false;
     scene.background = new THREE.Color(0xffffff);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
-
+    
     /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
     light.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: 0xbbbbff })));
@@ -113,7 +113,7 @@ function initStats(dom) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 1, 100000);
-    camera.position.set(10000,0,0);
+    camera.position.set(15,0,0);
     camera.lookAt(0,0,0);
 
     camera.matrixAutoUpdate = true;
@@ -130,9 +130,7 @@ function initTileset(scene, gem) {
     }, 100);
 
     const ogc3DTile = new OGC3DTile({
-        //url: "https://sampledata.luciad.com/data/ogc3dtiles/LucerneAirborneMesh/tileset.json",
-        url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         geometricErrorMultiplier: gem,
         loadOutsideView: false,
@@ -141,13 +139,12 @@ function initTileset(scene, gem) {
         static: false,
         centerModel:true,
         renderer: renderer,
-        /* onLoadCallback: (tile)=>{
+         onLoadCallback: (tile)=>{ // move tileset base to origin
             if (!!tile.json.boundingVolume.region) {
                 const halfHeight = (tile.json.boundingVolume.region[5] - tile.json.boundingVolume.region[4]) * 0.5;
                 ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), halfHeight);
-                //ogc3DTile.updateWorldMatrix(true, true);
             }
-        } */
+        } 
 
     });
     setIntervalAsync(function () {
@@ -185,10 +182,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
     const tileset = new InstancedOGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
-        //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ab13lasdc9i/tileset.json",
-        //url: "http://localhost:8081/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         geometricErrorMultiplier: 1.0,
         loadOutsideView: true,
         tileLoader: instancedTileLoader,
