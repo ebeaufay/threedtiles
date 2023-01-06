@@ -68,7 +68,7 @@ class InstancedTileLoader {
 
                     })
                     .then(resultArrayBuffer=>{
-                        return B3DMDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances);
+                        return B3DMDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.zUpToYUp);
                     })
                     .then(mesh=>{
                         nextDownload.tile.setObject(mesh);
@@ -138,7 +138,7 @@ class InstancedTileLoader {
         }
     }
 
-    get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level) {
+    get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level, zUpToYUp) {
         const self = this;
         const key = simplifyPath(path);
 
@@ -156,9 +156,7 @@ class InstancedTileLoader {
             if (path.includes(".b3dm")) {
                 const tile = new MeshTile(self.scene);
                 tile.addInstance(instancedOGC3DTile);
-                if(self.cache.has(key)){
-                    console.log("élkbhj")
-                }
+                
                 self.cache.put(key, tile);
 
                 const realAbortController = new AbortController();
@@ -176,6 +174,7 @@ class InstancedTileLoader {
                     getSiblings: getSiblings,
                     level: level,
                     uuid: uuid,
+                    zUpToYUp: zUpToYUp,
                     shouldDoDownload: () => {
                         return true;
                     },

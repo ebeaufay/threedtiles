@@ -23,7 +23,7 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 1.0);
+const ogc3DTiles = initTileset(scene, 4.0);
 
 //const instancedTileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(instancedTileLoader);
@@ -236,8 +236,8 @@ function initLODMultiplierSlider(instancedTilesets) {
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
+    //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
     controller.target.set(0,0,0);
-//controller.target.set(0,0,0);
 
 
     controller.minDistance = 0.1;

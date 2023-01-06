@@ -217,7 +217,9 @@ class InstancedTile extends THREE.Object3D {
                     
                     self.tileLoader.get(self.abortController, url, self.uuid, self, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
-                    }, () => self.getSiblings(), self.level);
+                    }, () => self.getSiblings(), 
+                    self.level,
+                    !!self.json.boundingVolume.region);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
 

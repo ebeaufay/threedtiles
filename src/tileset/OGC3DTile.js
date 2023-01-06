@@ -11,11 +11,7 @@ const tempVec2 = new THREE.Vector3(0, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
 const rendererSize = new THREE.Vector2();
 const tempQuaternion = new THREE.Quaternion();
-const zUpToYUp = new THREE.Matrix4();
-zUpToYUp.set(1,0,0,0,
-			0,0,-1,0,
-			0,1,0,0,
-			0,0,0,1);
+
 
 class OGC3DTile extends THREE.Object3D {
 
@@ -220,14 +216,14 @@ class OGC3DTile extends THREE.Object3D {
             if (!!url) {
                 if (url.includes(".b3dm")) {
                     self.contentURL = url;
-                    const rotateToYUp = !!self.json.boundingVolume.region;
+                    if(!!self.json.boundingVolume.region){
+                        //self.applyMatrix4(zUpToYUp);
+                    }
                     self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
-                                if(rotateToYUp){
-                                    o.applyMatrix4(zUpToYUp);
-                                }
+                                
                                 o.layers.disable(0);
                                 if (self.occlusionCullingService) {
                                     const position = o.geometry.attributes.position;
@@ -250,7 +246,10 @@ class OGC3DTile extends THREE.Object3D {
                         self.meshContent = mesh;
                     }, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
-                    }, () => self.getSiblings(), self.level);
+                    }, () => self.getSiblings(), 
+                    self.level,
+                    !!this.json.boundingVolume.region
+                    );
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, this.uuid, url, json => {
                         if (!!self.deleted) return;

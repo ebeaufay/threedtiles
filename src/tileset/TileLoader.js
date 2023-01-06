@@ -142,7 +142,7 @@ class TileLoader {
     }
 
 
-    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, zUpToYUp) {
         const self = this;
         const key = simplifyPath(path);
 
@@ -183,7 +183,7 @@ class TileLoader {
 
                     })
                     .then(resultArrayBuffer=>{
-                        return B3DMDecoder.parseB3DM(resultArrayBuffer, self.meshCallback);
+                        return B3DMDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, zUpToYUp);
                     })
                     .then(mesh=>{
                         self.cache.put(key, mesh);

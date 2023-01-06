@@ -8,10 +8,15 @@ const dracoLoader = new DRACOLoader();
 const tempMatrix = new THREE.Matrix4();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
 gltfLoader.setDRACOLoader(dracoLoader);
+const zUpToYUpMatrix = new THREE.Matrix4();
+zUpToYUpMatrix.set(1,0,0,0,
+			0,0,-1,0,
+			0,1,0,0,
+			0,0,0,1);
 
 //const legacyGLTFLoader = new LegacyGLTFLoader();
 
-function parseB3DM(arrayBuffer, meshCallback) {
+function parseB3DM(arrayBuffer, meshCallback, zUpToYUp) {
 	const dataView = new DataView(arrayBuffer);
 
 	const magic =
@@ -68,7 +73,11 @@ function parseB3DM(arrayBuffer, meshCallback) {
 			}
 			
 			model.scene.traverse((o) => {
+				
 				if (o.isMesh) {
+					if(zUpToYUp){
+						o.applyMatrix4(zUpToYUpMatrix);
+					}
 					if (!!meshCallback) {
 						meshCallback(o);
 					}
@@ -84,9 +93,9 @@ function parseB3DM(arrayBuffer, meshCallback) {
 
 const B3DMDecoder = {
 	parseB3DM: parseB3DM,
-	parseB3DMInstanced: (arrayBuffer, meshCallback, maxCount) => { // expects GLTF with one node level
+	parseB3DMInstanced: (arrayBuffer, meshCallback, maxCount, zUpToYUp) => { // expects GLTF with one node level
 
-		return parseB3DM(arrayBuffer, meshCallback).then(mesh => {
+		return parseB3DM(arrayBuffer, meshCallback, zUpToYUp).then(mesh => {
 			let instancedMesh;
 			mesh.updateWorldMatrix(false, true)
 			mesh.traverse(child => {
