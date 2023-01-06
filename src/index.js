@@ -133,7 +133,7 @@ function initTileset(scene, gem) {
         //url: "https://sampledata.luciad.com/data/ogc3dtiles/LucerneAirborneMesh/tileset.json",
         url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
-        //url: "http://localhost:8082/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         geometricErrorMultiplier: gem,
         loadOutsideView: false,
         tileLoader: tileLoader,
@@ -141,13 +141,13 @@ function initTileset(scene, gem) {
         static: false,
         centerModel:true,
         renderer: renderer,
-        onLoadCallback: (tile)=>{
+        /* onLoadCallback: (tile)=>{
             if (!!tile.json.boundingVolume.region) {
                 const halfHeight = (tile.json.boundingVolume.region[5] - tile.json.boundingVolume.region[4]) * 0.5;
                 ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), halfHeight);
                 //ogc3DTile.updateWorldMatrix(true, true);
             }
-        }
+        } */
 
     });
     setIntervalAsync(function () {
