@@ -116,9 +116,8 @@ class OGC3DTile extends THREE.Object3D {
                                 (this.json.boundingVolume.region[1] + this.json.boundingVolume.region[3]) * 0.5,
                                 (this.json.boundingVolume.region[4] + this.json.boundingVolume.region[5]) * 0.5,
                                 tempVec1);
-                            tempVec2.set(tempVec1.x, tempVec1.z, -tempVec1.y);
                             
-                            tempQuaternion.setFromUnitVectors(tempVec2.normalize(), upVector.normalize());
+                            tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
                             self.applyQuaternion(tempQuaternion);
                         }
                         
@@ -171,7 +170,7 @@ class OGC3DTile extends THREE.Object3D {
                 this.transformWGS84ToCartesian(region[0], region[1], region[4], tempVec1);
                 this.transformWGS84ToCartesian(region[2], region[3], region[5], tempVec2);
                 tempVec1.lerp(tempVec2, 0.5);
-                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.z, -tempVec1.y), tempVec1.distanceTo(tempVec2));
+                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.y, tempVec1.z), tempVec1.distanceTo(tempVec2));
             } else if (!!this.json.boundingVolume.sphere) {
                 const sphere = this.json.boundingVolume.sphere;
                 this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[2], -sphere[1]), sphere[3]);

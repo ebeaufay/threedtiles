@@ -8,7 +8,11 @@ const dracoLoader = new DRACOLoader();
 const tempMatrix = new THREE.Matrix4();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
 gltfLoader.setDRACOLoader(dracoLoader);
-const dummy = new THREE.Object3D();
+const zUpToYUp = new THREE.Matrix4();
+zUpToYUp.set(1,0,0,0,
+			0,0,-1,0,
+			0,1,0,0,
+			0,0,0,1);
 //const legacyGLTFLoader = new LegacyGLTFLoader();
 
 function parseB3DM(arrayBuffer, meshCallback) {
@@ -63,12 +67,13 @@ function parseB3DM(arrayBuffer, meshCallback) {
 
 			const rtcCenter = featureTable.getData('RTC_CENTER');
 			if (rtcCenter) {
-				tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[2], -rtcCenter[1])
+				tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2])
 				model.scene.applyMatrix4(tempMatrix);
 			}
 			
 			model.scene.traverse((o) => {
 				if (o.isMesh) {
+					o.applyMatrix4(zUpToYUp);
 					if (!!meshCallback) {
 						meshCallback(o);
 					}

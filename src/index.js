@@ -32,7 +32,6 @@ const controller = initController(camera, domContainer);
 
 const composer = initComposer(scene, camera, renderer);
 
-
 animate();
 
 
@@ -128,7 +127,8 @@ function initTileset(scene, gem) {
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
         mesh.material.metalness = 0.0
-    }, 100)
+    }, 100);
+
     const ogc3DTile = new OGC3DTile({
         //url: "https://sampledata.luciad.com/data/ogc3dtiles/LucerneAirborneMesh/tileset.json",
         url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
@@ -140,12 +140,22 @@ function initTileset(scene, gem) {
         //occlusionCullingService: occlusionCullingService,
         static: false,
         centerModel:true,
-        renderer: renderer
+        renderer: renderer,
+        onLoadCallback: (tile)=>{
+            if (!!tile.json.boundingVolume.region) {
+                const halfHeight = (tile.json.boundingVolume.region[5] - tile.json.boundingVolume.region[4]) * 0.5;
+                ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), halfHeight);
+                //ogc3DTile.updateWorldMatrix(true, true);
+            }
+        }
 
     });
     setIntervalAsync(function () {
         ogc3DTile.update(camera);
     }, 20);
+
+    
+
     //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
@@ -176,9 +186,9 @@ function initInstancedTilesets(instancedTileLoader) {
 
     const tileset = new InstancedOGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
+        url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json",
         //url: "https://s3.eu-central-2.wasabisys.com/construkted-assets-eu/ab13lasdc9i/tileset.json",
-        url: "http://localhost:8081/tileset.json",
+        //url: "http://localhost:8081/tileset.json",
         geometricErrorMultiplier: 1.0,
         loadOutsideView: true,
         tileLoader: instancedTileLoader,
