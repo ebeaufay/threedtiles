@@ -50,6 +50,9 @@ Currently, the library is limmited to B3DM files.
 - gltf/glb tiles (OGC3DTiles 1.1)
 - point clouds (only through gltf/glb tiles)
 
+Support for OGC3DTiles 1.1 is underway. gltf/glb tiles are already supported but not yet implicit tiling.
+There is no plan to support .pnts or .i3dm tiles as points and instanced meshes are already supported through gltf tiles.
+
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
 ```
