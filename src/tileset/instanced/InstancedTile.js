@@ -212,14 +212,15 @@ class InstancedTile extends THREE.Object3D {
             }
 
             if (!!url) {
-                if (url.includes(".b3dm")) {
+                if (url.includes(".b3dm")|| url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
                     
                     self.tileLoader.get(self.abortController, url, self.uuid, self, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(), 
                     self.level,
-                    !!self.json.boundingVolume.region);
+                    !!self.json.boundingVolume.region,
+                    self.geometricError);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
 

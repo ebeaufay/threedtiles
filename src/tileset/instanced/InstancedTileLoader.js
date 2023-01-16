@@ -4,11 +4,23 @@ import { setIntervalAsync } from 'set-interval-async/dynamic';
 import * as THREE from 'three';
 import { MeshTile } from './MeshTile';
 import { JsonTile } from './JsonTile';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+
 
 let concurentDownloads = 0;
+const gltfLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+gltfLoader.setDRACOLoader(dracoLoader);
+const zUpToYUpMatrix = new THREE.Matrix4();
+zUpToYUpMatrix.set(1, 0, 0, 0,
+    0, 0, -1, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1);
 
 class InstancedTileLoader {
-    constructor(scene, meshCallback, maxCachedItems, maxInstances) {
+    constructor(scene, maxCachedItems, maxInstances, meshCallback) {
         this.meshCallback = meshCallback;
         this.maxInstances = maxInstances;
         this.cache = new LinkedHashMap();
@@ -76,6 +88,43 @@ class InstancedTileLoader {
                             
                     })
                     .catch(e=>console.error(e));
+                }if(nextDownload.path.includes(".glb") || (nextDownload.path.includes(".gltf"))){
+                    gltfLoader.load(nextDownload.path, gltf => {
+                        gltf.scene.traverse((o) => {
+                            o.geometricError = nextDownload.geometricError;
+                            if (o.isMesh) {
+                                if (nextDownload.zUpToYUp) {
+                                    o.applyMatrix4(zUpToYUpMatrix);
+                                }
+                                if (!!self.meshCallback) {
+                                    self.meshCallback(o);
+                                }
+                            }
+                            if (o.isPoints) {
+                                console.error("instanced point cloud is not supported");
+                            }
+                        });
+                        let instancedMesh;
+                        gltf.scene.updateWorldMatrix(false, true)
+                        gltf.scene.traverse(child => {
+                            //TODO several meshes in a single gltf
+                            if (child.isMesh) {
+                                instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, self.maxInstances);
+                                instancedMesh.baseMatrix = child.matrixWorld;
+                            }
+                            
+                        });
+                        self.ready.unshift(nextDownload);
+                        if(!instancedMesh){
+                            gltf.scene.traverse(c=>{
+                                if(c.dispose) c.dispose();
+                                if(c.material) c.material.dispose();
+                            });
+                        }else{
+                            nextDownload.tile.setObject(instancedMesh);
+                        }
+                    });
+                    
                 }else if(nextDownload.path.includes(".json")){
                     concurentDownloads++;
                     fetch(nextDownload.path, {signal: nextDownload.abortController.signal}).then(result => {
@@ -138,12 +187,12 @@ class InstancedTileLoader {
         }
     }
 
-    get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level, zUpToYUp) {
+    get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level, zUpToYUp, geometricError) {
         const self = this;
         const key = simplifyPath(path);
 
-        if (!path.includes(".b3dm") && !path.includes(".json")) {
-            console.error("the 3DTiles cache can only be used to load B3DM and json data");
+        if (!path.includes(".b3dm") && !path.includes(".json") && !path.includes(".glb") && !path.includes(".gltf")) {
+            console.error("the 3DTiles cache can only be used to load B3DM, gltf and json data");
             return;
         }
 
@@ -153,7 +202,7 @@ class InstancedTileLoader {
             return;
         } else {
 
-            if (path.includes(".b3dm")) {
+            if (path.includes(".b3dm") || path.includes(".glb") || path.includes(".gltf")) {
                 const tile = new MeshTile(self.scene);
                 tile.addInstance(instancedOGC3DTile);
                 
@@ -175,6 +224,7 @@ class InstancedTileLoader {
                     level: level,
                     uuid: uuid,
                     zUpToYUp: zUpToYUp,
+                    geometricError: geometricError,
                     shouldDoDownload: () => {
                         return true;
                     },

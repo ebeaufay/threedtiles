@@ -214,7 +214,7 @@ class OGC3DTile extends THREE.Object3D {
             }
 
             if (!!url) {
-                if (url.includes(".b3dm")) {
+                if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
                     if(!!self.json.boundingVolume.region){
                         //self.applyMatrix4(zUpToYUp);
@@ -248,7 +248,8 @@ class OGC3DTile extends THREE.Object3D {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(), 
                     self.level,
-                    !!this.json.boundingVolume.region
+                    !!self.json.boundingVolume.region,
+                    self.geometricError
                     );
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, this.uuid, url, json => {

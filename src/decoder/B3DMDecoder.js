@@ -5,9 +5,9 @@ import {FeatureTable, BatchTable} from './FeatureTable';
 
 const gltfLoader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
-const tempMatrix = new THREE.Matrix4();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
 gltfLoader.setDRACOLoader(dracoLoader);
+const tempMatrix = new THREE.Matrix4();
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1,0,0,0,
 			0,0,-1,0,
@@ -16,7 +16,7 @@ zUpToYUpMatrix.set(1,0,0,0,
 
 //const legacyGLTFLoader = new LegacyGLTFLoader();
 
-function parseB3DM(arrayBuffer, meshCallback, zUpToYUp) {
+function parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
 	const dataView = new DataView(arrayBuffer);
 
 	const magic =
@@ -75,6 +75,7 @@ function parseB3DM(arrayBuffer, meshCallback, zUpToYUp) {
 			model.scene.traverse((o) => {
 				
 				if (o.isMesh) {
+					o.geometricError = geometricError
 					if(zUpToYUp){
 						o.applyMatrix4(zUpToYUpMatrix);
 					}
@@ -96,6 +97,7 @@ const B3DMDecoder = {
 	parseB3DMInstanced: (arrayBuffer, meshCallback, maxCount, zUpToYUp) => { // expects GLTF with one node level
 
 		return parseB3DM(arrayBuffer, meshCallback, zUpToYUp).then(mesh => {
+			// todo several meshes in a single gltf
 			let instancedMesh;
 			mesh.updateWorldMatrix(false, true)
 			mesh.traverse(child => {

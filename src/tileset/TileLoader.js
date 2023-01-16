@@ -3,12 +3,24 @@ import { B3DMDecoder } from "../decoder/B3DMDecoder";
 import { setIntervalAsync } from 'set-interval-async/dynamic';
 import { initial } from 'lodash';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 let concurentDownloads = 0;
+const zUpToYUpMatrix = new THREE.Matrix4();
+zUpToYUpMatrix.set(1, 0, 0, 0,
+    0, 0, -1, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1);
+const gltfLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+gltfLoader.setDRACOLoader(dracoLoader);
 
 class TileLoader {
-    constructor(meshCallback, maxCachedItems) {
+    constructor(maxCachedItems, meshCallback, pointsCallback) {
         this.meshCallback = meshCallback;
+        this.pointsCallback = pointsCallback;
         this.cache = new LinkedHashMap();
         this.maxCachedItems = !!maxCachedItems ? maxCachedItems : 100;
         this.register = {};
@@ -21,8 +33,8 @@ class TileLoader {
         this.init();
     }
 
-    init(){
-        
+    init() {
+
         const self = this;
         setIntervalAsync(() => {
             self.download();
@@ -33,7 +45,7 @@ class TileLoader {
             do {
                 loaded = self.loadBatch();
             } while (loaded > 0 && (Date.now() - start) <= 0)
-        
+
         }, 10);
     }
 
@@ -67,7 +79,7 @@ class TileLoader {
         const register = data[1];
         const key = data[2];
         const mesh = cache.get(key);
-        
+
         if (!!mesh && !!register[key]) {
             Object.keys(register[key]).forEach(tile => {
                 const callback = register[key][tile];
@@ -79,7 +91,7 @@ class TileLoader {
         }
         return 1;
     }
-    
+
     getNextDownloads() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
@@ -94,7 +106,7 @@ class TileLoader {
         }
         if (this.nextDownloads.length > 0) return;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
-            const dist = this.downloads[i].distanceFunction()*this.downloads[i].level;
+            const dist = this.downloads[i].distanceFunction() * this.downloads[i].level;
             if (dist < smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
@@ -111,12 +123,12 @@ class TileLoader {
             }
         }
     }
-    
+
     getNextReady() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
-    
+
             if (!this.ready[i][3]) {// if no distance function, must be a json, give absolute priority!
                 this.nextReady.push(this.ready.splice(i, 1)[0]);
             }
@@ -142,19 +154,19 @@ class TileLoader {
     }
 
 
-    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, zUpToYUp) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, zUpToYUp, geometricError) {
         const self = this;
         const key = simplifyPath(path);
 
         const realAbortController = new AbortController();
-        abortController.signal.addEventListener("abort", ()=>{
-            if(!self.register[key] || Object.keys(self.register[key]).length == 0){
+        abortController.signal.addEventListener("abort", () => {
+            if (!self.register[key] || Object.keys(self.register[key]).length == 0) {
                 realAbortController.abort();
             }
         })
 
-        if (!path.includes(".b3dm") && !path.includes(".json")) {
-            console.error("the 3DTiles cache can only be used to load B3DM and json data");
+        if (!path.includes(".b3dm") && !path.includes(".json") && !path.includes(".gltf") && !path.includes(".glb")) {
+            console.error("the 3DTiles cache can only be used to load B3DM, gltf and json data");
             return;
         }
         if (!self.register[key]) {
@@ -173,7 +185,7 @@ class TileLoader {
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    fetch(path, {signal: realAbortController.signal}).then(result => {
+                    fetch(path, { signal: realAbortController.signal }).then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -182,33 +194,62 @@ class TileLoader {
                         return result.arrayBuffer();
 
                     })
-                    .then(resultArrayBuffer=>{
-                        return B3DMDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, zUpToYUp);
-                    })
-                    .then(mesh=>{
-                        self.cache.put(key, mesh);
+                        .then(resultArrayBuffer => {
+                            return B3DMDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, zUpToYUp);
+                        })
+                        .then(mesh => {
+                            self.cache.put(key, mesh);
                             self.checkSize();
                             this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                    })
-                    .catch(()=>{});;
+                        })
+                        .catch(() => { });;
+                }
+            } else if (path.includes(".glb") || path.includes(".gltf")) {
+                downloadFunction = () => {
+                    concurentDownloads++;
+                    gltfLoader.load(path, gltf => {
+                        gltf.scene.traverse((o) => {
+                            o.geometricError = geometricError;
+                            if (o.isMesh) {
+                                if (zUpToYUp) {
+                                    o.applyMatrix4(zUpToYUpMatrix);
+                                }
+                                if (!!self.meshCallback) {
+                                    self.meshCallback(o);
+                                }
+                            }
+                            if (o.isPoints) {
+                                if (zUpToYUp) {
+                                    o.applyMatrix4(zUpToYUpMatrix);
+                                }
+                                if (!!self.pointsCallback) {
+                                    self.pointsCallback(o);
+                                }
+                            }
+                        });
+                        self.cache.put(key, gltf.scene);
+                        self.checkSize();
+                        self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                    });
+
                 }
             } else if (path.includes(".json")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    fetch(path, {signal: realAbortController.signal}).then(result => {
+                    fetch(path, { signal: realAbortController.signal }).then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
                         return result.json();
-                        
+
                     }).then(json => {
                         self.cache.put(key, json);
                         self.checkSize();
-                        this.meshReceived(self.cache, self.register, key);
+                        self.meshReceived(self.cache, self.register, key);
                     })
-                    .catch(e=>console.error("tile download aborted"));
+                        .catch(e => console.error("tile download aborted"));
                 }
             }
             this.scheduleDownload({
@@ -228,7 +269,7 @@ class TileLoader {
 
     invalidate(path, tileIdentifier) {
         const key = simplifyPath(path);
-        if(!!this.register[key]){
+        if (!!this.register[key]) {
             delete this.register[key][tileIdentifier];
         }
     }
