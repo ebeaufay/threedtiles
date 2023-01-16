@@ -28,6 +28,7 @@ class OGC3DTile extends THREE.Object3D {
      *   loadOutsideView: Boolean,
      *   tileLoader : TileLoader,
      *   meshCallback: function,
+     *   pointsCallback: function,
      *   cameraOnLoad: camera,
      *   parentTile: OGC3DTile,
      *   onLoadCallback: function,
@@ -45,11 +46,16 @@ class OGC3DTile extends THREE.Object3D {
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
         } else {
-            this.tileLoader = new TileLoader(!properties.meshCallback ?
-                mesh => {
+            this.tileLoader = new TileLoader(
+                200,
+                !properties.meshCallback ? mesh => {
                     mesh.material.wireframe = false;
                     mesh.material.side = THREE.DoubleSide;
-                } : properties.meshCallback);
+                } : properties.meshCallback,
+                !properties.pointsCallback ? points => {
+                    points.material.size = 0.1;
+                    points.material.sizeAttenuation = true;
+                } : properties.pointsCallback);
         }
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;

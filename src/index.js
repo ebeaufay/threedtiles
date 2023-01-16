@@ -169,11 +169,6 @@ function createInstancedTileLoader(scene) {
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
             mesh.material.metalness = 0.0;
-        },
-        points => {
-            //// Insert code to be called on every newly decoded point cloud e.g.:
-            points.material.size = 0.4*Math.sqrt(points.geometricError);
-            points.material.sizeAttenuation = true;
         });
 }
 function initInstancedTilesets(instancedTileLoader) {
