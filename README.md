@@ -47,6 +47,8 @@ Currently, the library is limmited to B3DM files.
 - Occlusion culling
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
+- gltf/glb tiles (OGC3DTiles 1.1)
+- point clouds (only through gltf/glb tiles)
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -109,6 +111,20 @@ const ogc3DTile = new OGC3DTile({
         }
 });
 ```
+
+#### Points callback
+Add a callback on loaded point tiles in order to set a material or do some logic on the points.
+
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    pointsCallback: points => {
+            points.material.size = 0.1;
+            points.material.sizeAttenuation = true;
+        }
+});
+```
 If using a shared cache between tilesets, check out the next section.
 
 ### Cache
@@ -124,12 +140,15 @@ import { TileLoader } from "@jdultra/threedtiles/src/tileset/TileLoader";
 const ogc3DTile = new OGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
         renderer: renderer,
-        tileLoader: new TileLoader(mesh => {
+        tileLoader: new TileLoader(2000, mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
             }, 
-            2000
+            points=>{
+                points.material.size = 0.1;
+                points.material.sizeAttenuation = true;
+            }
         ),
         meshCallback: mesh => { mesh.material.wireframe = true;} // This callback will not be used as the callback provided to the TileLoader takes priority
     });
@@ -198,13 +217,15 @@ higher performance when displaying the same Tileset many times.
 
 ```
 // First create the InstancedTileLoader that will manage caching
-const instancedTileLoader = new InstancedTileLoader(scene, mesh => {
-    //// Insert code to be called on every newly decoded mesh e.g.:
-    mesh.material.wireframe = false;
-    mesh.material.side = THREE.DoubleSide;
-}, 
-1000, // cache size as in the number of tiles cached in memory
-100, // max number of tilesets from the same source
+const instancedTileLoader = new InstancedTileLoader(
+    scene, 
+    100, // cache size as in the number of tiles cached in memory
+    1, // max number of tilesets from the same source
+    mesh => {
+        //// Insert code to be called on every newly decoded mesh e.g.:
+        mesh.material.wireframe = false;
+        mesh.material.side = THREE.DoubleSide;
+    }
 );
 
 // then create some tilesets
