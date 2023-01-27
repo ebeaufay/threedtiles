@@ -34,7 +34,16 @@ setInterval(function () {
 }, 20);
 ```
 
-Currently, the library is limmited to B3DM files.
+The library is limmited to B3DM and glb/gltf tiles.
+
+Here is a simple project : [Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link)
+
+Unzip and run :
+
+> npm install
+
+> npm run dev
+
 
 ## Features
 
