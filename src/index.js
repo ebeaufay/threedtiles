@@ -49,7 +49,7 @@ function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
-    scene.background = new THREE.Color(0xeeffaa);
+    scene.background = new THREE.Color(0x888888);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
     
     /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
@@ -112,8 +112,8 @@ function initStats(dom) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 1000);
-    camera.position.set(15,0,0);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    camera.position.set(-0.5,-0.7,10);
     camera.lookAt(0,0,0);
 
     camera.matrixAutoUpdate = true;
@@ -128,7 +128,7 @@ function initTileset(scene, gem) {
         mesh.material.side = THREE.DoubleSide;
         mesh.material.metalness = 0.0
     }, points=>{
-        points.material.size = 0.4*Math.sqrt(points.geometricError);
+        points.material.size = Math.min(1.0,0.5*Math.sqrt(points.geometricError));
         points.material.sizeAttenuation = true;
     });
 
@@ -136,7 +136,7 @@ function initTileset(scene, gem) {
         //url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
         url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        geometricErrorMultiplier: gem,
+        geometricErrorMultiplier: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -147,7 +147,7 @@ function initTileset(scene, gem) {
     });
     setIntervalAsync(function () {
         ogc3DTile.update(camera);
-    }, 20);
+    }, 10);
 
     
 
@@ -183,7 +183,7 @@ function initInstancedTilesets(instancedTileLoader) {
     const tileset = new InstancedOGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         //url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 0.01,
+        geometricErrorMultiplier: 0.1,
         loadOutsideView: true,
         tileLoader: instancedTileLoader,
         static: false,
