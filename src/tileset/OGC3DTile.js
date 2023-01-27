@@ -378,6 +378,9 @@ class OGC3DTile extends THREE.Object3D {
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
                 }
+                else{
+                    console.log("loading...")
+                }
             }
         }
 
@@ -549,10 +552,10 @@ class OGC3DTile extends THREE.Object3D {
         function setMeshVisibility(mesh, visibility) {
             mesh.material.visible = visibility;
             if (!!visibility) {
-                self.meshesToDisplay++;
+                self.meshesToDisplay=1;
                 mesh.onAfterRender = () => {
                     delete mesh.onAfterRender;
-                    self.meshesDisplayed++;
+                    self.meshesDisplayed=1;
                 };
             }
 

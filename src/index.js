@@ -133,8 +133,8 @@ function initTileset(scene, gem) {
     });
 
     const ogc3DTile = new OGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
+        //url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         geometricErrorMultiplier: 1,
         loadOutsideView: false,
