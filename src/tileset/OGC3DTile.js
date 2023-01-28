@@ -378,9 +378,6 @@ class OGC3DTile extends THREE.Object3D {
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
                 }
-                else{
-                    console.log("loading...")
-                }
             }
         }
 
