@@ -6,6 +6,8 @@ The fastest 3DTiles viewer for three.js
 
 [Photogrametry (OBJ conversion)](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
 
+[Point cloud vs Mesh](https://www.jdultra.com/pointmeshing/index.html)
+
 [PBR material (GlTF conversion)](https://www.jdultra.com/pbr/)
 
 [Occlusion culling (IFC conversion)](https://www.jdultra.com/occlusion/index.html)
