@@ -392,7 +392,7 @@ class OGC3DTile extends THREE.Object3D {
                 !visibilityBeforeUpdate &&
                 self.hasMeshContent &&
                 self.meshContent &&
-                self.meshesToDisplay == self.meshesDisplayed &&
+                self.meshDisplayed &&
                 self.areAllChildrenLoadedAndHidden()) {
 
                 self.disposeChildren();
@@ -444,7 +444,7 @@ class OGC3DTile extends THREE.Object3D {
                 if (!child.inFrustum) {
                     return true;
                 };
-                if (!child.materialVisibility || child.meshesToDisplay != child.meshesDisplayed) {
+                if (!child.materialVisibility || child.meshDisplayed) {
                     allLoadedAndHidden = false;
                     return false;
                 } else if (self.occlusionCullingService.hasID(child.colorID)) {
@@ -501,7 +501,7 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         // if all meshes have been displayed once
-        if (this.meshesDisplayed == this.meshesToDisplay) {
+        if (this.meshDisplayed) {
             return true;
         }
 
@@ -534,8 +534,8 @@ class OGC3DTile extends THREE.Object3D {
             return;
         }
         self.materialVisibility = visibility
-        self.meshesToDisplay = 0;
-        self.meshesDisplayed = 0;
+        
+        self.meshDisplayed = false;
         if (!!self.meshContent.traverse) {
             self.meshContent.traverse(function (element) {
                 if (element.material) setMeshVisibility(element, visibility);
@@ -549,10 +549,9 @@ class OGC3DTile extends THREE.Object3D {
         function setMeshVisibility(mesh, visibility) {
             mesh.material.visible = visibility;
             if (!!visibility) {
-                self.meshesToDisplay=1;
                 mesh.onAfterRender = () => {
                     delete mesh.onAfterRender;
-                    self.meshesDisplayed=1;
+                    self.meshDisplayed = true;
                 };
             }
 
