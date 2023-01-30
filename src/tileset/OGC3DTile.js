@@ -9,7 +9,7 @@ const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
-const rendererSize = new THREE.Vector2();
+const rendererSize = new THREE.Vector2(1000,1000);
 const tempQuaternion = new THREE.Quaternion();
 
 
@@ -582,7 +582,9 @@ class OGC3DTile extends THREE.Object3D {
             return 0;
         }
         const scale = this.matrixWorld.getMaxScaleOnAxis();
-        this.renderer.getDrawingBufferSize(rendererSize);
+        if(!!this.renderer){
+            this.renderer.getDrawingBufferSize(rendererSize);
+        }
         let s = rendererSize.y;
         let fov = camera.fov;
         if (camera.aspect < 1) {
