@@ -350,9 +350,3 @@ setInterval(() => {
 ```
 
 window#requestIdleCallback is also a good option but the rate of updates becomes slightly unpredictable.
-
-# Projects that use this library
-https://github.com/ebeaufay/UltraGlobe allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
-
-If you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
-Contact: emeric.beaufays@jdultra.com
