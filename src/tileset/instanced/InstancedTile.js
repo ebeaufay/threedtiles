@@ -65,6 +65,7 @@ class InstancedTile extends THREE.Object3D {
         this.level = properties.level ? properties.level : 0;
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
+        this.centerModel = properties.centerModel;
 
         this.deleted = false;
         this.abortController = new AbortController();
@@ -82,7 +83,7 @@ class InstancedTile extends THREE.Object3D {
                 //json = JSON.parse(JSON.stringify(json))
                 const p = path.dirname(url);
                 self.setup({ rootPath: p, json: json });
-                if (!!properties.centerModel) {
+                if (!!self.centerModel) {
                     const tempSphere = new THREE.Sphere();
                     if (self.boundingVolume instanceof OBB) {
                         // box
@@ -155,7 +156,7 @@ class InstancedTile extends THREE.Object3D {
             this.geometricError = properties.parentGeometricError;
         }
         // decode transform
-        if (!!this.json.transform) {
+        if (!!this.json.transform && !this.centerModel) {
             let mat = new THREE.Matrix4();
             mat.elements = this.json.transform;
             this.master.applyMatrix4(mat);
@@ -374,7 +375,8 @@ class InstancedTile extends THREE.Object3D {
                     level: self.level + 1,
                     tileLoader: self.tileLoader,
                     cameraOnLoad: camera,
-                    master: self.master
+                    master: self.master,
+                    centerModel: false
                 });
                 self.childrenTiles.push(childTile);
                 //self.add(childTile);

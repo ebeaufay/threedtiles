@@ -2,10 +2,10 @@ import { Matrix3, Sphere, Vector3 } from "three";
 
 class OBB {
     constructor(values) {
-        this.center = new Vector3(values[0], values[2], -values[1]);
-        var e1 = new Vector3(values[3], values[5], values[4]);
-        var e2 = new Vector3(values[6], values[8], values[7]);
-        var e3 = new Vector3(values[9], values[11], values[10]);
+        this.center = new Vector3(values[0], values[1], values[2]);
+        var e1 = new Vector3(values[3], values[4], values[4]);
+        var e2 = new Vector3(values[6], values[7], values[8]);
+        var e3 = new Vector3(values[9], values[10], values[11]);
 
         this.halfWidth = e1.length();
         this.halfHeight = e2.length();

@@ -26,8 +26,8 @@ function parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
 		String.fromCharCode(dataView.getUint8(3));
 	console.assert(magic === 'b3dm');
 
-	const version = dataView.getUint32(4, true);
-	console.assert(version === 1);
+	//const version = dataView.getUint32(4, true);
+	//console.assert(version === 1);
 
 	const byteLength = dataView.getUint32(8, true);
 	console.assert(byteLength === arrayBuffer.byteLength);
@@ -70,6 +70,13 @@ function parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
 			if (rtcCenter) {
 				tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2])
 				model.scene.applyMatrix4(tempMatrix);
+			}else if(!!model.userData.gltfExtensions.CESIUM_RTC){
+				tempMatrix.makeTranslation(model.userData.gltfExtensions.CESIUM_RTC.center[0], model.userData.gltfExtensions.CESIUM_RTC.center[1], model.userData.gltfExtensions.CESIUM_RTC.center[2])
+				model.scene.applyMatrix4(tempMatrix);
+			}
+			
+			if(!zUpToYUp){
+				model.scene.applyMatrix4(zUpToYUpMatrix);
 			}
 			
 			model.scene.traverse((o) => {

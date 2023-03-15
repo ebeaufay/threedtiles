@@ -13,8 +13,13 @@ module.exports = {
   entry: './src/index.js',
 
   output: {
-    filename: "index.js",
+    filename: "threedtiles.js",
     path: path.resolve(__dirname, 'dist'),
+    globalObject: 'this',
+    library: {
+      name: 'threedtiles',
+      type: 'umd',
+    },
   },
 
   plugins: [

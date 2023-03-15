@@ -8,11 +8,10 @@ import { setIntervalAsync } from 'set-interval-async/dynamic';
 import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
+import { Sky } from 'three/addons/objects/Sky.js';
 
 
 const occlusionCullingService = new OcclusionCullingService();
@@ -23,7 +22,8 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 1.0);
+const ogc3DTiles = initTileset(scene, 2.0);
+
 
 //const instancedTileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(instancedTileLoader);
@@ -34,7 +34,41 @@ const composer = initComposer(scene, camera, renderer);
 
 animate();
 
+let sky, sun;
+initSky();
+function initSky() {
+    sky = new Sky();
+    sky.scale.setScalar(450000);
+    scene.add(sky);
 
+    sun = new THREE.Vector3();
+
+    const effectController = {
+        turbidity: 10,
+        rayleigh: 1,
+        mieCoefficient: 0.005,
+        mieDirectionalG: 0.3,
+        elevation: 5,
+        azimuth: 40,
+        exposure: renderer.toneMappingExposure
+    };
+
+    const uniforms = sky.material.uniforms;
+    uniforms['turbidity'].value = effectController.turbidity;
+    uniforms['rayleigh'].value = effectController.rayleigh;
+    uniforms['mieCoefficient'].value = effectController.mieCoefficient;
+    uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
+
+    const phi = THREE.MathUtils.degToRad(90 - effectController.elevation);
+    const theta = THREE.MathUtils.degToRad(effectController.azimuth);
+
+    sun.setFromSphericalCoords(1, phi, theta);
+
+    uniforms['sunPosition'].value.copy(sun);
+
+    renderer.toneMappingExposure = effectController.exposure;
+    renderer.render(scene, camera);
+}
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
     //const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.5, 0);
@@ -49,9 +83,14 @@ function initScene() {
     const scene = new THREE.Scene();
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
-    scene.background = new THREE.Color(0x888888);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
-    
+    scene.background = new THREE.Color(0xE5E3E4);
+    const dirLight = new THREE.DirectionalLight(0xFFFFFF, 1.0);
+    dirLight.position.set(100,100,100);
+    dirLight.lookAt(new THREE.Vector3(0,0,0));
+    //scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+
+    scene.add(dirLight)
+
     /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
     light.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: 0xbbbbff })));
@@ -111,14 +150,7 @@ function initStats(dom) {
 }
 
 
-function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-    camera.position.set(-0.5,-0.7,10);
-    camera.lookAt(0,0,0);
 
-    camera.matrixAutoUpdate = true;
-    return camera;
-}
 
 function initTileset(scene, gem) {
 
@@ -126,32 +158,32 @@ function initTileset(scene, gem) {
         //// Insert code to be called on every newly decoded mesh e.g.:
         mesh.material.wireframe = false;
         mesh.material.side = THREE.DoubleSide;
-        mesh.material.metalness = 0.0
-    }, points=>{
-        points.material.size = Math.min(1.0,0.5*Math.sqrt(points.geometricError));
+        //mesh.material.metalness = 0.0
+    }, points => {
+        points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
         points.material.sizeAttenuation = true;
     });
 
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/baltimore/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         geometricErrorMultiplier: 1,
-        loadOutsideView: false,
+        loadOutsideView: true,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
-        centerModel:true,
-        renderer: renderer,
-         
+        centerModel: true,
+        renderer: renderer
+
     });
     setIntervalAsync(function () {
         ogc3DTile.update(camera);
     }, 10);
 
-    
+    //ogc3DTile.scale.set(0.1,0.1,0.1)
 
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -181,13 +213,13 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
     const tileset = new InstancedOGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         geometricErrorMultiplier: 0.1,
         loadOutsideView: true,
         tileLoader: instancedTileLoader,
         static: false,
-        centerModel:true,
+        centerModel: true,
         renderer: renderer
     });
     //tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
@@ -227,15 +259,23 @@ function initLODMultiplierSlider(instancedTilesets) {
     }
 }
 
+function initCamera(width, height) {
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 20000);
+    camera.position.set(50, 50, 50);
+    camera.lookAt(0, 0, 0);
+
+    camera.matrixAutoUpdate = true;
+    return camera;
+}
 function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0,0,0);
+    controller.target.set(0, 0, 0);
 
 
     controller.minDistance = 0.1;
-    controller.maxDistance = 1000;
+    controller.maxDistance = 10000;
     controller.update();
     return controller;
 }

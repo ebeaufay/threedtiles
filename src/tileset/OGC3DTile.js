@@ -90,7 +90,7 @@ class OGC3DTile extends THREE.Object3D {
         this.level = properties.level ? properties.level : 0;
         this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
-
+        this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
         this.layers.disable(0);
 
@@ -106,7 +106,7 @@ class OGC3DTile extends THREE.Object3D {
                 result.json().then(json => {
                     self.setup({ rootPath: path.dirname(properties.url), json: json });
                     if (properties.onLoadCallback) properties.onLoadCallback(self);
-                    if (!!properties.centerModel) {
+                    if (!!self.centerModel) {
                         const tempSphere = new THREE.Sphere();
                         if (self.boundingVolume instanceof OBB) {
                             // box
@@ -162,12 +162,14 @@ class OGC3DTile extends THREE.Object3D {
         } else {
             this.geometricError = properties.parentGeometricError;
         }
+
         // decode transform
-        if (!!this.json.transform) {
+        if (!!this.json.transform && !this.centerModel) {
             let mat = new THREE.Matrix4();
             mat.elements = this.json.transform;
             this.applyMatrix4(mat);
         }
+        
         // decode volume
         if (!!this.json.boundingVolume) {
             if (!!this.json.boundingVolume.box) {
@@ -180,13 +182,15 @@ class OGC3DTile extends THREE.Object3D {
                 this.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.y, tempVec1.z), tempVec1.distanceTo(tempVec2));
             } else if (!!this.json.boundingVolume.sphere) {
                 const sphere = this.json.boundingVolume.sphere;
-                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[2], -sphere[1]), sphere[3]);
+                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
             } else {
                 this.boundingVolume = properties.parentBoundingVolume;
             }
         } else {
             this.boundingVolume = properties.parentBoundingVolume;
         }
+
+        
 
         if (!!this.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
             if (!!this.json.content.uri && this.json.content.uri.includes("json")) {
@@ -222,9 +226,7 @@ class OGC3DTile extends THREE.Object3D {
             if (!!url) {
                 if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
-                    if(!!self.json.boundingVolume.region){
-                        //self.applyMatrix4(zUpToYUp);
-                    }
+                    
                     self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
@@ -423,7 +425,8 @@ class OGC3DTile extends THREE.Object3D {
                     cameraOnLoad: camera,
                     occlusionCullingService: self.occlusionCullingService,
                     renderer: self.renderer,
-                    static: self.static
+                    static: self.static,
+                    centerModel: false
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -535,7 +538,7 @@ class OGC3DTile extends THREE.Object3D {
         }
         self.materialVisibility = visibility
         
-        self.meshDisplayed = false;
+        self.meshDisplayed = true;
         if (!!self.meshContent.traverse) {
             self.meshContent.traverse(function (element) {
                 if (element.material) setMeshVisibility(element, visibility);
