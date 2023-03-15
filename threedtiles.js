@@ -11924,7 +11924,7 @@ function parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
       if (rtcCenter) {
         tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2]);
         model.scene.applyMatrix4(tempMatrix);
-      } else if (!!model.userData.gltfExtensions.CESIUM_RTC) {
+      } else if (!!model.userData.gltfExtensions && !!model.userData.gltfExtensions.CESIUM_RTC) {
         tempMatrix.makeTranslation(model.userData.gltfExtensions.CESIUM_RTC.center[0], model.userData.gltfExtensions.CESIUM_RTC.center[1], model.userData.gltfExtensions.CESIUM_RTC.center[2]);
         model.scene.applyMatrix4(tempMatrix);
       }
@@ -22835,10 +22835,6 @@ var camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 var stats = initStats(domContainer);
 var renderer = initRenderer(camera, domContainer);
 var ogc3DTiles = initTileset(scene, 2.0);
-
-//const instancedTileLoader = createInstancedTileLoader(scene);
-//initInstancedTilesets(instancedTileLoader);
-
 var controller = initController(camera, domContainer);
 var composer = initComposer(scene, camera, renderer);
 animate();

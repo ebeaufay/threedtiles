@@ -24,10 +24,6 @@ const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const ogc3DTiles = initTileset(scene, 2.0);
 
-
-//const instancedTileLoader = createInstancedTileLoader(scene);
-//initInstancedTilesets(instancedTileLoader);
-
 const controller = initController(camera, domContainer);
 
 const composer = initComposer(scene, camera, renderer);
