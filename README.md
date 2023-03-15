@@ -14,6 +14,8 @@ The fastest 3DTiles viewer for three.js
 
 [Instanced Tileset (pilot a swarm of highly detailed spaceships)](https://www.jdultra.com/instanced/index.html)
 
+NPM dependency: "@jdultra/threedtiles": "^6.0.4"
+
 Adding a tileset to a scene is as easy as :
 
 ```
@@ -46,6 +48,13 @@ Unzip and run :
 
 > npm run dev
 
+## Mesh to 3DTiles Converter
+
+If you need to convert meshes to 3DTiles, from small assets to gigabytes of data, contact me for a trial on UltraMesh tool.
+It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures.
+There's support for OBJ, IFC and glTF meshes and las/laz point clouds.
+I aim for optimal quality in terms of mesh, texture and tileset structure for optimal streaming.
+Contact: emeric.beaufays@jdultra.com
 
 ## Features
 
@@ -341,17 +350,3 @@ setInterval(() => {
 ```
 
 window#requestIdleCallback is also a good option but the rate of updates becomes slightly unpredictable.
-
-# Projects that use this library
-https://github.com/ebeaufay/UltraGlobe allows displaying a globe with multi resolution imagery, elevation and 3DTiles.
-
-If you have a project that stems from this code. I'd love to link to it here and I'm always open to implementing extra features.
-Contact: emeric.beaufays@jdultra.com
-
-
-# Mesh to 3DTiles Converter
-
-I also have code to convert meshes to 3DTiles with no limit to the size of the dataset relative to faces or textures.
-It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures. 
-The code is not open source but feel free to contact me for a trial.
-Contact: emeric.beaufays@jdultra.com
