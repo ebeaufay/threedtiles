@@ -80,12 +80,12 @@ function initScene() {
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
     scene.background = new THREE.Color(0xE5E3E4);
-    const dirLight = new THREE.DirectionalLight(0xFFFFFF, 1.0);
-    dirLight.position.set(100,100,100);
-    dirLight.lookAt(new THREE.Vector3(0,0,0));
-    //scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+    //const dirLight = new THREE.DirectionalLight(0xFFFFFF, 1.0);
+    //dirLight.position.set(100,100,100);
+    //dirLight.lookAt(new THREE.Vector3(0,0,0));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    scene.add(dirLight)
+    //scene.add(dirLight)
 
     /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
@@ -162,8 +162,8 @@ function initTileset(scene, gem) {
 
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        //url: "http://localhost:8080/tileset.json",
         geometricErrorMultiplier: 1,
         loadOutsideView: true,
         tileLoader: tileLoader,

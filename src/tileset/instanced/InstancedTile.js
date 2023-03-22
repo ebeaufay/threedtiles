@@ -193,19 +193,30 @@ class InstancedTile extends THREE.Object3D {
             //scheduleLoadTile(this);
         }
     }
+
+    isAbsolutePathOrURL(input) {
+        // Check if it's an absolute URL with various protocols
+        const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+        const absoluteURL = urlRegex.test(input);
+      
+        // Check if it's an absolute path
+        const absolutePath = input.startsWith('/') && !input.startsWith('//');
+      
+        return absoluteURL || absolutePath;
+      }
     load() {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
             let url;
             if (!!self.json.content.uri) {
-                if (path.isAbsolute(self.json.content.uri)) {
+                if (path.isAbsolute(self.json.content.uri) || self.isAbsolutePathOrURL(self.json.content.uri)) {
                     url = self.json.content.uri;
                 } else {
                     url = self.rootPath + path.sep + self.json.content.uri;
                 }
             } else if (!!self.json.content.url) {
-                if (path.isAbsolute(self.json.content.url)) {
+                if (path.isAbsolute(self.json.content.url) || self.isAbsolutePathOrURL(self.json.content.url)) {
                     url = self.json.content.url;
                 } else {
                     url = self.rootPath + path.sep + self.json.content.url;

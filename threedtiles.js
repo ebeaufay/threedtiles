@@ -12552,6 +12552,17 @@ var OGC3DTile = /*#__PURE__*/function (_THREE$Object3D) {
       }
     }
   }, {
+    key: "isAbsolutePathOrURL",
+    value: function isAbsolutePathOrURL(input) {
+      // Check if it's an absolute URL with various protocols
+      var urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+      var absoluteURL = urlRegex.test(input);
+
+      // Check if it's an absolute path
+      var absolutePath = input.startsWith('/') && !input.startsWith('//');
+      return absoluteURL || absolutePath;
+    }
+  }, {
     key: "load",
     value: function load() {
       var self = this;
@@ -12559,13 +12570,13 @@ var OGC3DTile = /*#__PURE__*/function (_THREE$Object3D) {
       if (!!self.json.content) {
         var url;
         if (!!self.json.content.uri) {
-          if (path_browserify__WEBPACK_IMPORTED_MODULE_2__.isAbsolute(self.json.content.uri)) {
+          if (path_browserify__WEBPACK_IMPORTED_MODULE_2__.isAbsolute(self.json.content.uri) || self.isAbsolutePathOrURL(self.json.content.uri)) {
             url = self.json.content.uri;
           } else {
             url = self.rootPath + path_browserify__WEBPACK_IMPORTED_MODULE_2__.sep + self.json.content.uri;
           }
         } else if (!!self.json.content.url) {
-          if (path_browserify__WEBPACK_IMPORTED_MODULE_2__.isAbsolute(self.json.content.url)) {
+          if (path_browserify__WEBPACK_IMPORTED_MODULE_2__.isAbsolute(self.json.content.url) || self.isAbsolutePathOrURL(self.json.content.url)) {
             url = self.json.content.url;
           } else {
             url = self.rootPath + path_browserify__WEBPACK_IMPORTED_MODULE_2__.sep + self.json.content.url;
@@ -13787,6 +13798,17 @@ var InstancedTile = /*#__PURE__*/function (_THREE$Object3D) {
       }
     }
   }, {
+    key: "isAbsolutePathOrURL",
+    value: function isAbsolutePathOrURL(input) {
+      // Check if it's an absolute URL with various protocols
+      var urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+      var absoluteURL = urlRegex.test(input);
+
+      // Check if it's an absolute path
+      var absolutePath = input.startsWith('/') && !input.startsWith('//');
+      return absoluteURL || absolutePath;
+    }
+  }, {
     key: "load",
     value: function load() {
       var self = this;
@@ -13794,13 +13816,13 @@ var InstancedTile = /*#__PURE__*/function (_THREE$Object3D) {
       if (!!self.json.content) {
         var url;
         if (!!self.json.content.uri) {
-          if (path_browserify__WEBPACK_IMPORTED_MODULE_1__.isAbsolute(self.json.content.uri)) {
+          if (path_browserify__WEBPACK_IMPORTED_MODULE_1__.isAbsolute(self.json.content.uri) || self.isAbsolutePathOrURL(self.json.content.uri)) {
             url = self.json.content.uri;
           } else {
             url = self.rootPath + path_browserify__WEBPACK_IMPORTED_MODULE_1__.sep + self.json.content.uri;
           }
         } else if (!!self.json.content.url) {
-          if (path_browserify__WEBPACK_IMPORTED_MODULE_1__.isAbsolute(self.json.content.url)) {
+          if (path_browserify__WEBPACK_IMPORTED_MODULE_1__.isAbsolute(self.json.content.url) || self.isAbsolutePathOrURL(self.json.content.url)) {
             url = self.json.content.url;
           } else {
             url = self.rootPath + path_browserify__WEBPACK_IMPORTED_MODULE_1__.sep + self.json.content.url;
@@ -22880,12 +22902,12 @@ function initScene() {
   scene.matrixAutoUpdate = false;
   //scene.matrixWorldAutoUpdate = false;
   scene.background = new three__WEBPACK_IMPORTED_MODULE_7__.Color(0xE5E3E4);
-  var dirLight = new three__WEBPACK_IMPORTED_MODULE_7__.DirectionalLight(0xFFFFFF, 1.0);
-  dirLight.position.set(100, 100, 100);
-  dirLight.lookAt(new three__WEBPACK_IMPORTED_MODULE_7__.Vector3(0, 0, 0));
-  //scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+  //const dirLight = new THREE.DirectionalLight(0xFFFFFF, 1.0);
+  //dirLight.position.set(100,100,100);
+  //dirLight.lookAt(new THREE.Vector3(0,0,0));
+  scene.add(new three__WEBPACK_IMPORTED_MODULE_7__.AmbientLight(0xFFFFFF, 1.0));
 
-  scene.add(dirLight);
+  //scene.add(dirLight)
 
   /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
   const sphere = new THREE.SphereGeometry(2, 16, 8);
@@ -22945,8 +22967,8 @@ function initTileset(scene, gem) {
   });
   var ogc3DTile = new _tileset_OGC3DTile__WEBPACK_IMPORTED_MODULE_1__.OGC3DTile({
     //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-    //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-    url: "http://localhost:8080/tileset.json",
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+    //url: "http://localhost:8080/tileset.json",
     geometricErrorMultiplier: 1,
     loadOutsideView: true,
     tileLoader: tileLoader,
