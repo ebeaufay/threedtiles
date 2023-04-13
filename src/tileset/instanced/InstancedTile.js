@@ -367,7 +367,7 @@ class InstancedTile extends THREE.Object3D {
             }
             if (metric >= self.master.geometricErrorMultiplier * self.geometricError) {
                 self.disposeChildren();
-                updateNodeVisibility();
+                updateNodeVisibility(metric);
                 return;
             }
 

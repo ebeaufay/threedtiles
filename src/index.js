@@ -13,6 +13,9 @@ import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { Sky } from 'three/addons/objects/Sky.js';
 
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
@@ -23,6 +26,43 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const ogc3DTiles = initTileset(scene, 2.0);
+//const instancedTileLoader = createInstancedTileLoader(scene);
+//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+
+
+/*const gltfLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+gltfLoader.setDRACOLoader(dracoLoader);
+
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('jsm/libs/basis/');
+//gltfLoader.setKTX2Loader(ktx2Loader)
+
+
+gltfLoader.load(
+    // resource URL
+    'http://localhost:8080/3/15.glb',
+    // called when the resource is loaded
+    function (gltf) {
+
+        scene.add(gltf.scene);
+
+    },
+    // called while loading is progressing
+    function (xhr) {
+
+        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+
+    },
+    // called when loading has errors
+    function (error) {
+
+        console.log('An error happened : ' + error);
+
+    }
+);*/
+// Optional: Provide a DRACOLoader instance to decode compressed mesh data
 
 const controller = initController(camera, domContainer);
 
@@ -150,21 +190,26 @@ function initStats(dom) {
 
 function initTileset(scene, gem) {
 
-    const tileLoader = new TileLoader(100, mesh => {
-        //// Insert code to be called on every newly decoded mesh e.g.:
-        mesh.material.wireframe = false;
-        mesh.material.side = THREE.DoubleSide;
-        //mesh.material.metalness = 0.0
-    }, points => {
-        points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
-        points.material.sizeAttenuation = true;
+    const tileLoader = new TileLoader({
+        renderer: renderer,
+        maxCachedItems: 100,
+        meshCallback: mesh => {
+            //// Insert code to be called on every newly decoded mesh e.g.:
+            mesh.material.wireframe = false;
+            mesh.material.side = THREE.DoubleSide;
+            //mesh.material.metalness = 0.0
+        },
+        pointsCallback: points => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
+            points.material.sizeAttenuation = true;
+        }
     });
 
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 1,
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
+        url: "http://localhost:8080/tileset.json",
+        geometricErrorMultiplier: gem,
         loadOutsideView: true,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -179,7 +224,7 @@ function initTileset(scene, gem) {
 
     //ogc3DTile.scale.set(0.1,0.1,0.1)
 
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -191,13 +236,20 @@ function initTileset(scene, gem) {
 
 
 function createInstancedTileLoader(scene) {
-    return new InstancedTileLoader(scene, 100, 1,
-        mesh => {
+    return new InstancedTileLoader(scene, {
+        renderer: renderer,
+        maxCachedItems : 100,
+        maxInstances : 1,
+        meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-            mesh.material.metalness = 0.0;
-        });
+        },
+        pointsCallback: points => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
+            points.material.sizeAttenuation = true;
+        }
+    });
 }
 function initInstancedTilesets(instancedTileLoader) {
 
@@ -211,14 +263,14 @@ function initInstancedTilesets(instancedTileLoader) {
     const tileset = new InstancedOGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 0.1,
+        geometricErrorMultiplier: 1,
         loadOutsideView: true,
         tileLoader: instancedTileLoader,
         static: false,
         centerModel: true,
         renderer: renderer
     });
-    //tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5) // Z-UP to Y-UP
+    tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1) // Z-UP to Y-UP
 
     tileset.updateMatrix()
     scene.add(tileset);
@@ -242,18 +294,6 @@ function initInstancedTilesets(instancedTileLoader) {
     //initLODMultiplierSlider(instancedTilesets);
 }
 
-function initLODMultiplierSlider(instancedTilesets) {
-    var slider = document.getElementById("lodMultiplier");
-    var output = document.getElementById("multiplierValue");
-    output.innerHTML = slider.value;
-
-    slider.oninput = () => {
-        instancedTilesets.forEach(tileset => {
-            tileset.setGeometricErrorMultiplier(slider.value * 0.1)
-        })
-        output.innerHTML = slider.value;
-    }
-}
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 20000);

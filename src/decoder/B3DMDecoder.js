@@ -1,109 +1,114 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 import * as THREE from 'three';
-import {FeatureTable, BatchTable} from './FeatureTable';
+import { FeatureTable, BatchTable } from './FeatureTable';
 
-const gltfLoader = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
-gltfLoader.setDRACOLoader(dracoLoader);
-const tempMatrix = new THREE.Matrix4();
 const zUpToYUpMatrix = new THREE.Matrix4();
-zUpToYUpMatrix.set(1,0,0,0,
-			0,0,-1,0,
-			0,1,0,0,
-			0,0,0,1);
+zUpToYUpMatrix.set(
+	1, 0, 0, 0,
+	0, 0, -1, 0,
+	0, 1, 0, 0,
+	0, 0, 0, 1);
 
-//const legacyGLTFLoader = new LegacyGLTFLoader();
+export class B3DMDecoder {
+	constructor(renderer) {
+		this.gltfLoader = new GLTFLoader();
+		const dracoLoader = new DRACOLoader();
+		dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+		this.gltfLoader.setDRACOLoader(dracoLoader);
+		if (renderer) {
+			const ktx2Loader = new KTX2Loader();
+			ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
+			this.gltfLoader.setKTX2Loader(ktx2Loader)
+		}
 
-function parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
-	const dataView = new DataView(arrayBuffer);
+		this.tempMatrix = new THREE.Matrix4();
+	}
 
-	const magic =
-		String.fromCharCode(dataView.getUint8(0)) +
-		String.fromCharCode(dataView.getUint8(1)) +
-		String.fromCharCode(dataView.getUint8(2)) +
-		String.fromCharCode(dataView.getUint8(3));
-	console.assert(magic === 'b3dm');
+	parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
+		const dataView = new DataView(arrayBuffer);
 
-	//const version = dataView.getUint32(4, true);
-	//console.assert(version === 1);
+		const magic =
+			String.fromCharCode(dataView.getUint8(0)) +
+			String.fromCharCode(dataView.getUint8(1)) +
+			String.fromCharCode(dataView.getUint8(2)) +
+			String.fromCharCode(dataView.getUint8(3));
+		console.assert(magic === 'b3dm');
 
-	const byteLength = dataView.getUint32(8, true);
-	console.assert(byteLength === arrayBuffer.byteLength);
+		const byteLength = dataView.getUint32(8, true);
+		console.assert(byteLength === arrayBuffer.byteLength);
 
-	const featureTableJSONByteLength = dataView.getUint32(12, true);
-	const featureTableBinaryByteLength = dataView.getUint32(16, true);
-	const batchTableJSONByteLength = dataView.getUint32(20, true);
-	const batchTableBinaryByteLength = dataView.getUint32(24, true);
+		const featureTableJSONByteLength = dataView.getUint32(12, true);
+		const featureTableBinaryByteLength = dataView.getUint32(16, true);
+		const batchTableJSONByteLength = dataView.getUint32(20, true);
+		const batchTableBinaryByteLength = dataView.getUint32(24, true);
 
-	const featureTableStart = 28;
-	const featureTable = new FeatureTable(arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength);
+		const featureTableStart = 28;
+		const featureTable = new FeatureTable(arrayBuffer, featureTableStart, featureTableJSONByteLength, featureTableBinaryByteLength);
 
-	const batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength;
-	const batchTable = new BatchTable(arrayBuffer, featureTable.getData('BATCH_LENGTH'), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength);
+		const batchTableStart = featureTableStart + featureTableJSONByteLength + featureTableBinaryByteLength;
+		const batchTable = new BatchTable(arrayBuffer, featureTable.getData('BATCH_LENGTH'), batchTableStart, batchTableJSONByteLength, batchTableBinaryByteLength);
 
-	const glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
-	const glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
-
-
-	const gltfBuffer = glbBytes.slice().buffer;
+		const glbStart = batchTableStart + batchTableJSONByteLength + batchTableBinaryByteLength;
+		const glbBytes = new Uint8Array(arrayBuffer, glbStart, byteLength - glbStart);
 
 
-	return new Promise((resolve, reject) => {
+		const gltfBuffer = glbBytes.slice().buffer;
 
-		gltfLoader.parse(gltfBuffer, null, model => {
 
-			////TODO
+		return new Promise((resolve, reject) => {
 
-			//model.batchTable = b3dm.batchTable;
-			//model.featureTable = b3dm.featureTable;
+			this.gltfLoader.parse(gltfBuffer, null, model => {
 
-			//model.scene.batchTable = b3dm.batchTable;
-			//model.scene.featureTable = b3dm.featureTable;
+				////TODO
 
-			//const scene = mergeColoredObject(model.scene);
+				//model.batchTable = b3dm.batchTable;
+				//model.featureTable = b3dm.featureTable;
 
-			//model.scene.applyMatrix4(ytozUpMatrix);
+				//model.scene.batchTable = b3dm.batchTable;
+				//model.scene.featureTable = b3dm.featureTable;
 
-			const rtcCenter = featureTable.getData('RTC_CENTER');
-			if (rtcCenter) {
-				tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2])
-				model.scene.applyMatrix4(tempMatrix);
-			}else if(!!model.userData.gltfExtensions && !!model.userData.gltfExtensions.CESIUM_RTC){
-				tempMatrix.makeTranslation(model.userData.gltfExtensions.CESIUM_RTC.center[0], model.userData.gltfExtensions.CESIUM_RTC.center[1], model.userData.gltfExtensions.CESIUM_RTC.center[2])
-				model.scene.applyMatrix4(tempMatrix);
-			}
-			
-			if(!zUpToYUp){
-				model.scene.applyMatrix4(zUpToYUpMatrix);
-			}
-			
-			model.scene.traverse((o) => {
-				
-				if (o.isMesh) {
-					o.geometricError = geometricError
-					if(zUpToYUp){
-						o.applyMatrix4(zUpToYUpMatrix);
-					}
-					if (!!meshCallback) {
-						meshCallback(o);
-					}
+				//const scene = mergeColoredObject(model.scene);
 
+				//model.scene.applyMatrix4(ytozUpMatrix);
+
+				const rtcCenter = featureTable.getData('RTC_CENTER');
+				if (rtcCenter) {
+					this.tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2])
+					model.scene.applyMatrix4(this.tempMatrix);
+				} else if (!!model.userData.gltfExtensions && !!model.userData.gltfExtensions.CESIUM_RTC) {
+					this.tempMatrix.makeTranslation(model.userData.gltfExtensions.CESIUM_RTC.center[0], model.userData.gltfExtensions.CESIUM_RTC.center[1], model.userData.gltfExtensions.CESIUM_RTC.center[2])
+					model.scene.applyMatrix4(this.tempMatrix);
 				}
+
+				if (!zUpToYUp) {
+					model.scene.applyMatrix4(zUpToYUpMatrix);
+				}
+
+				model.scene.traverse((o) => {
+
+					if (o.isMesh) {
+						o.geometricError = geometricError
+						if (zUpToYUp) {
+							o.applyMatrix4(zUpToYUpMatrix);
+						}
+						if (!!meshCallback) {
+							meshCallback(o);
+						}
+
+					}
+				});
+				resolve(model.scene);
+			}, error => {
+				console.error(error);
 			});
-			resolve(model.scene);
-		}, error => {
-			console.error(error);
 		});
-	});
-}
+	}
 
-const B3DMDecoder = {
-	parseB3DM: parseB3DM,
-	parseB3DMInstanced: (arrayBuffer, meshCallback, maxCount, zUpToYUp) => { // expects GLTF with one node level
+	parseB3DMInstanced(arrayBuffer, meshCallback, maxCount, zUpToYUp) { // expects GLTF with one node level
 
-		return parseB3DM(arrayBuffer, meshCallback, zUpToYUp).then(mesh => {
+		return this.parseB3DM(arrayBuffer, meshCallback, zUpToYUp).then(mesh => {
 			// todo several meshes in a single gltf
 			let instancedMesh;
 			mesh.updateWorldMatrix(false, true)
@@ -118,129 +123,3 @@ const B3DMDecoder = {
 
 	}
 }
-
-/**
- * //TODO find something else than this workaround
- * 
- * Because B3DM doesn't support colored faces, they are usually encoded as separate meshes each one with a global color.
- * However, when a mesh has many different face colors, this becomes very inneficient.
- * This method doesn't fix the slow decoding of the GLTFLoader but at least merges meshes together and transfers the face color to vertex color 
- * which is much more efficient at render time. 
- * Textured meshes with the same texture are also merged and color is discarded
- * 
- * Big assumption! all the meshes are assumed to have the same transformation matrix
- * 
- * @param {*} scene 
- * @returns 
- */
-/*function mergeColoredObject(scene) {
-	
-	const coloredMeshes = {};
-	const texturedMeshes = {};
-	scene.traverse((element) => {
-		if (element.isMesh) {
-			if (element.material) {
-				// dispose materials
-				if (element.material.length) {
-					// not supported
-				}
-				else {
-					if (!element.material.map) {
-						let color = element.material.color;
-						color = "rgb("+Math.floor(color.r*255)+","+Math.floor(color.g*255)+","+Math.floor(color.b*255)+")";
-						if (!coloredMeshes[color]) {
-							coloredMeshes[color] = [];
-						}
-						coloredMeshes[color].push(element);
-					} else {
-						if (!texturedMeshes[element.material.map]) {
-							texturedMeshes[element.material.map] = [];
-						}
-						texturedMeshes[element.material.map].push(element);
-					}
-				}
-			}
-		}
-	});
-
-	let coloredMeshMaterial;
-	const fullColoredGeometriesToMerge = [];
-	for (const color in coloredMeshes) {
-		if (coloredMeshes.hasOwnProperty(color)) {
-			const threeColor = new Color(color);
-			//const geometriesToMerge = [];
-			coloredMeshes[color].forEach(mesh => {
-				if(!coloredMeshMaterial){
-					coloredMeshMaterial = mesh.material.clone();
-					delete coloredMeshMaterial.color;
-					coloredMeshMaterial.vertexColors = true;
-				}
-				const colors = [];
-			for (let i = 0; i < mesh.geometry.attributes.position.count; i++) {
-				colors.push(threeColor.r);
-				colors.push(threeColor.g);
-				colors.push(threeColor.b);
-			}
-			mesh.geometry.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3));
-
-			fullColoredGeometriesToMerge.push(mesh.geometry);
-			});
-			
-		}
-	}
-
-	let mergedColoredMesh;
-	if(fullColoredGeometriesToMerge.length>0){
-		let mergedColoredGeometry = BufferGeometryUtils.mergeBufferGeometries(fullColoredGeometriesToMerge, false);
-		mergedColoredMesh = new Mesh(mergedColoredGeometry, coloredMeshMaterial);
-		//mergedColoredMesh.matrix = matrix;
-		for (const color in coloredMeshes) {
-			if (coloredMeshes.hasOwnProperty(color)) {
-				coloredMeshes[color].forEach(mesh => {
-					mesh.material.dispose();
-					mesh.geometry.dispose();
-				});
-			}
-		}
-	}
-	
-
-	const mergedTexturedMeshes = [];
-	for(const map in texturedMeshes){
-		if (texturedMeshes.hasOwnProperty(map)) {
-			if(texturedMeshes[map].length==1){
-				mergedTexturedMeshes.push(texturedMeshes[map][0]);
-				continue;
-			}
-			const geometries = [];
-			let material;
-			texturedMeshes[map].forEach(mesh => {
-				if(!material){
-					material = mesh.material.clone();
-					delete material.color;
-					material.vertexColors = false;
-				}
-				geometries.push(mesh.geometry);
-			});
-			
-			const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(geometries, false);
-			const mesh = new Mesh(mergedGeometry, material);
-			//mesh.matrix = matrix;
-			mergedTexturedMeshes.push(mesh);
-			texturedMeshes[map].forEach(mesh => {
-				mesh.material.dispose();
-				mesh.geometry.dispose();
-			});
-		}
-	}
-
-	scene.clear();
-	if(!!mergedColoredMesh) scene.add(mergedColoredMesh);
-	mergedTexturedMeshes.forEach(mesh=>scene.add(mesh));
-	console.log();
-	scene.matrix = new THREE.Matrix4();
-	return scene;
-}*/
-
-export { B3DMDecoder }
-

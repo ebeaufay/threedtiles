@@ -5,6 +5,7 @@ import { initial } from 'lodash';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 
 let concurentDownloads = 0;
 const zUpToYUpMatrix = new THREE.Matrix4();
@@ -12,17 +13,49 @@ zUpToYUpMatrix.set(1, 0, 0, 0,
     0, 0, -1, 0,
     0, 1, 0, 0,
     0, 0, 0, 1);
-const gltfLoader = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
-gltfLoader.setDRACOLoader(dracoLoader);
 
+
+
+
+/**
+ * A Tile loader that manages caching and load order.
+ * The cache is an LRU cache and is defined by the number of items it can hold.
+ * The actual number of cached items might grow beyond max if all items are in use.
+ * 
+ * The load order is designed for optimal perceived loading speed (nearby tiles are refined first).
+ *
+ * @param {Object} [options] - Optional configuration object.
+ * @param {number} [options.maxCachedItems=100] - the cache size.
+ * @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
+ * @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
+ * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
+ */
 class TileLoader {
-    constructor(maxCachedItems, meshCallback, pointsCallback) {
-        this.meshCallback = meshCallback;
-        this.pointsCallback = pointsCallback;
+    constructor(options) {
+        this.maxCachedItems = 100;
+        if (!!options) {
+            this.meshCallback = options.meshCallback;
+            this.pointsCallback = options.pointsCallback;
+            if (options.maxCachedItems) this.maxCachedItems = options.maxCachedItems;
+            
+        }
+
+        this.gltfLoader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+        this.gltfLoader.setDRACOLoader(dracoLoader);
+
+        if(!!options && !!options.renderer){
+            const ktx2Loader = new KTX2Loader();
+            ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
+            this.gltfLoader.setKTX2Loader(ktx2Loader);
+
+            this.b3dmDecoder=new B3DMDecoder(options.renderer);
+        }else{
+            this.b3dmDecoder=new B3DMDecoder(null);
+        }
+
         this.cache = new LinkedHashMap();
-        this.maxCachedItems = !!maxCachedItems ? maxCachedItems : 100;
         this.register = {};
 
 
@@ -32,6 +65,7 @@ class TileLoader {
         this.nextDownloads = [];
         this.init();
     }
+
 
     init() {
 
@@ -195,7 +229,7 @@ class TileLoader {
 
                     })
                         .then(resultArrayBuffer => {
-                            return B3DMDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, zUpToYUp);
+                            return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, zUpToYUp);
                         })
                         .then(mesh => {
                             self.cache.put(key, mesh);
@@ -207,7 +241,7 @@ class TileLoader {
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    gltfLoader.load(path, gltf => {
+                    this.gltfLoader.load(path, gltf => {
                         gltf.scene.traverse((o) => {
                             o.geometricError = geometricError;
                             if (o.isMesh) {

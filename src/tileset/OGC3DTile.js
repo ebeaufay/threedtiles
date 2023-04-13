@@ -4,12 +4,14 @@ import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { clamp } from "three/src/math/MathUtils";
+import { Octree } from 'three/addons/math/Octree.js';
+import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
-const rendererSize = new THREE.Vector2(1000,1000);
+const rendererSize = new THREE.Vector2(1000, 1000);
 const tempQuaternion = new THREE.Quaternion();
 
 
@@ -46,16 +48,16 @@ class OGC3DTile extends THREE.Object3D {
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
         } else {
-            this.tileLoader = new TileLoader(
-                200,
-                !properties.meshCallback ? mesh => {
-                    mesh.material.wireframe = false;
-                    mesh.material.side = THREE.DoubleSide;
-                } : properties.meshCallback,
-                !properties.pointsCallback ? points => {
-                    points.material.size = 0.1;
-                    points.material.sizeAttenuation = true;
-                } : properties.pointsCallback);
+            const tileLoaderOptions = {};
+            tileLoaderOptions.meshCallback = !properties.meshCallback ? mesh => {
+                mesh.material.wireframe = false;
+                mesh.material.side = THREE.DoubleSide;
+            } : properties.meshCallback;
+            tileLoaderOptions.pointsCallback = !properties.pointsCallback ? points => {
+                points.material.size = 0.1;
+                points.material.sizeAttenuation = true;
+            } : properties.pointsCallback;
+            this.tileLoader = new TileLoader(tileLoaderOptions);
         }
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
@@ -93,6 +95,7 @@ class OGC3DTile extends THREE.Object3D {
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
         this.layers.disable(0);
+        this.octree = new Octree();
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
@@ -123,11 +126,11 @@ class OGC3DTile extends THREE.Object3D {
                                 (this.json.boundingVolume.region[1] + this.json.boundingVolume.region[3]) * 0.5,
                                 (this.json.boundingVolume.region[4] + this.json.boundingVolume.region[5]) * 0.5,
                                 tempVec1);
-                            
+
                             tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
                             self.applyQuaternion(tempQuaternion);
                         }
-                        
+
                         self.translateX(-tempSphere.center.x * self.scale.x);
                         self.translateY(-tempSphere.center.y * self.scale.y);
                         self.translateZ(-tempSphere.center.z * self.scale.z);
@@ -169,7 +172,7 @@ class OGC3DTile extends THREE.Object3D {
             mat.elements = this.json.transform;
             this.applyMatrix4(mat);
         }
-        
+
         // decode volume
         if (!!this.json.boundingVolume) {
             if (!!this.json.boundingVolume.box) {
@@ -190,7 +193,7 @@ class OGC3DTile extends THREE.Object3D {
             this.boundingVolume = properties.parentBoundingVolume;
         }
 
-        
+
 
         if (!!this.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
             if (!!this.json.content.uri && this.json.content.uri.includes("json")) {
@@ -215,7 +218,7 @@ class OGC3DTile extends THREE.Object3D {
 
         return absoluteURL || absolutePath;
     }
-      
+
     load() {
         var self = this;
         if (self.deleted) return;
@@ -238,12 +241,12 @@ class OGC3DTile extends THREE.Object3D {
             if (!!url) {
                 if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
-                    
+
                     self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                         if (!!self.deleted) return;
                         mesh.traverse((o) => {
                             if (o.isMesh) {
-                                
+
                                 o.layers.disable(0);
                                 if (self.occlusionCullingService) {
                                     const position = o.geometry.attributes.position;
@@ -259,17 +262,19 @@ class OGC3DTile extends THREE.Object3D {
                                 //o.material.visible = false;
                             }
                         });
-
+                        //let s = Date.now();
+                        //self.octree.fromGraphNode( mesh );
+                        //console.log(Date.now()-s);
                         self.add(mesh);
                         self.updateWorldMatrix(false, true);
                         // mesh.layers.disable(0);
                         self.meshContent = mesh;
                     }, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
-                    }, () => self.getSiblings(), 
-                    self.level,
-                    !!self.json.boundingVolume.region,
-                    self.geometricError
+                    }, () => self.getSiblings(),
+                        self.level,
+                        !!self.json.boundingVolume.region,
+                        self.geometricError
                     );
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, this.uuid, url, json => {
@@ -549,7 +554,7 @@ class OGC3DTile extends THREE.Object3D {
             return;
         }
         self.materialVisibility = visibility
-        
+
         self.meshDisplayed = true;
         if (!!self.meshContent.traverse) {
             self.meshContent.traverse(function (element) {
@@ -597,7 +602,7 @@ class OGC3DTile extends THREE.Object3D {
             return 0;
         }
         const scale = this.matrixWorld.getMaxScaleOnAxis();
-        if(!!this.renderer){
+        if (!!this.renderer) {
             this.renderer.getDrawingBufferSize(rendererSize);
         }
         let s = rendererSize.y;

@@ -42,20 +42,7 @@ module.exports = {
 
   module: {
     rules: [
-      {
-        test: /.(js)$/,
-        include: [sourceDir],
-        loader: "babel-loader",
-        options: {
-          cacheDirectory: true,
-          presets: [
-            ["@babel/preset-env", {
-              "useBuiltIns": "entry",
-              "corejs": 3
-            }]
-          ]
-        }
-      },
+      
       {
         test: /\.s[ac]ss$/,
         use: [
@@ -101,6 +88,18 @@ module.exports = {
         test: /\.(png|svg|jpg|jpeg|gif)$/i,
         type: 'asset/resource',
       },
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: "babel-loader",
+        },
+      },
+      
+      {
+        test: /\.wasm$/,
+        type: "webassembly/async",
+      },
     ],
   },
   optimization: {
@@ -136,6 +135,8 @@ module.exports = {
       "fs": false,
       "path": require.resolve("path-browserify")
     }
-  }
-
+  },
+  experiments: {
+    asyncWebAssembly: true,
+  },
 };

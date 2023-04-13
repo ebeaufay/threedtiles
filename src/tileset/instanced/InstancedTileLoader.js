@@ -6,25 +6,58 @@ import { MeshTile } from './MeshTile';
 import { JsonTile } from './JsonTile';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 
 let concurentDownloads = 0;
-const gltfLoader = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
-gltfLoader.setDRACOLoader(dracoLoader);
+
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
     0, 0, -1, 0,
     0, 1, 0, 0,
     0, 0, 0, 1);
 
+/**
+* A Tile loader that manages caching and load order for instanced tiles.
+* The cache is an LRU cache and is defined by the number of items it can hold.
+* The actual number of cached items might grow beyond max if all items are in use.
+* 
+* The load order is designed for optimal perceived loading speed (nearby tiles are refined first).
+*
+* @param {scene} [scene] - a threejs scene.
+* @param {Object} [options] - Optional configuration object.
+* @param {number} [options.maxCachedItems=100] - the cache size.
+* @param {number} [options.maxInstances=1] - the cache size.
+* @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
+* @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
+* @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
+*/
 class InstancedTileLoader {
-    constructor(scene, maxCachedItems, maxInstances, meshCallback) {
-        this.meshCallback = meshCallback;
-        this.maxInstances = maxInstances;
+    constructor(scene, options) {
+        this.maxCachedItems = 100;
+        this.maxInstances = 1;
+        if (!!options) {
+            this.meshCallback = options.meshCallback;
+            this.pointsCallback = options.pointsCallback;
+            if (options.maxCachedItems) this.maxCachedItems = options.maxCachedItems;
+            if (options.maxInstances) this.maxInstances = options.maxInstances;
+            
+        }
+        this.gltfLoader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+        this.gltfLoader.setDRACOLoader(dracoLoader);
+
+        if(!!options && !!options.renderer){
+            const ktx2Loader = new KTX2Loader();
+            ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
+            this.gltfLoader.setKTX2Loader(ktx2Loader);
+
+            this.b3dmDecoder=new B3DMDecoder(options.renderer);
+        }else{
+            this.b3dmDecoder=new B3DMDecoder(null);
+        }
+
         this.cache = new LinkedHashMap();
-        this.maxCachedItems = !!maxCachedItems ? maxCachedItems : 100;
         this.scene = scene;
 
         this.ready = [];
@@ -34,16 +67,17 @@ class InstancedTileLoader {
         this.init();
     }
 
-    update(){
+    
+    update() {
         const self = this;
-        
-        self.cache._data.forEach(v=>{
+
+        self.cache._data.forEach(v => {
             v.update();
         })
-        
+
     }
-    init(){
-        
+    init() {
+
         const self = this;
         setIntervalAsync(() => {
             self.download();
@@ -54,7 +88,7 @@ class InstancedTileLoader {
             do {
                 loaded = self.loadBatch();
             } while (loaded > 0 && (Date.now() - start) <= 0)
-        
+
         }, 10);
     }
 
@@ -69,8 +103,8 @@ class InstancedTileLoader {
             if (!!nextDownload && nextDownload.shouldDoDownload()) {
                 //nextDownload.doDownload();
                 concurentDownloads++;
-                if(nextDownload.path.includes(".b3dm")){
-                    fetch(nextDownload.path, {signal: nextDownload.abortController.signal}).then(result => {
+                if (nextDownload.path.includes(".b3dm")) {
+                    fetch(nextDownload.path, { signal: nextDownload.abortController.signal }).then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -79,17 +113,17 @@ class InstancedTileLoader {
                         return result.arrayBuffer();
 
                     })
-                    .then(resultArrayBuffer=>{
-                        return B3DMDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.zUpToYUp);
-                    })
-                    .then(mesh=>{
-                        nextDownload.tile.setObject(mesh);
-                        self.ready.unshift(nextDownload);
-                            
-                    })
-                    .catch(e=>console.error(e));
-                }if(nextDownload.path.includes(".glb") || (nextDownload.path.includes(".gltf"))){
-                    gltfLoader.load(nextDownload.path, gltf => {
+                        .then(resultArrayBuffer => {
+                            return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.zUpToYUp);
+                        })
+                        .then(mesh => {
+                            nextDownload.tile.setObject(mesh);
+                            self.ready.unshift(nextDownload);
+
+                        })
+                        .catch(e => console.error(e));
+                } if (nextDownload.path.includes(".glb") || (nextDownload.path.includes(".gltf"))) {
+                    this.gltfLoader.load(nextDownload.path, gltf => {
                         gltf.scene.traverse((o) => {
                             o.geometricError = nextDownload.geometricError;
                             if (o.isMesh) {
@@ -112,34 +146,34 @@ class InstancedTileLoader {
                                 instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, self.maxInstances);
                                 instancedMesh.baseMatrix = child.matrixWorld;
                             }
-                            
+
                         });
                         self.ready.unshift(nextDownload);
-                        if(!instancedMesh){
-                            gltf.scene.traverse(c=>{
-                                if(c.dispose) c.dispose();
-                                if(c.material) c.material.dispose();
+                        if (!instancedMesh) {
+                            gltf.scene.traverse(c => {
+                                if (c.dispose) c.dispose();
+                                if (c.material) c.material.dispose();
                             });
-                        }else{
+                        } else {
                             nextDownload.tile.setObject(instancedMesh);
                         }
                     });
-                    
-                }else if(nextDownload.path.includes(".json")){
+
+                } else if (nextDownload.path.includes(".json")) {
                     concurentDownloads++;
-                    fetch(nextDownload.path, {signal: nextDownload.abortController.signal}).then(result => {
+                    fetch(nextDownload.path, { signal: nextDownload.abortController.signal }).then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
                         return result.json();
-                        
+
                     }).then(json => {
                         nextDownload.tile.setObject(json, nextDownload.path);
                         self.ready.unshift(nextDownload);
                     })
-                    .catch(e=>console.error(e))
+                        .catch(e => console.error(e))
                 }
             }
         }
@@ -153,8 +187,8 @@ class InstancedTileLoader {
         }
         const download = this.nextReady.shift();
         if (!download) return 0;
-        
-        if(!!download.tile.addToScene)download.tile.addToScene();
+
+        if (!!download.tile.addToScene) download.tile.addToScene();
         return 1;
     }
 
@@ -162,7 +196,7 @@ class InstancedTileLoader {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
-    
+
             if (!this.ready[i].distanceFunction) {// if no distance function, must be a json, give absolute priority!
                 this.nextReady.push(this.ready.splice(i, 1)[0]);
             }
@@ -205,7 +239,7 @@ class InstancedTileLoader {
             if (path.includes(".b3dm") || path.includes(".glb") || path.includes(".gltf")) {
                 const tile = new MeshTile(self.scene);
                 tile.addInstance(instancedOGC3DTile);
-                
+
                 self.cache.put(key, tile);
 
                 const realAbortController = new AbortController();
@@ -229,7 +263,7 @@ class InstancedTileLoader {
                         return true;
                     },
                 })
-            }else if(path.includes(".json")){
+            } else if (path.includes(".json")) {
                 const tile = new JsonTile();
                 tile.addInstance(instancedOGC3DTile);
                 self.cache.put(key, tile);
@@ -258,7 +292,7 @@ class InstancedTileLoader {
     }
 
 
-    
+
     getNextDownloads() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
@@ -267,7 +301,7 @@ class InstancedTileLoader {
             if (!download.shouldDoDownload()) {
                 this.downloads.splice(i, 1);
                 continue;
-            } 
+            }
             if (!download.distanceFunction) { // if no distance function, must be a json, give absolute priority!
                 this.nextDownloads.push(this.downloads.splice(i, 1)[0]);
             }
@@ -275,7 +309,7 @@ class InstancedTileLoader {
         if (this.nextDownloads.length > 0) return;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
             const download = this.downloads[i];
-            const dist = download.distanceFunction()*download.level;
+            const dist = download.distanceFunction() * download.level;
             if (dist < smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
@@ -301,12 +335,12 @@ class InstancedTileLoader {
         while (self.cache.size() > self.maxCachedItems && i < self.cache.size()) {
             i++;
             const entry = self.cache.head();
-            if(entry.value.getCount()>0){
+            if (entry.value.getCount() > 0) {
                 self.cache.remove(entry.key);
                 self.cache.put(entry.key, entry.value);
-            }else{
+            } else {
                 self.cache.remove(entry.key);
-                if(entry.value.instancedMesh){
+                if (entry.value.instancedMesh) {
                     entry.value.instancedMesh.traverse((o) => {
                         if (o.material) {
                             // dispose materials
