@@ -91,7 +91,10 @@ const ogc3DTile = new OGC3DTile({
 A lower value will result in lower detail tiles being loaded and a higher value results in higher detail tiles being loaded.
 A value of 1.0 is the default.
 
-
+#### geometricErrorMultiplier vs maxScreenSpaceError
+Many viewers use the maxScreenSpaceError instead of a geometric error multiplier and there is a direct correspondance.
+A geometricErrorMultiplier of 1 corresponds to a maxScreenSpaceError of 16.
+A geometricErrorMultiplier of 0.5 corresponds to a maxScreenSpaceError of 32.
 
 ### load tiles outside of view
 By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles and the user might see some holes in the model.
@@ -338,7 +341,12 @@ scene.matrixWorldAutoUpdate = false;
 scene.updateMatrixWorld(true);
 
 ```
-#### tileset update loop
+### Draco and Ktx2
+Compressed meshes via Draco and compressed textures in Ktx2 format are supported automatically using the threejs plugins.
+KTX uses an external wasm loaded at runtime so if you have trouble packaging your app correctly, check out the 
+[Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link) project for a sample webpack configuration.
+
+### tileset update loop
 Updating a single tileset via OGC3DTile#update or InstancedOGC3DTile#update is quite fast, even when the tree is deep.
 For a single tileset, it's safe to call it regularly with a setInterval:
 ```
