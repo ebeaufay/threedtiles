@@ -14,7 +14,7 @@ The fastest 3DTiles viewer for three.js
 
 [Instanced Tileset (pilot a swarm of highly detailed spaceships)](https://www.jdultra.com/instanced/index.html)
 
-NPM dependency: "@jdultra/threedtiles": "^6.0.4"
+NPM dependency: "@jdultra/threedtiles": "^8.0.0"
 
 Adding a tileset to a scene is as easy as :
 
@@ -68,6 +68,7 @@ Contact: emeric.beaufays@jdultra.com
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
 - gltf/glb tiles (OGC3DTiles 1.1)
+- draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 
 Support for OGC3DTiles 1.1 is underway. gltf/glb tiles are already supported but not yet implicit tiling.
@@ -90,7 +91,10 @@ const ogc3DTile = new OGC3DTile({
 A lower value will result in lower detail tiles being loaded and a higher value results in higher detail tiles being loaded.
 A value of 1.0 is the default.
 
-
+#### geometricErrorMultiplier vs maxScreenSpaceError
+Many viewers use the maxScreenSpaceError instead of a geometric error multiplier and there is a direct correspondance.
+A geometricErrorMultiplier of 1 corresponds to a maxScreenSpaceError of 16.
+A geometricErrorMultiplier of 0.5 corresponds to a maxScreenSpaceError of 32.
 
 ### load tiles outside of view
 By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles and the user might see some holes in the model.
@@ -154,25 +158,34 @@ If using a shared cache between tilesets, check out the next section.
 You may instanciate a cache through the TileLoader class and re-use it for several or all your tilesets. 
 The limitation is that all the tilesets using the same cache will have the same callback.
 
-The TileLoader constructor takes 2 arguments. The first is a callback for meshes (see above section) and the second is
-the maximum number of items in the cache (default is 1000).
+The TileLoader takes an optional object as argument:
+@param {Object} [options] - Optional configuration object.
+@param {number} [options.maxCachedItems=100] - the cache size.
+@param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
+@param {function} [options.pointsCallback] - A callback to call on newly decoded points.
+@param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
 
 ```
 import { TileLoader } from "@jdultra/threedtiles/src/tileset/TileLoader";
 
-const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+const tileLoader = new TileLoader({
         renderer: renderer,
-        tileLoader: new TileLoader(2000, mesh => {
+        maxCachedItems: 100,
+        meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-            }, 
-            points=>{
-                points.material.size = 0.1;
-                points.material.sizeAttenuation = true;
-            }
-        ),
+            //mesh.material.metalness = 0.0
+        },
+        pointsCallback: points => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
+            points.material.sizeAttenuation = true;
+        }
+    });
+const ogc3DTile = new OGC3DTile({
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+        renderer: renderer,
+        tileLoader: tileLoader,
         meshCallback: mesh => { mesh.material.wireframe = true;} // This callback will not be used as the callback provided to the TileLoader takes priority
     });
 ```
@@ -242,12 +255,19 @@ higher performance when displaying the same Tileset many times.
 // First create the InstancedTileLoader that will manage caching
 const instancedTileLoader = new InstancedTileLoader(
     scene, 
-    100, // cache size as in the number of tiles cached in memory
-    1, // max number of tilesets from the same source
-    mesh => {
-        //// Insert code to be called on every newly decoded mesh e.g.:
-        mesh.material.wireframe = false;
-        mesh.material.side = THREE.DoubleSide;
+    {
+        renderer: renderer,
+        maxCachedItems : 100,
+        maxInstances : 1,
+        meshCallback: mesh => {
+            //// Insert code to be called on every newly decoded mesh e.g.:
+            mesh.material.wireframe = false;
+            mesh.material.side = THREE.DoubleSide;
+        },
+        pointsCallback: points => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
+            points.material.sizeAttenuation = true;
+        }
     }
 );
 
@@ -321,7 +341,12 @@ scene.matrixWorldAutoUpdate = false;
 scene.updateMatrixWorld(true);
 
 ```
-#### tileset update loop
+### Draco and Ktx2
+Compressed meshes via Draco and compressed textures in Ktx2 format are supported automatically using the threejs plugins.
+KTX uses an external wasm loaded at runtime so if you have trouble packaging your app correctly, check out the 
+[Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link) project for a sample webpack configuration.
+
+### tileset update loop
 Updating a single tileset via OGC3DTile#update or InstancedOGC3DTile#update is quite fast, even when the tree is deep.
 For a single tileset, it's safe to call it regularly with a setInterval:
 ```
