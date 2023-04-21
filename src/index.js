@@ -25,7 +25,7 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 2.0);
+const ogc3DTiles = initTileset(scene, 1.0);
 //const instancedTileLoader = createInstancedTileLoader(scene);
 //const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 

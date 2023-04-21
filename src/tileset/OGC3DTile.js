@@ -4,8 +4,8 @@ import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { clamp } from "three/src/math/MathUtils";
-import { Octree } from 'three/addons/math/Octree.js';
-import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
+//import { Octree } from 'three/addons/math/Octree.js';
+//import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
@@ -95,7 +95,7 @@ class OGC3DTile extends THREE.Object3D {
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
         this.layers.disable(0);
-        this.octree = new Octree();
+        //this.octree = new Octree();
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
