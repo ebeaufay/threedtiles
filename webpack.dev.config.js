@@ -4,7 +4,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const TerserPlugin = require('terser-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-const nodeExternals = require('webpack-node-externals');
 
 const sourceDir = path.resolve(__dirname);
 const DEFAULT_WEBPACK_PORT = 3001;
@@ -22,7 +21,6 @@ module.exports = {
       type: 'umd',
     },
   },
-  //externals: [nodeExternals()],
   plugins: [
     new webpack.ProgressPlugin(),
     new HtmlWebpackPlugin({

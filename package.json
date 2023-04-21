@@ -1,12 +1,17 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "8.0.1",
+    "version": "9.0.0",
     "description": "An OGC 3DTiles viewer for Three.js",
-    "main": "tileset.js",
+    "main": "dist/threedtiles.min.js",
+    "files": [
+        "dist/threedtiles.min.js",
+        "README.md",
+        "LICENSE"
+      ],
     "scripts": {
-        "build": "webpack",
-        "watch": "webpack --watch",
-        "dev": "webpack-dev-server"
+        "build": "webpack --config webpack.prod.config.js",
+        "watch": "webpack --watch --config webpack.dev.config.js",
+        "dev": "webpack-dev-server --config webpack.dev.config.js"
     },
     "repository": {
         "type": "git",
@@ -22,16 +27,14 @@
     ],
     "author": "Emeric Beaufays",
     "license": "MIT",
-    "dependencies": {
-        "gltf-validator": "^2.0.0-dev.3.9",
-        "js-utils-z": "1.2.1",
-        "lodash": ">=4.17.20",
-        "lru-cache": "^7.14.1",
-        "mnemonist": "^0.39.5",
+    
+    "peerDependencies": {
+        
+        "js-utils-z": "^1.2.1",
         "path-browserify": "^1.0.1",
         "regenerator-runtime": "^0.13.11",
         "set-interval-async": "^2.0.3",
-        "three": "0.148.0",
+        "three": "^0.148.0",
         "uuid": "^8.3.2"
     },
     "devDependencies": {
@@ -48,6 +51,7 @@
         "webpack-cli": "^5.0.1",
         "webpack-dev-server": "^4.13.2",
         "webpack-glsl-loader": "^1.0.1",
+        "webpack-node-externals": "^3.0.0",
         "whatwg-fetch": "^3.5.0"
     }
 }

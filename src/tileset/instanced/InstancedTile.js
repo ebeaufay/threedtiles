@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { OBB } from "../../geometry/obb";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify";
-import * as _ from "lodash";
 
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
@@ -79,7 +78,6 @@ class InstancedTile extends THREE.Object3D {
             
             
             this.loadJson = (json, url)=>{
-                //json = _.cloneDeep(json)
                 //json = JSON.parse(JSON.stringify(json))
                 const p = path.dirname(url);
                 self.setup({ rootPath: p, json: json });

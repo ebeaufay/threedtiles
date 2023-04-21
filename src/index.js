@@ -13,10 +13,6 @@ import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { Sky } from 'three/addons/objects/Sky.js';
 
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
-
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
@@ -208,7 +204,7 @@ function initTileset(scene, gem) {
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ladybug/tileset.json",
         geometricErrorMultiplier: gem,
         loadOutsideView: true,
         tileLoader: tileLoader,

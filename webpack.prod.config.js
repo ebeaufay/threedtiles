@@ -10,11 +10,11 @@ const sourceDir = path.resolve(__dirname);
 const DEFAULT_WEBPACK_PORT = 3001;
 
 module.exports = {
-  mode: "development",
-  entry: './src/index.js',
+  mode: "production",
+  entry: './src/entry.js',
 
   output: {
-    filename: "threedtiles.js",
+    filename: "threedtiles.min.js",
     path: path.resolve(__dirname, 'dist'),
     globalObject: 'this',
     library: {
@@ -22,7 +22,7 @@ module.exports = {
       type: 'umd',
     },
   },
-  //externals: [nodeExternals()],
+  externals: [nodeExternals()],
   plugins: [
     new webpack.ProgressPlugin(),
     new HtmlWebpackPlugin({

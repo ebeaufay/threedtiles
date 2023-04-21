@@ -1,7 +1,6 @@
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
 import { setIntervalAsync } from 'set-interval-async/dynamic';
-import { initial } from 'lodash';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
