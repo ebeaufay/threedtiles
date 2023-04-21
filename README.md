@@ -19,7 +19,7 @@ NPM dependency: "@jdultra/threedtiles": "^8.0.0"
 Adding a tileset to a scene is as easy as :
 
 ```
-import { OGC3DTile } from "./tileset/OGC3DTile";
+import { OGC3DTile } from '@jdultra/threedtiles';
 
 ...
 
@@ -166,7 +166,7 @@ The TileLoader takes an optional object as argument:
 @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
 
 ```
-import { TileLoader } from "@jdultra/threedtiles/src/tileset/TileLoader";
+import { TileLoader } from '@jdultra/threedtiles';
 
 const tileLoader = new TileLoader({
         renderer: renderer,
@@ -213,6 +213,8 @@ It will be most beneficial on interior scenes where most of the data is occluded
 
 First, instantiate an OcclusionCullingService:
 ```
+import { OcclusionCullingService } from '@jdultra/threedtiles';
+
 const occlusionCullingService = new OcclusionCullingService();
 ```
 
@@ -252,6 +254,8 @@ Each Tileset is independent in terms of it's position, orientation and level of 
 higher performance when displaying the same Tileset many times.
 
 ```
+import { InstancedOGC3DTile, InstancedTileLoader } from '@jdultra/threedtiles';
+
 // First create the InstancedTileLoader that will manage caching
 const instancedTileLoader = new InstancedTileLoader(
     scene, 
