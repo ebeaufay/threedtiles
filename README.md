@@ -17,7 +17,12 @@ The fastest 3DTiles viewer for three.js
 
 [Instanced Tileset (pilot a swarm of highly detailed spaceships)](https://www.jdultra.com/instanced/index.html)
 
-NPM dependency: "@jdultra/threedtiles": "^9.0.1"
+
+install the library and threejs if not done already:
+
+```
+npm install three @jdultra/threedtiles
+```
 
 Adding a tileset to a scene is as easy as :
 
