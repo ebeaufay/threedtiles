@@ -1,3 +1,6 @@
+[![Version](https://img.shields.io/npm/v/@jdultra/threedtiles?style=flat&colorA=000000&colorB=000000)](https://npmjs.com/package/@jdultra/threedtiles)
+[![Downloads](https://img.shields.io/npm/dt/@jdultra/threedtiles.svg?style=flat&colorA=000000&colorB=000000)](https://npmjs.com/package/@jdultra/threedtiles)
+
 # T H R E E D T I L E S : http://www.jdultra.com/
 
 
