@@ -4,14 +4,14 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { OGC3DTile } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { setIntervalAsync } from 'set-interval-async/dynamic';
 import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
-import { Sky } from 'three/addons/objects/Sky.js';
+import { Sky } from "three/examples/jsm/objects/Sky";
 
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
@@ -103,12 +103,12 @@ function initSky() {
 }
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
-    //const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.5, 0);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.15, 0.2, 0);
 
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
-    //composer.addPass(bloomPass);
+    composer.addPass(bloomPass);
     return composer;
 }
 function initScene() {
@@ -193,6 +193,8 @@ function initTileset(scene, gem) {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
+            mesh.material.transparent = true
+            mesh.material.needsUpdate = true
             //mesh.material.metalness = 0.0
         },
         pointsCallback: points => {
@@ -204,7 +206,8 @@ function initTileset(scene, gem) {
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ladybug/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/ladybug/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         geometricErrorMultiplier: gem,
         loadOutsideView: true,
         tileLoader: tileLoader,
@@ -218,9 +221,9 @@ function initTileset(scene, gem) {
         ogc3DTile.update(camera);
     }, 10);
 
-    //ogc3DTile.scale.set(0.1,0.1,0.1)
+    ogc3DTile.scale.set(0.1,0.1,0.1)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 0.5) // Z-UP to Y-UP
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1) // Z-UP to Y-UP
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -266,8 +269,8 @@ function initInstancedTilesets(instancedTileLoader) {
         centerModel: true,
         renderer: renderer
     });
-    tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1) // Z-UP to Y-UP
-
+    tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5) // Z-UP to Y-UP
+    
     tileset.updateMatrix()
     scene.add(tileset);
     instancedTilesets.push(tileset);
@@ -292,7 +295,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 20000);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 10, 20000);
     camera.position.set(50, 50, 50);
     camera.lookAt(0, 0, 0);
 
@@ -321,6 +324,27 @@ function animate() {
     stats.update();
 }
 
+function setIntervalAsync(fn, delay) {
+    let timeout;
+
+    const run = async () => {
+        const startTime = Date.now();
+        try {
+            await fn();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            const endTime = Date.now();
+            const elapsedTime = endTime - startTime;
+            const nextDelay = elapsedTime >= delay ? 0 : delay - elapsedTime;
+            timeout = setTimeout(run, nextDelay);
+        }
+    };
+
+    timeout = setTimeout(run, delay);
+
+    return { clearInterval: () => clearTimeout(timeout) };
+}
 
 
 

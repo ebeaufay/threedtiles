@@ -18,32 +18,31 @@ const tempQuaternion = new THREE.Quaternion();
 class OGC3DTile extends THREE.Object3D {
 
     /**
-     * 
-     * @param {
-     *   json: optional,
-     *   url: optional,
-     *   rootPath: optional,
-     *   parentGeometricError: optional,
-     *   parentBoundingVolume: optional,
-     *   parentRefinement: optional,
-     *   geometricErrorMultiplier: Double,
-     *   loadOutsideView: Boolean,
-     *   tileLoader : TileLoader,
-     *   meshCallback: function,
-     *   pointsCallback: function,
-     *   cameraOnLoad: camera,
-     *   parentTile: OGC3DTile,
-     *   onLoadCallback: function,
-     *   occlusionCullingService: OcclusionCullingService,
-     *   static: Boolean,
-     *   centerModel: Boolean
-     *   renderer: Renderer
-     * } properties 
+     * @param {Object} [properties] - the properties for this tileset
+     * @param {Object} [properties.renderer] - the renderer used to display the tileset
+     * @param {Object} [properties.url] - the url to the parent tileset.json
+     * @param {Object} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
+     * @param {Object} [properties.loadOutsideView] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
+     * @param {Object} [properties.tileLoader] - A tile loader that can be shared among tilesets in order to share a common cache.
+     * @param {Object} [properties.meshCallback] - A callback function that will be called on every mesh
+     * @param {Object} [properties.pointsCallback] - A callback function that will be called on every points
+     * @param {Object} [properties.onLoadCallback] - A callback function that will be called when the root tile has been loaded
+     * @param {Object} [properties.occlusionCullingService] - A service that handles occlusion culling
+     * @param {Object} [properties.centerModel] - If true, the tileset will be centered on 0,0,0 and in the case of georeferenced tilesets that use the "region" bounding volume, it will also be rotated so that the up axis matched the world y axis.
+     * @param {Object} [properties.static] - If true, the tileset is considered static which improves performance but the tileset cannot be moved
+     * @param {Object} [properties.rootPath] - optional the root path for fetching children
+     * @param {Object} [properties.json] - optional json object representing the tileset sub-tree
+     * @param {Object} [properties.parentGeometricError] - optional geometric error of the parent
+     * @param {Object} [properties.parentBoundingVolume] - optional bounding volume of the parent
+     * @param {Object} [properties.parentRefinement] - optional refinement strategy of the parent of the parent
+     * @param {Object} [properties.cameraOnLoad] - optional the camera used when loading this particular sub-tile
+     * @param {Object} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
+     * @param {Object} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
      */
     constructor(properties) {
         super();
         const self = this;
-
+        this.proxy = properties.proxy;
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
@@ -57,10 +56,12 @@ class OGC3DTile extends THREE.Object3D {
                 points.material.size = 0.1;
                 points.material.sizeAttenuation = true;
             } : properties.pointsCallback;
+            tileLoaderOptions.proxy = this.proxy;
             this.tileLoader = new TileLoader(tileLoaderOptions);
         }
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
+
 
         this.renderer = properties.renderer;
         this.meshCallback = properties.meshCallback;
@@ -102,7 +103,23 @@ class OGC3DTile extends THREE.Object3D {
             if (properties.onLoadCallback) properties.onLoadCallback(self);
 
         } else if (properties.url) { // If only the url to the tileset.json is provided
-            fetch(properties.url, { signal: self.abortController.signal }).then(result => {
+            var fetchFunction;
+            if (this.proxy) {
+                fetchFunction = () => {
+                    return fetch(this.proxy,
+                        {
+                            method: 'POST',
+                            body:properties.url,
+                            signal: self.abortController.signal
+                        }
+                    )
+                }
+            }else{
+                fetchFunction = ()=>{
+                    return fetch(properties.url, { signal: self.abortController.signal });
+                }
+            }
+            fetchFunction().then(result => {
                 if (!result.ok) {
                     throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }

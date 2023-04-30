@@ -1,6 +1,5 @@
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../../decoder/B3DMDecoder";
-import { setIntervalAsync } from 'set-interval-async/dynamic';
 import * as THREE from 'three';
 import { MeshTile } from './MeshTile';
 import { JsonTile } from './JsonTile';
@@ -364,7 +363,27 @@ class InstancedTileLoader {
         }
     }
 }
+function setIntervalAsync(fn, delay) {
+    let timeout;
 
+    const run = async () => {
+        const startTime = Date.now();
+        try {
+            await fn();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            const endTime = Date.now();
+            const elapsedTime = endTime - startTime;
+            const nextDelay = elapsedTime >= delay ? 0 : delay - elapsedTime;
+            timeout = setTimeout(run, nextDelay);
+        }
+    };
+
+    timeout = setTimeout(run, delay);
+
+    return { clearInterval: () => clearTimeout(timeout) };
+}
 function simplifyPath(main_path) {
 
     var parts = main_path.split('/'),

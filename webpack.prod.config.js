@@ -22,7 +22,14 @@ module.exports = {
       type: 'umd',
     },
   },
-  externals: [nodeExternals()],
+  externals: {
+    three: {
+      commonjs: "three",
+      commonjs2: "three",
+      amd: "three",
+      root: "THREE",
+    },
+  },
   plugins: [
     new webpack.ProgressPlugin(),
     new HtmlWebpackPlugin({

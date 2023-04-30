@@ -112,17 +112,6 @@ class InstancedTile extends THREE.Object3D {
 
             }
             self.tileLoader.get(self.abortController, properties.url, self.uuid, self);
-
-            /* fetch(properties.url, { signal: self.abortController.signal }).then(result => {
-                if (!result.ok) {
-                    throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
-                }
-                result.json().then(json => {
-                    const p = path.dirname(properties.url);
-                    self.setup({ rootPath: p, json: json });
-                    if (properties.onLoadCallback) properties.onLoadCallback(self);
-                });
-            }); */
         }
     }
 

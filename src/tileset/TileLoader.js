@@ -1,6 +1,5 @@
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
-import { setIntervalAsync } from 'set-interval-async/dynamic';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
@@ -28,15 +27,17 @@ zUpToYUpMatrix.set(1, 0, 0, 0,
  * @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
  * @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
  * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
+ * @param {sring} [options.proxy] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
  */
 class TileLoader {
     constructor(options) {
         this.maxCachedItems = 100;
+        this.proxy = options.proxy;
         if (!!options) {
             this.meshCallback = options.meshCallback;
             this.pointsCallback = options.pointsCallback;
             if (options.maxCachedItems) this.maxCachedItems = options.maxCachedItems;
-            
+
         }
 
         this.gltfLoader = new GLTFLoader();
@@ -44,14 +45,14 @@ class TileLoader {
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
         this.gltfLoader.setDRACOLoader(dracoLoader);
 
-        if(!!options && !!options.renderer){
+        if (!!options && !!options.renderer) {
             const ktx2Loader = new KTX2Loader();
             ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
             this.gltfLoader.setKTX2Loader(ktx2Loader);
 
-            this.b3dmDecoder=new B3DMDecoder(options.renderer);
-        }else{
-            this.b3dmDecoder=new B3DMDecoder(null);
+            this.b3dmDecoder = new B3DMDecoder(options.renderer);
+        } else {
+            this.b3dmDecoder = new B3DMDecoder(null);
         }
 
         this.cache = new LinkedHashMap();
@@ -218,7 +219,21 @@ class TileLoader {
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    fetch(path, { signal: realAbortController.signal }).then(result => {
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(path, { signal: realAbortController.signal });
+                        }
+                    } else {
+                        return fetch(this.proxy,
+                            {
+                                method: 'POST',
+                                body: path,
+                                signal: realAbortController.signal
+                            }
+                        )
+                    }
+                    fetchFunction().then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -226,16 +241,13 @@ class TileLoader {
                         }
                         return result.arrayBuffer();
 
-                    })
-                        .then(resultArrayBuffer => {
-                            return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, zUpToYUp);
-                        })
-                        .then(mesh => {
-                            self.cache.put(key, mesh);
-                            self.checkSize();
-                            this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                        })
-                        .catch(() => { });;
+                    }).then(resultArrayBuffer => {
+                        return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, zUpToYUp);
+                    }).then(mesh => {
+                        self.cache.put(key, mesh);
+                        self.checkSize();
+                        this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                    }).catch(() => { });;
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {
@@ -269,7 +281,21 @@ class TileLoader {
             } else if (path.includes(".json")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    fetch(path, { signal: realAbortController.signal }).then(result => {
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(path, { signal: realAbortController.signal });
+                        }
+                    } else {
+                        return fetch(this.proxy,
+                            {
+                                method: 'POST',
+                                body: path,
+                                signal: realAbortController.signal
+                            }
+                        )
+                    }
+                    fetchFunction().then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -347,6 +373,28 @@ class TileLoader {
 
         }
     }
+}
+
+function setIntervalAsync(fn, delay) {
+    let timeout;
+
+    const run = async () => {
+        const startTime = Date.now();
+        try {
+            await fn();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            const endTime = Date.now();
+            const elapsedTime = endTime - startTime;
+            const nextDelay = elapsedTime >= delay ? 0 : delay - elapsedTime;
+            timeout = setTimeout(run, nextDelay);
+        }
+    };
+
+    timeout = setTimeout(run, delay);
+
+    return { clearInterval: () => clearTimeout(timeout) };
 }
 
 function simplifyPath(main_path) {
