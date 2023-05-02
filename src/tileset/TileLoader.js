@@ -247,7 +247,7 @@ class TileLoader {
                         self.cache.put(key, mesh);
                         self.checkSize();
                         this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                    }).catch(() => { });;
+                    }).catch((e) => console.error(e));
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {

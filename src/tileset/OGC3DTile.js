@@ -154,7 +154,7 @@ class OGC3DTile extends THREE.Object3D {
 
                     }
                 });
-            });
+            }).catch(e=>console.error(e));
         }
     }
 
