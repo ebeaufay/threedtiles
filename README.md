@@ -21,7 +21,7 @@ The fastest 3DTiles viewer for three.js
 install the library and threejs if not done already:
 
 ```
-npm install three @jdultra/threedtiles
+npm install three @jdultra/threedtiles --legacy-peer-deps
 ```
 
 Adding a tileset to a scene is as easy as :
