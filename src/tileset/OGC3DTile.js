@@ -104,15 +104,15 @@ class OGC3DTile extends THREE.Object3D {
 
         } else if (properties.url) { // If only the url to the tileset.json is provided
             var fetchFunction;
-            if (this.proxy) {
+            if (self.proxy) {
                 fetchFunction = () => {
-                    return fetch(this.proxy,
+                    return fetch(self.proxy,
                         {
                             method: 'POST',
                             body:properties.url,
                             signal: self.abortController.signal
                         }
-                    )
+                    );
                 }
             }else{
                 fetchFunction = ()=>{

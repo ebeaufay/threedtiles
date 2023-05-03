@@ -4,7 +4,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const TerserPlugin = require('terser-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-const nodeExternals = require('webpack-node-externals');
 
 const sourceDir = path.resolve(__dirname);
 const DEFAULT_WEBPACK_PORT = 3001;
@@ -41,7 +40,8 @@ module.exports = {
     }),
     new CopyPlugin({
       patterns: [
-        { from: "meshes", to: "meshes" }
+        { from: "node_modules/three/examples/jsm/libs/draco", to: "draco-decoders" },
+        { from: "node_modules/three/examples/jsm/libs/basis", to: "ktx2-decoders" }
       ],
     }),
   ],
@@ -50,7 +50,7 @@ module.exports = {
 
   module: {
     rules: [
-      
+
       {
         test: /\.s[ac]ss$/,
         use: [
@@ -103,7 +103,7 @@ module.exports = {
           loader: "babel-loader",
         },
       },
-      
+
       {
         test: /\.wasm$/,
         type: "webassembly/async",
@@ -138,6 +138,7 @@ module.exports = {
     port: DEFAULT_WEBPACK_PORT
   },
   resolve: {
+    
     extensions: [".js", ".jsx", ".json", ".ts", ".tsx"],// other stuff
     fallback: {
       "fs": false,

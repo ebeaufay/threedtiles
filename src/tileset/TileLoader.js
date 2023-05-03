@@ -225,13 +225,15 @@ class TileLoader {
                             return fetch(path, { signal: realAbortController.signal });
                         }
                     } else {
-                        return fetch(this.proxy,
-                            {
-                                method: 'POST',
-                                body: path,
-                                signal: realAbortController.signal
-                            }
-                        )
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: path,
+                                    signal: realAbortController.signal
+                                }
+                            );
+                        }
                     }
                     fetchFunction().then(result => {
                         concurentDownloads--;
@@ -287,13 +289,15 @@ class TileLoader {
                             return fetch(path, { signal: realAbortController.signal });
                         }
                     } else {
-                        return fetch(this.proxy,
-                            {
-                                method: 'POST',
-                                body: path,
-                                signal: realAbortController.signal
-                            }
-                        )
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: path,
+                                    signal: realAbortController.signal
+                                }
+                            );
+                        }
                     }
                     fetchFunction().then(result => {
                         concurentDownloads--;

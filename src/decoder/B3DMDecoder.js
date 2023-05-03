@@ -11,19 +11,45 @@ zUpToYUpMatrix.set(
 	0, 1, 0, 0,
 	0, 0, 0, 1);
 
+const onlineDracoPath = 'https://www.gstatic.com/draco/versioned/decoders/1.4.3/';
+const onlineKTX2Path = 'https://storage.googleapis.com/ogc-3d-tiles/basis/';
+const localDracoPath = 'draco-decoders/';
+const localKTX2Path = 'ktx2-decoders/';
 export class B3DMDecoder {
 	constructor(renderer) {
+		
 		this.gltfLoader = new GLTFLoader();
-		const dracoLoader = new DRACOLoader();
-		dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
-		this.gltfLoader.setDRACOLoader(dracoLoader);
-		if (renderer) {
-			const ktx2Loader = new KTX2Loader();
-			ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
-			this.gltfLoader.setKTX2Loader(ktx2Loader)
-		}
-
 		this.tempMatrix = new THREE.Matrix4();
+
+		const dracoLoader = new DRACOLoader();
+		const ktx2Loader = new KTX2Loader();
+		checkResource(localDracoPath+"draco_decoder.wasm").then(result=>{
+			if(result){
+				dracoLoader.setDecoderPath(localDracoPath);
+			}else{
+				dracoLoader.setDecoderPath(onlineDracoPath);
+			}
+			return checkResource(localKTX2Path+"basis_transcoder.wasm");
+		}).then(result=>{
+			if(result){
+				ktx2Loader.setTranscoderPath(localKTX2Path).detectSupport(renderer);
+			}else{
+				ktx2Loader.setTranscoderPath(onlineKTX2Path).detectSupport(renderer);
+			}
+		}).then(()=>{
+			this.gltfLoader.setDRACOLoader(dracoLoader);
+			this.gltfLoader.setKTX2Loader(ktx2Loader);
+		});
+
+		async function checkResource(url) {
+			try {
+				const response = await fetch(url, { method: 'HEAD' });
+				return response.ok;
+			} catch (error) {
+				return false;
+			}
+		}
+		
 	}
 
 	parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {

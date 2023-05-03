@@ -32,7 +32,8 @@ module.exports = {
     }),
     new CopyPlugin({
       patterns: [
-        { from: "meshes", to: "meshes" }
+        { from: "node_modules/three/examples/jsm/libs/draco", to: "draco-decoders" },
+        { from: "node_modules/three/examples/jsm/libs/basis", to: "ktx2-decoders" }
       ],
     }),
   ],
@@ -41,7 +42,7 @@ module.exports = {
 
   module: {
     rules: [
-      
+
       {
         test: /\.s[ac]ss$/,
         use: [
@@ -94,7 +95,7 @@ module.exports = {
           loader: "babel-loader",
         },
       },
-      
+
       {
         test: /\.wasm$/,
         type: "webassembly/async",
@@ -129,6 +130,7 @@ module.exports = {
     port: DEFAULT_WEBPACK_PORT
   },
   resolve: {
+    
     extensions: [".js", ".jsx", ".json", ".ts", ".tsx"],// other stuff
     fallback: {
       "fs": false,
