@@ -27,6 +27,7 @@ export class B3DMDecoder {
 			if(result){
 				dracoLoader.setDecoderPath(localDracoPath);
 			}else{
+				console.log("no local draco decoder found in "+localDracoPath+", fetching online at "+onlineDracoPath);
 				dracoLoader.setDecoderPath(onlineDracoPath);
 			}
 			return checkResource(localKTX2Path+"basis_transcoder.wasm");
@@ -34,6 +35,7 @@ export class B3DMDecoder {
 			if(result){
 				ktx2Loader.setTranscoderPath(localKTX2Path).detectSupport(renderer);
 			}else{
+				console.log("no local ktx2 decoder found in "+localKTX2Path+", fetching online at "+onlineKTX2Path);
 				ktx2Loader.setTranscoderPath(onlineKTX2Path).detectSupport(renderer);
 			}
 		}).then(()=>{
@@ -42,12 +44,11 @@ export class B3DMDecoder {
 		});
 
 		async function checkResource(url) {
-			try {
-				const response = await fetch(url, { method: 'HEAD' });
+			return fetch(url, { method: 'HEAD' }).then(response=>{
 				return response.ok;
-			} catch (error) {
+			}).catch(e=>{
 				return false;
-			}
+			});
 		}
 		
 	}

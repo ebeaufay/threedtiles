@@ -28,13 +28,17 @@ class InstancedTile extends THREE.Object3D {
      *   cameraOnLoad: camera,
      *   parentTile: OGC3DTile,
      *   onLoadCallback: function,
-     *   centerModel: Boolean
+     *   centerModel: Boolean,
+     *   queryParams: String
      * } properties 
      */
     constructor(properties) {
         super();
         const self = this;
-
+        if(properties.queryParams){
+            this.queryParams =  { ...properties.queryParams };
+        }
+        
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
@@ -47,12 +51,12 @@ class InstancedTile extends THREE.Object3D {
         this.loadOutsideView = properties.loadOutsideView;
         this.cameraOnLoad = properties.cameraOnLoad;
         this.parentTile = properties.parentTile;
-        
+
         // declare properties specific to the tile for clarity
         this.childrenTiles = [];
         this.jsonChildren = [];
         this.meshContent;
-        
+
         this.tileContent;
         this.refinement; // defaults to "REPLACE"
         this.rootPath;
@@ -71,13 +75,13 @@ class InstancedTile extends THREE.Object3D {
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
-            if(properties.json.children) this.jsonChildren = properties.json.children;
+            if (properties.json.children) this.jsonChildren = properties.json.children;
             self.setup(properties);
             if (properties.onLoadCallback) properties.onLoadCallback(self);
         } else if (properties.url) { // If only the url to the tileset.json is provided
-            
-            
-            this.loadJson = (json, url)=>{
+
+
+            this.loadJson = (json, url) => {
                 //json = JSON.parse(JSON.stringify(json))
                 const p = path.dirname(url);
                 self.setup({ rootPath: p, json: json });
@@ -98,7 +102,7 @@ class InstancedTile extends THREE.Object3D {
                             (self.json.boundingVolume.region[1] + self.json.boundingVolume.region[3]) * 0.5,
                             (self.json.boundingVolume.region[4] + self.json.boundingVolume.region[5]) * 0.5,
                             tempVec1);
-                        
+
                         tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
                         self.master.applyQuaternion(tempQuaternion);
                         self.master.updateWorldMatrix(false, false)
@@ -106,12 +110,26 @@ class InstancedTile extends THREE.Object3D {
                     tempMatrix.makeTranslation(-tempSphere.center.x * self.scale.x, -tempSphere.center.y * self.scale.y, -tempSphere.center.z * self.scale.z);
                     //self.master.applyMatrix4(tempMatrix);
                     self.master.matrix.multiply(tempMatrix);
-		            self.master.matrix.decompose( self.master.position, self.master.quaternion, self.master.scale );
+                    self.master.matrix.decompose(self.master.position, self.master.quaternion, self.master.scale);
                 }
                 if (properties.onLoadCallback) properties.onLoadCallback(self);
 
             }
-            self.tileLoader.get(self.abortController, properties.url, self.uuid, self);
+            var url = properties.url;
+            if (self.queryParams) {
+                var props = "";
+                for (let key in self.queryParams) {
+                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                        props += "&" + key + "=" + self.queryParams[key];
+                    }
+                }
+                if (url.includes("?")) {
+                    url += props;
+                } else {
+                    url += "?" + props.substring(1);
+                }
+            }
+            self.tileLoader.get(self.abortController, url, self.uuid, self);
         }
     }
 
@@ -129,7 +147,7 @@ class InstancedTile extends THREE.Object3D {
         }
 
         this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
-        
+
         // decode refinement
         if (!!this.json.refinement) {
             this.refinement = this.json.refinement;
@@ -185,41 +203,95 @@ class InstancedTile extends THREE.Object3D {
         // Check if it's an absolute URL with various protocols
         const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
         const absoluteURL = urlRegex.test(input);
-      
+
         // Check if it's an absolute path
         const absolutePath = input.startsWith('/') && !input.startsWith('//');
-      
+
         return absoluteURL || absolutePath;
-      }
+    }
+
+    assembleURL(root, relative) {
+        const rootUrl = new URL(root);
+        let rootParts = rootUrl.pathname.split('/').filter(p => p !== '');
+        let relativeParts = relative.split('/').filter(p => p !== '');
+
+        while (rootParts.length > 0 && relativeParts.length > 0) {
+            const rootToken = rootParts.join('/');
+            const relativeToken = relativeParts.slice(0, rootParts.length).join('/');
+
+            if (rootToken === relativeToken) {
+                relativeParts = relativeParts.slice(rootParts.length);
+                break;
+            } else {
+                rootParts.pop();
+            }
+        }
+
+        while (relativeParts.length > 0 && relativeParts[0] === '..') {
+            rootParts.pop();
+            relativeParts.shift();
+        }
+
+        return `${rootUrl.protocol}//${rootUrl.host}/${[...rootParts, ...relativeParts].join('/')}`;
+    }
+    extractQueryParams(url, params) {
+        const urlObj = new URL(url);
+    
+        // Iterate over all the search parameters
+        for (let [key, value] of urlObj.searchParams) {
+            params[key] = value;
+        }
+    
+        // Remove the query string
+        urlObj.search = '';
+        return urlObj.toString();
+    }
     load() {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
             let url;
             if (!!self.json.content.uri) {
-                if (path.isAbsolute(self.json.content.uri) || self.isAbsolutePathOrURL(self.json.content.uri)) {
-                    url = self.json.content.uri;
-                } else {
-                    url = self.rootPath + path.sep + self.json.content.uri;
-                }
+                url = self.json.content.uri;
             } else if (!!self.json.content.url) {
-                if (path.isAbsolute(self.json.content.url) || self.isAbsolutePathOrURL(self.json.content.url)) {
-                    url = self.json.content.url;
+                url = self.json.content.url;
+            }
+            const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+
+            if (urlRegex.test(self.rootPath)) { // url
+                if (!urlRegex.test(url)) {
+                    url = self.assembleURL(self.rootPath, url)
+                }
+            } else { //path
+                if (path.isAbsolute(self.rootPath)) {
+                    url = self.rootPath + path.sep + url;
+                }
+            }
+            url = self.extractQueryParams(url, self.queryParams);
+            if (self.queryParams) {
+                var props = "";
+                for (let key in self.queryParams) {
+                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                        props += "&" + key + "=" + self.queryParams[key];
+                    }
+                }
+                if (url.includes("?")) {
+                    url += props;
                 } else {
-                    url = self.rootPath + path.sep + self.json.content.url;
+                    url += "?" + props.substring(1);
                 }
             }
 
             if (!!url) {
-                if (url.includes(".b3dm")|| url.includes(".glb") || url.includes(".gltf")) {
+                if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
-                    
+
                     self.tileLoader.get(self.abortController, url, self.uuid, self, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
-                    }, () => self.getSiblings(), 
-                    self.level,
-                    !!self.json.boundingVolume.region,
-                    self.geometricError);
+                    }, () => self.getSiblings(),
+                        self.level,
+                        !!self.json.boundingVolume.region,
+                        self.geometricError);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
 
@@ -228,7 +300,7 @@ class InstancedTile extends THREE.Object3D {
             }
         }
         self.matrixWorldNeedsUpdate = true;
-        self.updateWorldMatrix(true,true)
+        self.updateWorldMatrix(true, true)
     }
 
     loadMesh(mesh) {
@@ -236,20 +308,20 @@ class InstancedTile extends THREE.Object3D {
         if (self.deleted) {
             return;
         }
-        
+
         //self.updateWorldMatrix(false, true);
         self.meshContent = mesh;
-        
+
     }
 
     loadJson(json, url) {
         if (this.deleted) {
             return;
         }
-        if(!!this.json.children){
+        if (!!this.json.children) {
             this.jsonChildren = this.json.children;
         }
-        
+
         json.rootPath = path.dirname(url);
         this.jsonChildren.push(json);
         this.hasUnloadedJSONContent = false;
@@ -272,7 +344,7 @@ class InstancedTile extends THREE.Object3D {
         self.childrenTiles = [];
     }
 
-    
+
     _update(camera, frustum) {
         const self = this;
         const visibilityBeforeUpdate = self.materialVisibility;
@@ -290,7 +362,7 @@ class InstancedTile extends THREE.Object3D {
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
             if (metric < 0 && self.hasMeshContent) return;
-            
+
             if ((!self.hasMeshContent && self.rootPath) || (metric < self.master.geometricErrorMultiplier * self.geometricError && !!self.meshContent)) {
                 if (!!self.json && !!self.jsonChildren && self.childrenTiles.length != self.jsonChildren.length) {
                     loadJsonChildren();
@@ -364,6 +436,7 @@ class InstancedTile extends THREE.Object3D {
             self.jsonChildren.forEach(childJSON => {
                 let childTile = new InstancedTile({
                     parentTile: self,
+                    queryParams: self.queryParams,
                     parentGeometricError: self.geometricError,
                     parentBoundingVolume: self.boundingVolume,
                     parentRefinement: self.refinement,
@@ -499,13 +572,13 @@ class InstancedTile extends THREE.Object3D {
             this.master.renderer.getDrawingBufferSize(rendererSize);
             let s = rendererSize.y;
             let fov = camera.fov;
-            if(camera.aspect < 1){
+            if (camera.aspect < 1) {
                 fov *= camera.aspect;
                 s = rendererSize.x;
             }
 
             let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
-            
+
             return (window.devicePixelRatio * 16 * lambda) / (s * scale);
         } else if (this.boundingVolume instanceof THREE.Box3) {
             // Region
@@ -550,8 +623,8 @@ class InstancedTile extends THREE.Object3D {
         }
         return Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
     }
-    
-    getWorldMatrix(){
+
+    getWorldMatrix() {
         const self = this;
         return self.master.matrixWorld;
     }

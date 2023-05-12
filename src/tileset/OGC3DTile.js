@@ -4,9 +4,10 @@ import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { clamp } from "three/src/math/MathUtils";
-//import { Octree } from 'three/addons/math/Octree.js';
+import { Octree } from 'three/addons/math/Octree.js';
 //import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
-
+var averageTime = 0;
+var numTiles = 0;
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
@@ -21,6 +22,7 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Object} [properties] - the properties for this tileset
      * @param {Object} [properties.renderer] - the renderer used to display the tileset
      * @param {Object} [properties.url] - the url to the parent tileset.json
+     * @param {Object} [properties.queryParams] - optional, path params to add to individual tile urls (starts with "?").
      * @param {Object} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
      * @param {Object} [properties.loadOutsideView] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
      * @param {Object} [properties.tileLoader] - A tile loader that can be shared among tilesets in order to share a common cache.
@@ -43,6 +45,9 @@ class OGC3DTile extends THREE.Object3D {
         super();
         const self = this;
         this.proxy = properties.proxy;
+        if(properties.queryParams){
+            this.queryParams =  { ...properties.queryParams };
+        }
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
@@ -96,27 +101,43 @@ class OGC3DTile extends THREE.Object3D {
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
         this.layers.disable(0);
-        //this.octree = new Octree();
+        this.octree = new Octree();
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
             if (properties.onLoadCallback) properties.onLoadCallback(self);
 
         } else if (properties.url) { // If only the url to the tileset.json is provided
+            var url = properties.url;
+            if (self.queryParams) {
+                var props = "";
+                for (let key in self.queryParams) {
+                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                        props += "&" + key + "=" + self.queryParams[key];
+                    }
+                }
+                if (url.includes("?")) {
+                    url+=props;
+                }else{
+                    url+="?"+props.substring(1);
+                }
+            }
+
+
             var fetchFunction;
             if (self.proxy) {
                 fetchFunction = () => {
                     return fetch(self.proxy,
                         {
                             method: 'POST',
-                            body:properties.url,
+                            body: url,
                             signal: self.abortController.signal
                         }
                     );
                 }
-            }else{
-                fetchFunction = ()=>{
-                    return fetch(properties.url, { signal: self.abortController.signal });
+            } else {
+                fetchFunction = () => {
+                    return fetch(url, { signal: self.abortController.signal });
                 }
             }
             fetchFunction().then(result => {
@@ -154,7 +175,7 @@ class OGC3DTile extends THREE.Object3D {
 
                     }
                 });
-            }).catch(e=>console.error(e));
+            }).catch(e => console.error(e));
         }
     }
 
@@ -224,34 +245,83 @@ class OGC3DTile extends THREE.Object3D {
             //scheduleLoadTile(this);
         }
     }
-
-    isAbsolutePathOrURL(input) {
-        // Check if it's an absolute URL with various protocols
-        const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
-        const absoluteURL = urlRegex.test(input);
-
-        // Check if it's an absolute path
-        const absolutePath = input.startsWith('/') && !input.startsWith('//');
-
-        return absoluteURL || absolutePath;
+    assembleURL(root, relative) {
+        // Append a slash to the root URL if it doesn't already have one
+        if (!root.endsWith('/')) {
+            root += '/';
+        }
+    
+        const rootUrl = new URL(root);
+        let rootParts = rootUrl.pathname.split('/').filter(p => p !== '');
+        let relativeParts = relative.split('/').filter(p => p !== '');
+      
+        for(let i = 1; i<=rootParts.length; i++){
+            if(i>=relativeParts.length) break;
+            const rootToken = rootParts.slice(rootParts.length-i, rootParts.length).join('/');
+            const relativeToken = relativeParts.slice(0, i).join('/');
+            if(rootToken === relativeToken){
+                for(let j = 0; j<i; j++){
+                    rootParts.pop();
+                }
+                break;
+            }
+        }
+        
+      
+        while (relativeParts.length > 0 && relativeParts[0] === '..') {
+            rootParts.pop();
+            relativeParts.shift();
+        }
+    
+        return `${rootUrl.protocol}//${rootUrl.host}/${[...rootParts, ...relativeParts].join('/')}`;
     }
 
+    extractQueryParams(url, params) {
+        const urlObj = new URL(url);
+    
+        // Iterate over all the search parameters
+        for (let [key, value] of urlObj.searchParams) {
+            params[key] = value;
+        }
+    
+        // Remove the query string
+        urlObj.search = '';
+        return urlObj.toString();
+    }
     load() {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
             let url;
             if (!!self.json.content.uri) {
-                if (path.isAbsolute(self.json.content.uri) || self.isAbsolutePathOrURL(self.json.content.uri)) {
-                    url = self.json.content.uri;
-                } else {
-                    url = self.rootPath + path.sep + self.json.content.uri;
-                }
+                url = self.json.content.uri;
             } else if (!!self.json.content.url) {
-                if (path.isAbsolute(self.json.content.url) || self.isAbsolutePathOrURL(self.json.content.url)) {
-                    url = self.json.content.url;
-                } else {
-                    url = self.rootPath + path.sep + self.json.content.url;
+                url = self.json.content.url;
+            }
+            const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+
+            if (urlRegex.test(self.rootPath)) { // url
+                
+                if (!urlRegex.test(url)) {
+                    url = self.assembleURL(self.rootPath, url);
+                }
+            } else { //path
+                if (path.isAbsolute(self.rootPath)) {
+                    url = self.rootPath + path.sep + url;
+                }
+            }
+            url = self.extractQueryParams(url, self.queryParams);
+            if (self.queryParams) {
+                var props = "";
+                for (let key in self.queryParams) {
+                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                        props += "&" + key + "=" + self.queryParams[key];
+                    }
+                }
+                if (url.includes("?")) {
+                    url+=props;
+                }else{
+                    url+="?"+props.substring(1);
                 }
             }
 
@@ -279,9 +349,13 @@ class OGC3DTile extends THREE.Object3D {
                                 //o.material.visible = false;
                             }
                         });
-                        //let s = Date.now();
+                        let s = Date.now();
                         //self.octree.fromGraphNode( mesh );
-                        //console.log(Date.now()-s);
+                        /*averageTime*=numTiles;
+                        averageTime+=Date.now()-s;
+                        numTiles++;
+                        averageTime/=numTiles;
+                        console.log(averageTime);*/
                         self.add(mesh);
                         self.updateWorldMatrix(false, true);
                         // mesh.layers.disable(0);
@@ -447,6 +521,7 @@ class OGC3DTile extends THREE.Object3D {
             self.json.children.forEach(childJSON => {
                 let childTile = new OGC3DTile({
                     parentTile: self,
+                    queryParams: self.queryParams,
                     parentGeometricError: self.geometricError,
                     parentBoundingVolume: self.boundingVolume,
                     parentRefinement: self.refinement,

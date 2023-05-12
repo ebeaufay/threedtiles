@@ -21,7 +21,7 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 1.0);
+const ogc3DTiles = initTileset(scene, 0.1);
 //const instancedTileLoader = createInstancedTileLoader(scene);
 //const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
@@ -198,7 +198,7 @@ function initTileset(scene, gem) {
             //mesh.material.metalness = 0.0
         },
         pointsCallback: points => {
-            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
+            points.material.size = Math.min(1.0, 0.1 * Math.sqrt(points.geometricError));
             points.material.sizeAttenuation = true;
         }
     });
@@ -207,7 +207,10 @@ function initTileset(scene, gem) {
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ladybug/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/museumPoints/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/museumMeshed/tileset.json",
+        url: "https://tile.googleapis.com/v1/3dtiles/root.json",
+        queryParams: { key: "AIzaSyDYPWkPgNsShrxmY3PtQvMo_QA7u6FDiIw" },
         geometricErrorMultiplier: gem,
         loadOutsideView: true,
         tileLoader: tileLoader,
@@ -221,9 +224,9 @@ function initTileset(scene, gem) {
         ogc3DTile.update(camera);
     }, 10);
 
-    ogc3DTile.scale.set(0.1,0.1,0.1)
+    ogc3DTile.scale.set(0.001, 0.001, 0.001)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1) // Z-UP to Y-UP
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1) // Z-UP to Y-UP
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -237,8 +240,8 @@ function initTileset(scene, gem) {
 function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, {
         renderer: renderer,
-        maxCachedItems : 100,
-        maxInstances : 1,
+        maxCachedItems: 100,
+        maxInstances: 1,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
@@ -270,7 +273,7 @@ function initInstancedTilesets(instancedTileLoader) {
         renderer: renderer
     });
     tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5) // Z-UP to Y-UP
-    
+
     tileset.updateMatrix()
     scene.add(tileset);
     instancedTilesets.push(tileset);
@@ -295,7 +298,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 10, 20000);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
     camera.position.set(50, 50, 50);
     camera.lookAt(0, 0, 0);
 

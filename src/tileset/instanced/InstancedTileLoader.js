@@ -29,11 +29,13 @@ zUpToYUpMatrix.set(1, 0, 0, 0,
 * @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
 * @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
 * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
+* @param {sring} [options.proxy] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
 */
 class InstancedTileLoader {
     constructor(scene, options) {
         this.maxCachedItems = 100;
         this.maxInstances = 1;
+        this.proxy = options.proxy;
         if (!!options) {
             this.meshCallback = options.meshCallback;
             this.pointsCallback = options.pointsCallback;
@@ -103,11 +105,27 @@ class InstancedTileLoader {
                 //nextDownload.doDownload();
                 concurentDownloads++;
                 if (nextDownload.path.includes(".b3dm")) {
-                    fetch(nextDownload.path, { signal: nextDownload.abortController.signal }).then(result => {
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(nextDownload.path, { signal: nextDownload.abortController.signal });
+                        }
+                    } else {
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: nextDownload.path,
+                                    signal: nextDownload.abortController.signal
+                                }
+                            );
+                        }
+                    }
+                    fetchFunction().then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
-                            console.error("could not load tile with path : " + path)
-                            throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
+                            console.error("could not load tile with path : " + nextDownload.path)
+                            throw new Error(`couldn't load "${nextDownload.path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
                         return result.arrayBuffer();
 
@@ -122,49 +140,89 @@ class InstancedTileLoader {
                         })
                         .catch(e => console.error(e));
                 } if (nextDownload.path.includes(".glb") || (nextDownload.path.includes(".gltf"))) {
-                    this.gltfLoader.load(nextDownload.path, gltf => {
-                        gltf.scene.traverse((o) => {
-                            o.geometricError = nextDownload.geometricError;
-                            if (o.isMesh) {
-                                if (nextDownload.zUpToYUp) {
-                                    o.applyMatrix4(zUpToYUpMatrix);
-                                }
-                                if (!!self.meshCallback) {
-                                    self.meshCallback(o);
-                                }
-                            }
-                            if (o.isPoints) {
-                                console.error("instanced point cloud is not supported");
-                            }
-                        });
-                        let instancedMesh;
-                        gltf.scene.updateWorldMatrix(false, true)
-                        gltf.scene.traverse(child => {
-                            //TODO several meshes in a single gltf
-                            if (child.isMesh) {
-                                instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, self.maxInstances);
-                                instancedMesh.baseMatrix = child.matrixWorld;
-                            }
-
-                        });
-                        self.ready.unshift(nextDownload);
-                        if (!instancedMesh) {
-                            gltf.scene.traverse(c => {
-                                if (c.dispose) c.dispose();
-                                if (c.material) c.material.dispose();
-                            });
-                        } else {
-                            nextDownload.tile.setObject(instancedMesh);
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(nextDownload.path, { signal: nextDownload.abortController.signal });
                         }
+                    } else {
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: nextDownload.path,
+                                    signal: nextDownload.abortController.signal
+                                }
+                            );
+                        }
+                    }
+                    fetchFunction().then(result=>{
+                        return result.arrayBuffer();
+                    }).then(arrayBuffer=>{
+                        this.gltfLoader.parse(arrayBuffer, gltf => {
+                            gltf.scene.traverse((o) => {
+                                o.geometricError = nextDownload.geometricError;
+                                if (o.isMesh) {
+                                    if (nextDownload.zUpToYUp) {
+                                        o.applyMatrix4(zUpToYUpMatrix);
+                                    }
+                                    if (!!self.meshCallback) {
+                                        self.meshCallback(o);
+                                    }
+                                }
+                                if (o.isPoints) {
+                                    console.error("instanced point cloud is not supported");
+                                }
+                            });
+                            let instancedMesh;
+                            gltf.scene.updateWorldMatrix(false, true)
+                            gltf.scene.traverse(child => {
+                                //TODO several meshes in a single gltf
+                                if (child.isMesh) {
+                                    instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, self.maxInstances);
+                                    instancedMesh.baseMatrix = child.matrixWorld;
+                                }
+    
+                            });
+                            self.ready.unshift(nextDownload);
+                            if (!instancedMesh) {
+                                gltf.scene.traverse(c => {
+                                    if (c.dispose) c.dispose();
+                                    if (c.material) c.material.dispose();
+                                });
+                            } else {
+                                nextDownload.tile.setObject(instancedMesh);
+                            }
+                        });
+                    },e=>{
+                        throw new Error("could not load tile : "+nextDownload.path)
                     });
+
+                    
 
                 } else if (nextDownload.path.includes(".json")) {
                     concurentDownloads++;
-                    fetch(nextDownload.path, { signal: nextDownload.abortController.signal }).then(result => {
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(nextDownload.path, { signal: nextDownload.abortController.signal });
+                        }
+                    } else {
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: nextDownload.path,
+                                    signal: nextDownload.abortController.signal
+                                }
+                            );
+                        }
+                    }
+                    fetchFunction().then(result => {
                         concurentDownloads--;
                         if (!result.ok) {
-                            console.error("could not load tile with path : " + path)
-                            throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
+                            console.error("could not load tile with path : " + nextDownload.path)
+                            throw new Error(`couldn't load "${nextDownload.path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
                         return result.json();
 

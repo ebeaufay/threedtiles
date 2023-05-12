@@ -254,30 +254,51 @@ class TileLoader {
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {
                     concurentDownloads++;
-                    this.gltfLoader.load(path, gltf => {
-                        gltf.scene.traverse((o) => {
-                            o.geometricError = geometricError;
-                            if (o.isMesh) {
-                                if (zUpToYUp) {
-                                    o.applyMatrix4(zUpToYUpMatrix);
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(path, { signal: realAbortController.signal });
+                        }
+                    } else {
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: path,
+                                    signal: realAbortController.signal
                                 }
-                                if (!!self.meshCallback) {
-                                    self.meshCallback(o);
+                            );
+                        }
+                    }
+                    fetchFunction().then(result=>{
+                        return result.arrayBuffer();
+                    }).then(arrayBuffer=>{
+                        this.gltfLoader.parse(arrayBuffer, null, gltf => {
+                            gltf.scene.traverse((o) => {
+                                o.geometricError = geometricError;
+                                if (o.isMesh) {
+                                    if (zUpToYUp) {
+                                        o.applyMatrix4(zUpToYUpMatrix);
+                                    }
+                                    if (!!self.meshCallback) {
+                                        self.meshCallback(o);
+                                    }
                                 }
-                            }
-                            if (o.isPoints) {
-                                if (zUpToYUp) {
-                                    o.applyMatrix4(zUpToYUpMatrix);
+                                if (o.isPoints) {
+                                    if (zUpToYUp) {
+                                        o.applyMatrix4(zUpToYUpMatrix);
+                                    }
+                                    if (!!self.pointsCallback) {
+                                        self.pointsCallback(o);
+                                    }
                                 }
-                                if (!!self.pointsCallback) {
-                                    self.pointsCallback(o);
-                                }
-                            }
+                            });
+                            self.cache.put(key, gltf.scene);
+                            self.checkSize();
+                            self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
-                        self.cache.put(key, gltf.scene);
-                        self.checkSize();
-                        self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                     });
+                    
 
                 }
             } else if (path.includes(".json")) {
