@@ -30,6 +30,7 @@ class InstancedTile extends THREE.Object3D {
      *   onLoadCallback: function,
      *   centerModel: Boolean,
      *   queryParams: String
+     *   yUp: Boolean
      * } properties 
      */
     constructor(properties) {
@@ -38,7 +39,7 @@ class InstancedTile extends THREE.Object3D {
         if(properties.queryParams){
             this.queryParams =  { ...properties.queryParams };
         }
-        
+        self.yUp = properties.yUp;
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
             this.tileLoader = properties.tileLoader;
@@ -290,7 +291,7 @@ class InstancedTile extends THREE.Object3D {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(),
                         self.level,
-                        !!self.json.boundingVolume.region,
+                        !!self.json.boundingVolume.region || self.yUp,
                         self.geometricError);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
@@ -447,7 +448,8 @@ class InstancedTile extends THREE.Object3D {
                     tileLoader: self.tileLoader,
                     cameraOnLoad: camera,
                     master: self.master,
-                    centerModel: false
+                    centerModel: false,
+                    yUp: self.yUp
                 });
                 self.childrenTiles.push(childTile);
                 //self.add(childTile);

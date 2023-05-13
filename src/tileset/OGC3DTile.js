@@ -40,11 +40,13 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Object} [properties.cameraOnLoad] - optional the camera used when loading this particular sub-tile
      * @param {Object} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
      * @param {Object} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
+     * @param {Object} [properties.yUp] - optional value indicating the meshes are y up rather than z-up. This parameter is used only for box and sphere bounding volumes.
      */
     constructor(properties) {
         super();
         const self = this;
         this.proxy = properties.proxy;
+        this.yUp = properties.yUp;
         if(properties.queryParams){
             this.queryParams =  { ...properties.queryParams };
         }
@@ -331,6 +333,7 @@ class OGC3DTile extends THREE.Object3D {
 
                     self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                         if (!!self.deleted) return;
+                        
                         mesh.traverse((o) => {
                             if (o.isMesh) {
 
@@ -364,7 +367,7 @@ class OGC3DTile extends THREE.Object3D {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(),
                         self.level,
-                        !!self.json.boundingVolume.region,
+                        !!self.json.boundingVolume.region || self.yUp,
                         self.geometricError
                     );
                 } else if (url.includes(".json")) {
@@ -535,7 +538,8 @@ class OGC3DTile extends THREE.Object3D {
                     occlusionCullingService: self.occlusionCullingService,
                     renderer: self.renderer,
                     static: self.static,
-                    centerModel: false
+                    centerModel: false,
+                    yUp: self.yUp
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);

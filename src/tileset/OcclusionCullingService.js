@@ -39,7 +39,7 @@ class OcclusionCullingService {
     createCullTarget() {
         const target = new THREE.WebGLRenderTarget(Math.floor(window.innerWidth * 0.05), Math.floor(window.innerHeight * 0.05));
         target.texture.format = THREE.RGBAFormat;
-        target.texture.encoding = THREE.LinearEncoding;
+        target.texture.colorSpace = THREE.LinearEncoding;
         target.texture.minFilter = THREE.NearestFilter;
         target.texture.magFilter = THREE.NearestFilter;
         target.texture.generateMipmaps = false;

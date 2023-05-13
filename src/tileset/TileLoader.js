@@ -5,14 +5,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 
-let concurentDownloads = 0;
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
     0, 0, -1, 0,
     0, 1, 0, 0,
     0, 0, 0, 1);
-
-
 
 
 /**
@@ -87,11 +84,12 @@ class TileLoader {
         this.downloads.unshift(f);
     }
     download() {
+        
         if (this.nextDownloads.length == 0) {
             this.getNextDownloads();
             if (this.nextDownloads.length == 0) return;
         }
-        while (this.nextDownloads.length > 0 && concurentDownloads < 500) {
+        while (this.nextDownloads.length > 0) {
             const nextDownload = this.nextDownloads.shift();
             if (!!nextDownload && nextDownload.shouldDoDownload()) {
                 nextDownload.doDownload();
@@ -218,7 +216,6 @@ class TileLoader {
             let downloadFunction;
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
-                    concurentDownloads++;
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
@@ -236,7 +233,6 @@ class TileLoader {
                         }
                     }
                     fetchFunction().then(result => {
-                        concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
@@ -249,11 +245,12 @@ class TileLoader {
                         self.cache.put(key, mesh);
                         self.checkSize();
                         this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                    }).catch((e) => console.error(e));
+                    }).catch((e) => {
+                        console.error(e)
+                    });
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {
-                    concurentDownloads++;
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
@@ -271,6 +268,10 @@ class TileLoader {
                         }
                     }
                     fetchFunction().then(result=>{
+                        if(!result.ok){
+                            console.error("could not load tile with path : " + path)
+                            throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
+                        }
                         return result.arrayBuffer();
                     }).then(arrayBuffer=>{
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
@@ -297,13 +298,14 @@ class TileLoader {
                             self.checkSize();
                             self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
+                    }).catch((e) => {
+                        console.error(e)
                     });
                     
 
                 }
             } else if (path.includes(".json")) {
                 downloadFunction = () => {
-                    concurentDownloads++;
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
@@ -321,7 +323,6 @@ class TileLoader {
                         }
                     }
                     fetchFunction().then(result => {
-                        concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
@@ -332,8 +333,9 @@ class TileLoader {
                         self.cache.put(key, json);
                         self.checkSize();
                         self.meshReceived(self.cache, self.register, key);
-                    })
-                        .catch(e => console.error("tile download aborted"));
+                    }).catch((e) => {
+                        console.error(e)
+                    });
                 }
             }
             this.scheduleDownload({
