@@ -47,8 +47,8 @@ class OGC3DTile extends THREE.Object3D {
         const self = this;
         this.proxy = properties.proxy;
         this.yUp = properties.yUp;
-        if(properties.queryParams){
-            this.queryParams =  { ...properties.queryParams };
+        if (properties.queryParams) {
+            this.queryParams = { ...properties.queryParams };
         }
         this.uuid = uuidv4();
         if (!!properties.tileLoader) {
@@ -119,9 +119,9 @@ class OGC3DTile extends THREE.Object3D {
                     }
                 }
                 if (url.includes("?")) {
-                    url+=props;
-                }else{
-                    url+="?"+props.substring(1);
+                    url += props;
+                } else {
+                    url += "?" + props.substring(1);
                 }
             }
 
@@ -206,6 +206,7 @@ class OGC3DTile extends THREE.Object3D {
             this.geometricError = properties.parentGeometricError;
         }
 
+
         // decode transform
         if (!!this.json.transform && !this.centerModel) {
             let mat = new THREE.Matrix4();
@@ -252,40 +253,40 @@ class OGC3DTile extends THREE.Object3D {
         if (!root.endsWith('/')) {
             root += '/';
         }
-    
+
         const rootUrl = new URL(root);
         let rootParts = rootUrl.pathname.split('/').filter(p => p !== '');
         let relativeParts = relative.split('/').filter(p => p !== '');
-      
-        for(let i = 1; i<=rootParts.length; i++){
-            if(i>=relativeParts.length) break;
-            const rootToken = rootParts.slice(rootParts.length-i, rootParts.length).join('/');
+
+        for (let i = 1; i <= rootParts.length; i++) {
+            if (i >= relativeParts.length) break;
+            const rootToken = rootParts.slice(rootParts.length - i, rootParts.length).join('/');
             const relativeToken = relativeParts.slice(0, i).join('/');
-            if(rootToken === relativeToken){
-                for(let j = 0; j<i; j++){
+            if (rootToken === relativeToken) {
+                for (let j = 0; j < i; j++) {
                     rootParts.pop();
                 }
                 break;
             }
         }
-        
-      
+
+
         while (relativeParts.length > 0 && relativeParts[0] === '..') {
             rootParts.pop();
             relativeParts.shift();
         }
-    
+
         return `${rootUrl.protocol}//${rootUrl.host}/${[...rootParts, ...relativeParts].join('/')}`;
     }
 
     extractQueryParams(url, params) {
         const urlObj = new URL(url);
-    
+
         // Iterate over all the search parameters
         for (let [key, value] of urlObj.searchParams) {
             params[key] = value;
         }
-    
+
         // Remove the query string
         urlObj.search = '';
         return urlObj.toString();
@@ -303,7 +304,7 @@ class OGC3DTile extends THREE.Object3D {
             const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
 
             if (urlRegex.test(self.rootPath)) { // url
-                
+
                 if (!urlRegex.test(url)) {
                     url = self.assembleURL(self.rootPath, url);
                 }
@@ -321,9 +322,9 @@ class OGC3DTile extends THREE.Object3D {
                     }
                 }
                 if (url.includes("?")) {
-                    url+=props;
-                }else{
-                    url+="?"+props.substring(1);
+                    url += props;
+                } else {
+                    url += "?" + props.substring(1);
                 }
             }
 
@@ -336,7 +337,6 @@ class OGC3DTile extends THREE.Object3D {
                         
                         mesh.traverse((o) => {
                             if (o.isMesh) {
-
                                 o.layers.disable(0);
                                 if (self.occlusionCullingService) {
                                     const position = o.geometry.attributes.position;
@@ -421,7 +421,12 @@ class OGC3DTile extends THREE.Object3D {
     }
     _update(camera, frustum) {
         const self = this;
-
+        
+        // let dist = self.boundingVolume.distanceToPoint(new THREE.Vector3(3980, 4980.416656099139, 3.2851604304346775));
+        // if (dist< 1) {
+        //     self.changeContentVisibility(false);
+        //     console.log(dist+" "+self.level)
+        // }
         const visibilityBeforeUpdate = self.materialVisibility;
 
         if (!!self.boundingVolume && !!self.geometricError) {
@@ -490,7 +495,9 @@ class OGC3DTile extends THREE.Object3D {
                 });
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
+                    
                 }
+
             }
         }
 
@@ -584,14 +591,16 @@ class OGC3DTile extends THREE.Object3D {
      */
     isReady() {
         // if outside frustum
-        if (!this.inFrustum) return true;
-
+        if (!this.inFrustum) {
+            return true;
+        }
         // if json is not done loading
-        if (this.hasUnloadedJSONContent) return false;
-
+        if (this.hasUnloadedJSONContent) {
+            return false;
+        }
         // if this tile has no mesh content or if it's marked as visible false, look at children
         if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility)) {
-            if(this.children.length>0){
+            if (this.children.length > 0) {
                 var allChildrenReady = true;
                 this.childrenTiles.every(child => {
                     if (!child.isReady()) {
@@ -601,10 +610,10 @@ class OGC3DTile extends THREE.Object3D {
                     return true;
                 });
                 return allChildrenReady;
-            }else{
+            } else {
                 return false
             }
-            
+
         }
 
         // if this tile has no mesh content
@@ -635,9 +644,10 @@ class OGC3DTile extends THREE.Object3D {
 
     changeContentVisibility(visibility) {
         const self = this;
+        
         if (self.hasMeshContent && self.meshContent) {
             if (visibility) {
-
+                self.layers.enable(0);
                 self.meshContent.traverse((o) => {
                     if (o.isMesh) {
                         o.layers.enable(0);
@@ -668,7 +678,7 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         function setMeshVisibility(mesh, visibility) {
-            mesh.material.visible = visibility;
+            //mesh.material.visible = visibility;
             if (!!visibility) {
                 mesh.onAfterRender = () => {
                     delete mesh.onAfterRender;

@@ -21,7 +21,7 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 0.1);
+const ogc3DTiles = initTileset(scene, 0.3);
 //const instancedTileLoader = createInstancedTileLoader(scene);
 //const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
@@ -212,7 +212,7 @@ function initTileset(scene, gem) {
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
         queryParams: { key: "AIzaSyDYPWkPgNsShrxmY3PtQvMo_QA7u6FDiIw" },
         geometricErrorMultiplier: gem,
-        loadOutsideView: false,
+        loadOutsideView: true,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
@@ -299,11 +299,18 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 10, 200000);
-    camera.position.set(50, 50, 50);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 200);
+    camera.position.set(3973.55, 4973.8, 3.2851604304346775);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'p') {
+            console.log(camera.position);
+        }
+    });
+
     return camera;
 }
 function initController(camera, dom) {

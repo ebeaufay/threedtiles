@@ -113,13 +113,14 @@ export class B3DMDecoder {
 					model.scene.applyMatrix4(zUpToYUpMatrix);
 				}
 
+				if (zUpToYUp) {
+					model.scene.applyMatrix4(zUpToYUpMatrix);
+				}
 				model.scene.traverse((o) => {
 
 					if (o.isMesh) {
 						o.geometricError = geometricError
-						if (zUpToYUp) {
-							o.applyMatrix4(zUpToYUpMatrix);
-						}
+					
 						if (!!meshCallback) {
 							meshCallback(o);
 						}

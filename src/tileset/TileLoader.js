@@ -84,7 +84,7 @@ class TileLoader {
         this.downloads.unshift(f);
     }
     download() {
-        
+
         if (this.nextDownloads.length == 0) {
             this.getNextDownloads();
             if (this.nextDownloads.length == 0) return;
@@ -267,28 +267,28 @@ class TileLoader {
                             );
                         }
                     }
-                    fetchFunction().then(result=>{
-                        if(!result.ok){
+                    fetchFunction().then(result => {
+                        if (!result.ok) {
                             console.error("could not load tile with path : " + path)
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
                         return result.arrayBuffer();
-                    }).then(arrayBuffer=>{
+                    }).then(arrayBuffer => {
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
+                            if (zUpToYUp) {
+                                gltf.scene.applyMatrix4(zUpToYUpMatrix);
+                            }
                             gltf.scene.traverse((o) => {
                                 o.geometricError = geometricError;
+                                
                                 if (o.isMesh) {
-                                    if (zUpToYUp) {
-                                        o.applyMatrix4(zUpToYUpMatrix);
-                                    }
+                                    
                                     if (!!self.meshCallback) {
                                         self.meshCallback(o);
                                     }
                                 }
                                 if (o.isPoints) {
-                                    if (zUpToYUp) {
-                                        o.applyMatrix4(zUpToYUpMatrix);
-                                    }
+                                    
                                     if (!!self.pointsCallback) {
                                         self.pointsCallback(o);
                                     }
@@ -301,7 +301,7 @@ class TileLoader {
                     }).catch((e) => {
                         console.error(e)
                     });
-                    
+
 
                 }
             } else if (path.includes(".json")) {

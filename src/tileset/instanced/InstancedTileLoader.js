@@ -160,12 +160,13 @@ class InstancedTileLoader {
                         return result.arrayBuffer();
                     }).then(arrayBuffer=>{
                         this.gltfLoader.parse(arrayBuffer, gltf => {
+                            if (nextDownload.zUpToYUp) {
+                                gltf.scene.applyMatrix4(zUpToYUpMatrix);
+                            }
                             gltf.scene.traverse((o) => {
                                 o.geometricError = nextDownload.geometricError;
                                 if (o.isMesh) {
-                                    if (nextDownload.zUpToYUp) {
-                                        o.applyMatrix4(zUpToYUpMatrix);
-                                    }
+                                    
                                     if (!!self.meshCallback) {
                                         self.meshCallback(o);
                                     }
