@@ -41,12 +41,14 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Object} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
      * @param {Object} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
      * @param {Object} [properties.yUp] - optional value indicating the meshes are y up rather than z-up. This parameter is used only for box and sphere bounding volumes.
+     * @param {Object} [properties.displayErrors] - optional value indicating that errors should be shown on screen.
      */
     constructor(properties) {
         super();
         const self = this;
         this.proxy = properties.proxy;
         this.yUp = properties.yUp;
+        this.displayErrors = properties.displayErrors;
         if (properties.queryParams) {
             this.queryParams = { ...properties.queryParams };
         }
@@ -177,7 +179,7 @@ class OGC3DTile extends THREE.Object3D {
 
                     }
                 });
-            }).catch(e => console.error(e));
+            }).catch(e => {if(self.displayErrors) showError(e)});
         }
     }
 
@@ -332,44 +334,49 @@ class OGC3DTile extends THREE.Object3D {
                 if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
 
-                    self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
-                        if (!!self.deleted) return;
-                        
-                        mesh.traverse((o) => {
-                            if (o.isMesh) {
-                                o.layers.disable(0);
-                                if (self.occlusionCullingService) {
-                                    const position = o.geometry.attributes.position;
-                                    const colors = [];
-                                    for (let i = 0; i < position.count; i++) {
-                                        colors.push(self.color.r, self.color.g, self.color.b);
+                    try{
+                        self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
+                            if (!!self.deleted) return;
+    
+                            mesh.traverse((o) => {
+                                if (o.isMesh) {
+                                    o.layers.disable(0);
+                                    if (self.occlusionCullingService) {
+                                        const position = o.geometry.attributes.position;
+                                        const colors = [];
+                                        for (let i = 0; i < position.count; i++) {
+                                            colors.push(self.color.r, self.color.g, self.color.b);
+                                        }
+                                        o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                                     }
-                                    o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                                    if (self.static) {
+                                        o.matrixAutoUpdate = false;
+                                    }
+                                    //o.material.visible = false;
                                 }
-                                if (self.static) {
-                                    o.matrixAutoUpdate = false;
-                                }
-                                //o.material.visible = false;
-                            }
-                        });
-                        let s = Date.now();
-                        //self.octree.fromGraphNode( mesh );
-                        /*averageTime*=numTiles;
-                        averageTime+=Date.now()-s;
-                        numTiles++;
-                        averageTime/=numTiles;
-                        console.log(averageTime);*/
-                        self.add(mesh);
-                        self.updateWorldMatrix(false, true);
-                        // mesh.layers.disable(0);
-                        self.meshContent = mesh;
-                    }, !self.cameraOnLoad ? () => 0 : () => {
-                        return self.calculateDistanceToCamera(self.cameraOnLoad);
-                    }, () => self.getSiblings(),
-                        self.level,
-                        !!self.json.boundingVolume.region || self.yUp,
-                        self.geometricError
-                    );
+                            });
+                            let s = Date.now();
+                            //self.octree.fromGraphNode( mesh );
+                            /*averageTime*=numTiles;
+                            averageTime+=Date.now()-s;
+                            numTiles++;
+                            averageTime/=numTiles;
+                            console.log(averageTime);*/
+                            self.add(mesh);
+                            self.updateWorldMatrix(false, true);
+                            // mesh.layers.disable(0);
+                            self.meshContent = mesh;
+                        }, !self.cameraOnLoad ? () => 0 : () => {
+                            return self.calculateDistanceToCamera(self.cameraOnLoad);
+                        }, () => self.getSiblings(),
+                            self.level,
+                            !!self.json.boundingVolume.region || self.yUp,
+                            self.geometricError
+                        );
+                    }catch(e){
+                        if(self.displayErrors) showError(e)
+                    }
+                    
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, this.uuid, url, json => {
                         if (!!self.deleted) return;
@@ -421,7 +428,7 @@ class OGC3DTile extends THREE.Object3D {
     }
     _update(camera, frustum) {
         const self = this;
-        
+
         // let dist = self.boundingVolume.distanceToPoint(new THREE.Vector3(3980, 4980.416656099139, 3.2851604304346775));
         // if (dist< 1) {
         //     self.changeContentVisibility(false);
@@ -495,7 +502,7 @@ class OGC3DTile extends THREE.Object3D {
                 });
                 if (allChildrenReady) {
                     self.changeContentVisibility(false);
-                    
+
                 }
 
             }
@@ -546,7 +553,8 @@ class OGC3DTile extends THREE.Object3D {
                     renderer: self.renderer,
                     static: self.static,
                     centerModel: false,
-                    yUp: self.yUp
+                    yUp: self.yUp,
+                    displayErrors: self.displayErrors
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -644,7 +652,7 @@ class OGC3DTile extends THREE.Object3D {
 
     changeContentVisibility(visibility) {
         const self = this;
-        
+
         if (self.hasMeshContent && self.meshContent) {
             if (visibility) {
                 self.layers.enable(0);
@@ -785,3 +793,29 @@ class OGC3DTile extends THREE.Object3D {
     }
 }
 export { OGC3DTile };
+
+function showError(error) {
+    // Create a new div element
+    var errorDiv = document.createElement("div");
+
+    // Set its text content
+    errorDiv.textContent = error;
+
+    // Set styles
+    errorDiv.style.position = 'fixed'; // Fix position to the viewport
+    errorDiv.style.top = '10px'; // Set top position
+    errorDiv.style.left = '50%'; // Center horizontally
+    errorDiv.style.transform = 'translateX(-50%)'; // Make sure it's centered accurately
+    errorDiv.style.padding = '10px'; // Add some padding
+    errorDiv.style.backgroundColor = '#ff8800'; // Set a background color
+    errorDiv.style.color = '#ffffff'; // Set a text color
+    errorDiv.style.zIndex = '9999'; // Make sure it's on top of other elements
+
+    // Append the new div to the body
+    document.body.appendChild(errorDiv);
+
+    // After 3 seconds, remove the error message
+    setTimeout(function() {
+        errorDiv.remove();
+    }, 8000);
+}
