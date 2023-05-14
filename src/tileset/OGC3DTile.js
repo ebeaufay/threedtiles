@@ -590,16 +590,21 @@ class OGC3DTile extends THREE.Object3D {
         if (this.hasUnloadedJSONContent) return false;
 
         // if this tile has no mesh content or if it's marked as visible false, look at children
-        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility) && this.childrenTiles.length > 0) {
-            var allChildrenReady = true;
-            this.childrenTiles.every(child => {
-                if (!child.isReady()) {
-                    allChildrenReady = false;
-                    return false;
-                }
-                return true;
-            });
-            return allChildrenReady;
+        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility)) {
+            if(this.children.length>0){
+                var allChildrenReady = true;
+                this.childrenTiles.every(child => {
+                    if (!child.isReady()) {
+                        allChildrenReady = false;
+                        return false;
+                    }
+                    return true;
+                });
+                return allChildrenReady;
+            }else{
+                return false
+            }
+            
         }
 
         // if this tile has no mesh content
