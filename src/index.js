@@ -219,7 +219,8 @@ function initTileset(scene, gem) {
         centerModel: true,
         renderer: renderer,
         yUp : true,
-        displayErrors: true
+        displayErrors: true,
+        displayCopyright: true
 
     });
     setIntervalAsync(function () {

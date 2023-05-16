@@ -116,6 +116,7 @@ export class B3DMDecoder {
 				if (zUpToYUp) {
 					model.scene.applyMatrix4(zUpToYUpMatrix);
 				}
+				model.scene.asset = model.asset;
 				model.scene.traverse((o) => {
 
 					if (o.isMesh) {

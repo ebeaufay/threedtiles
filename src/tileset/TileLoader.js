@@ -275,6 +275,7 @@ class TileLoader {
                         return result.arrayBuffer();
                     }).then(arrayBuffer => {
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
+                            gltf.scene.asset = gltf.asset;
                             if (zUpToYUp) {
                                 gltf.scene.applyMatrix4(zUpToYUpMatrix);
                             }
@@ -294,6 +295,7 @@ class TileLoader {
                                     }
                                 }
                             });
+                            
                             self.cache.put(key, gltf.scene);
                             self.checkSize();
                             self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);

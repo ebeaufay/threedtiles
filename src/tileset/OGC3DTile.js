@@ -8,12 +8,14 @@ import { Octree } from 'three/addons/math/Octree.js';
 //import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 var averageTime = 0;
 var numTiles = 0;
+var copyrightDiv;
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
 const rendererSize = new THREE.Vector2(1000, 1000);
 const tempQuaternion = new THREE.Quaternion();
+const copyright = {};
 
 
 class OGC3DTile extends THREE.Object3D {
@@ -49,6 +51,7 @@ class OGC3DTile extends THREE.Object3D {
         this.proxy = properties.proxy;
         this.yUp = properties.yUp;
         this.displayErrors = properties.displayErrors;
+        this.displayCopyright = properties.displayCopyright;
         if (properties.queryParams) {
             this.queryParams = { ...properties.queryParams };
         }
@@ -68,6 +71,7 @@ class OGC3DTile extends THREE.Object3D {
             tileLoaderOptions.proxy = this.proxy;
             this.tileLoader = new TileLoader(tileLoaderOptions);
         }
+        this.displayCopyright = !!properties.displayCopyright;
         // set properties general to the entire tileset
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
 
@@ -337,7 +341,19 @@ class OGC3DTile extends THREE.Object3D {
                     try{
                         self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                             if (!!self.deleted) return;
-    
+                            
+                            if(mesh.asset.copyright){
+                                mesh.asset.copyright.split(';').forEach(s=>{
+                                    if(!!copyright[s]){
+                                        copyright[s]++;
+                                    }else{
+                                        copyright[s] = 1;
+                                    }
+                                });
+                                if(self.displayCopyright){
+                                    updateCopyrightLabel();
+                                } 
+                            }
                             mesh.traverse((o) => {
                                 if (o.isMesh) {
                                     o.layers.disable(0);
@@ -396,6 +412,18 @@ class OGC3DTile extends THREE.Object3D {
     dispose() {
 
         const self = this;
+        if(!!self.meshContent){
+            self.meshContent.asset.copyright.split(';').forEach(s=>{
+                if(!!copyright[s]){
+                    copyright[s]--;
+                }
+            });
+            if(self.displayCopyright){
+                updateCopyrightLabel();
+            }
+        }
+        
+
         self.childrenTiles.forEach(tile => tile.dispose());
         self.deleted = true;
         this.traverse(function (element) {
@@ -554,7 +582,8 @@ class OGC3DTile extends THREE.Object3D {
                     static: self.static,
                     centerModel: false,
                     yUp: self.yUp,
-                    displayErrors: self.displayErrors
+                    displayErrors: self.displayErrors,
+                    displayCopyright: self.displayCopyright
                 });
                 self.childrenTiles.push(childTile);
                 self.add(childTile);
@@ -818,4 +847,34 @@ function showError(error) {
     setTimeout(function() {
         errorDiv.remove();
     }, 8000);
+}
+
+function updateCopyrightLabel(){
+    // Create a new div
+    if(!copyrightDiv){
+        copyrightDiv = document.createElement('div');
+    }
+
+    // Join the array elements with a comma and a space
+    var list = "";
+    for(let key in copyright) {
+        if(copyright.hasOwnProperty(key) && copyright[key] > 0) { // This checks if the key is actually part of the object and not its prototype.
+            list+= key+", ";
+        }
+    }
+    
+    // Set the text content of the div
+    copyrightDiv.textContent = list;
+
+    // Style the div
+    copyrightDiv.style.position = 'fixed';
+    copyrightDiv.style.bottom = '20px';
+    copyrightDiv.style.left = '20px';
+    copyrightDiv.style.color = 'white';
+    copyrightDiv.style.textShadow = '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000';
+    copyrightDiv.style.padding = '10px';
+    copyrightDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'; // semi-transparent black background
+    
+    // Append the div to the body of the document
+    document.body.appendChild(copyrightDiv);
 }
