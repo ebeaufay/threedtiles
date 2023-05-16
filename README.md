@@ -7,6 +7,8 @@
 
 The fastest 3DTiles viewer for three.js
 
+[Google Map Tile API] (https://www.jdultra.com/mapTiles/index.html)
+
 [Photogrametry (OBJ conversion)](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
 
 [Point cloud vs Mesh](https://www.jdultra.com/pointmeshing/index.html)
