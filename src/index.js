@@ -204,14 +204,8 @@ function initTileset(scene, gem) {
     });
 
     const ogc3DTile = new OGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiledWithSkirts/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/ladybug/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/museumPoints/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/museumMeshed/tileset.json",
-        url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyDYPWkPgNsShrxmY3PtQvMo_QA7u6FDiIw" },
-        geometricErrorMultiplier: gem,
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        geometricErrorMultiplier: 0.03,
         loadOutsideView: true,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -219,17 +213,17 @@ function initTileset(scene, gem) {
         centerModel: true,
         renderer: renderer,
         yUp : true,
-        displayErrors: true,
-        displayCopyright: true
+        //displayErrors: true,
+        //displayCopyright: true
 
     });
     setIntervalAsync(function () {
         ogc3DTile.update(camera);
     }, 10);
 
-    ogc3DTile.scale.set(0.001, 0.001, 0.001)
+    //ogc3DTile.scale.set(0.001, 0.001, 0.001)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -301,8 +295,8 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 200);
-    camera.position.set(3973.55, 4973.8, 3.2851604304346775);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
+    camera.position.set(100, 100, 100);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;

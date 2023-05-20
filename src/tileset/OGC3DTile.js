@@ -342,7 +342,7 @@ class OGC3DTile extends THREE.Object3D {
                         self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
                             if (!!self.deleted) return;
                             
-                            if(mesh.asset.copyright){
+                            if(mesh.asset && mesh.asset.copyright){
                                 mesh.asset.copyright.split(';').forEach(s=>{
                                     if(!!copyright[s]){
                                         copyright[s]++;
@@ -412,7 +412,7 @@ class OGC3DTile extends THREE.Object3D {
     dispose() {
 
         const self = this;
-        if(!!self.meshContent){
+        if(!!self.meshContent && !!self.meshContent.asset && self.meshContent.asset.copyright){
             self.meshContent.asset.copyright.split(';').forEach(s=>{
                 if(!!copyright[s]){
                     copyright[s]--;

@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "9.1.7",
+    "version": "9.1.8",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "files": [
@@ -15,7 +15,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/ebeaufay/3DTilesViewer"
+        "url": "https://github.com/ebeaufay/threedtiles"
     },
     "keywords": [
         "OGC",
