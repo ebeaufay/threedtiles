@@ -186,7 +186,7 @@ class TileLoader {
     }
 
 
-    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, zUpToYUp, geometricError) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError) {
         const self = this;
         const key = simplifyPath(path);
 
@@ -240,7 +240,7 @@ class TileLoader {
                         return result.arrayBuffer();
 
                     }).then(resultArrayBuffer => {
-                        return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, zUpToYUp);
+                        return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, geometricError, sceneZupToYup, meshZupToYup);
                     }).then(mesh => {
                         self.cache.put(key, mesh);
                         self.checkSize();
@@ -276,14 +276,16 @@ class TileLoader {
                     }).then(arrayBuffer => {
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
                             gltf.scene.asset = gltf.asset;
-                            if (zUpToYUp) {
+                            if (sceneZupToYup) {
                                 gltf.scene.applyMatrix4(zUpToYUpMatrix);
                             }
                             gltf.scene.traverse((o) => {
                                 o.geometricError = geometricError;
                                 
                                 if (o.isMesh) {
-                                    
+                                    if (meshZupToYup) {
+                                        o.applyMatrix4(zUpToYUpMatrix);
+                                    }
                                     if (!!self.meshCallback) {
                                         self.meshCallback(o);
                                     }

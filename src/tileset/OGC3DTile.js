@@ -386,7 +386,9 @@ class OGC3DTile extends THREE.Object3D {
                             return self.calculateDistanceToCamera(self.cameraOnLoad);
                         }, () => self.getSiblings(),
                             self.level,
-                            !!self.json.boundingVolume.region || self.yUp,
+                            !!self.json.boundingVolume.region?false : self.yUp === undefined || self.yUp,
+                            !!self.json.boundingVolume.region,
+                            
                             self.geometricError
                         );
                     }catch(e){

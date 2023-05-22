@@ -212,21 +212,27 @@ class InstancedTile extends THREE.Object3D {
     }
 
     assembleURL(root, relative) {
+        // Append a slash to the root URL if it doesn't already have one
+        if (!root.endsWith('/')) {
+            root += '/';
+        }
+
         const rootUrl = new URL(root);
         let rootParts = rootUrl.pathname.split('/').filter(p => p !== '');
         let relativeParts = relative.split('/').filter(p => p !== '');
 
-        while (rootParts.length > 0 && relativeParts.length > 0) {
-            const rootToken = rootParts.join('/');
-            const relativeToken = relativeParts.slice(0, rootParts.length).join('/');
-
+        for (let i = 1; i <= rootParts.length; i++) {
+            if (i >= relativeParts.length) break;
+            const rootToken = rootParts.slice(rootParts.length - i, rootParts.length).join('/');
+            const relativeToken = relativeParts.slice(0, i).join('/');
             if (rootToken === relativeToken) {
-                relativeParts = relativeParts.slice(rootParts.length);
+                for (let j = 0; j < i; j++) {
+                    rootParts.pop();
+                }
                 break;
-            } else {
-                rootParts.pop();
             }
         }
+
 
         while (relativeParts.length > 0 && relativeParts[0] === '..') {
             rootParts.pop();
@@ -295,9 +301,7 @@ class InstancedTile extends THREE.Object3D {
                         self.geometricError);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
-
                 }
-
             }
         }
         self.matrixWorldNeedsUpdate = true;
@@ -375,8 +379,9 @@ class InstancedTile extends THREE.Object3D {
         function updateNodeVisibility(metric) {
 
             //doesn't have a mesh content
-            if (!self.hasMeshContent) return;
-
+            if (!self.hasMeshContent) {
+                return;
+            }
             // mesh content not yet loaded
             if (!self.meshContent) {
                 return;
@@ -494,11 +499,24 @@ class InstancedTile extends THREE.Object3D {
         if (!this.inFrustum) return true;
 
         // if json is not done loading
-        if (this.hasUnloadedJSONContent) return false;
-
+        if (this.hasUnloadedJSONContent) {
+            return false;
+        }
         // if this tile has no mesh content or if it's marked as visible false, look at children
-        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility)) {
-            if(this.children.length>0){
+        /* if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility) && this.childrenTiles.length > 0) {
+            var allChildrenReady = true;
+            this.childrenTiles.every(child => {
+                if (!child.isReady()) {
+                    allChildrenReady = false;
+                    return false;
+                }
+                return true;
+            });
+            return allChildrenReady;
+            
+        } */
+        if ((!this.hasMeshContent || !this.meshContent|| !this.materialVisibility)) {
+            if(this.childrenTiles.length>0){
                 var allChildrenReady = true;
                 this.childrenTiles.every(child => {
                     if (!child.isReady()) {
@@ -513,7 +531,6 @@ class InstancedTile extends THREE.Object3D {
             }
             
         }
-
         // if this tile has no mesh content
         if (!this.hasMeshContent) {
             return true;
@@ -529,9 +546,9 @@ class InstancedTile extends THREE.Object3D {
         }
 
         // if all meshes have been displayed once
-        if (!this.meshContent.displayedOnce) {
+        /* if (!this.meshContent.displayedOnce) {
             return false;
-        }
+        } */
         return true;
 
     }

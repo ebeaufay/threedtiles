@@ -53,7 +53,7 @@ export class B3DMDecoder {
 		
 	}
 
-	parseB3DM(arrayBuffer, meshCallback, geometricError, zUpToYUp) {
+	parseB3DM(arrayBuffer, meshCallback, geometricError, sceneZupToYUp, meshZUpToYUp) {
 		const dataView = new DataView(arrayBuffer);
 
 		const magic =
@@ -109,19 +109,21 @@ export class B3DMDecoder {
 					model.scene.applyMatrix4(this.tempMatrix);
 				}
 
-				if (!zUpToYUp) {
+				/* if (!zUpToYUp) {
 					model.scene.applyMatrix4(zUpToYUpMatrix);
-				}
+				} */
 
-				if (zUpToYUp) {
+				if (sceneZupToYUp) {
 					model.scene.applyMatrix4(zUpToYUpMatrix);
-				}
+				} 
 				model.scene.asset = model.asset;
 				model.scene.traverse((o) => {
 
 					if (o.isMesh) {
 						o.geometricError = geometricError
-					
+						if (meshZUpToYUp) {
+							o.applyMatrix4(zUpToYUpMatrix);
+						}
 						if (!!meshCallback) {
 							meshCallback(o);
 						}

@@ -21,8 +21,8 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 0.3);
-//const instancedTileLoader = createInstancedTileLoader(scene);
+const ogc3DTiles = initTileset(scene, 0.03);
+const instancedTileLoader = createInstancedTileLoader(scene);
 //const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
@@ -151,7 +151,7 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -205,6 +205,8 @@ function initTileset(scene, gem) {
 
     const ogc3DTile = new OGC3DTile({
         url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        //url: "http://localhost:8080/tileset.json",
+        
         geometricErrorMultiplier: 0.03,
         loadOutsideView: true,
         tileLoader: tileLoader,
@@ -212,7 +214,7 @@ function initTileset(scene, gem) {
         static: false,
         centerModel: true,
         renderer: renderer,
-        yUp : true,
+        //yUp : false,
         //displayErrors: true,
         //displayCopyright: true
 
@@ -221,9 +223,9 @@ function initTileset(scene, gem) {
         ogc3DTile.update(camera);
     }, 10);
 
-    //ogc3DTile.scale.set(0.001, 0.001, 0.001)
+    ogc3DTile.scale.set(0.001, 0.001, 0.001)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -241,7 +243,7 @@ function createInstancedTileLoader(scene) {
         maxInstances: 1,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
-            mesh.material.wireframe = true;
+            mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
         },
         pointsCallback: points => {
@@ -260,17 +262,17 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
     const tileset = new InstancedOGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 1000,
-        loadOutsideView: false,
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        //url: "http://localhost:8080/tileset.json",
+        geometricErrorMultiplier: 0.03,
+        loadOutsideView: true,
         tileLoader: instancedTileLoader,
         static: false,
         centerModel: true,
-        renderer: renderer
+        renderer: renderer,
+        yUp : true,
     });
-    tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5) // Z-UP to Y-UP
-
+    tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
     tileset.updateMatrix()
     scene.add(tileset);
     instancedTilesets.push(tileset);
@@ -295,7 +297,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 200000);
     camera.position.set(100, 100, 100);
     camera.lookAt(0, 0, 0);
 
@@ -325,7 +327,7 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-    //instancedTileLoader.update();
+    instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();
