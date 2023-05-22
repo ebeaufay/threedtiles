@@ -118,6 +118,21 @@ const ogc3DTile = new OGC3DTile({
 });
 ```
 
+### Google Maps 3D Tiles
+Google maps 3DTiles can be loaded similarly although there is a slight differnce in that the tileset isn't a regular OGC3DTile tileset but "3DTiles NEXT" with a specific extension for glb tiles.
+An extra rotation needs to be applied to straighten the globe.
+On top of that, the API key mechanism requires is passed as a query param to all fetched tiles.
+note that the "queryParams" parameter below can be used to add any query parameters for tiles.
+
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://tile.googleapis.com/v1/3dtiles/root.json",
+    queryParams: { key: "Insert your own google maps API key here" },
+    yUp: false, // this value is normally true by default
+    renderer: renderer,
+    loadOutsideView: true
+});
+```
 ### Callback
 
 #### onLoadCallback
