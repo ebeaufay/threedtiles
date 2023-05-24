@@ -7,7 +7,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 
-let concurentDownloads = 0;
 
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
@@ -41,21 +40,21 @@ class InstancedTileLoader {
             this.pointsCallback = options.pointsCallback;
             if (options.maxCachedItems) this.maxCachedItems = options.maxCachedItems;
             if (options.maxInstances) this.maxInstances = options.maxInstances;
-            
+
         }
         this.gltfLoader = new GLTFLoader();
         const dracoLoader = new DRACOLoader();
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
         this.gltfLoader.setDRACOLoader(dracoLoader);
 
-        if(!!options && !!options.renderer){
+        if (!!options && !!options.renderer) {
             const ktx2Loader = new KTX2Loader();
             ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
             this.gltfLoader.setKTX2Loader(ktx2Loader);
 
-            this.b3dmDecoder=new B3DMDecoder(options.renderer);
-        }else{
-            this.b3dmDecoder=new B3DMDecoder(null);
+            this.b3dmDecoder = new B3DMDecoder(options.renderer);
+        } else {
+            this.b3dmDecoder = new B3DMDecoder(null);
         }
 
         this.cache = new LinkedHashMap();
@@ -68,7 +67,7 @@ class InstancedTileLoader {
         this.init();
     }
 
-    
+
     update() {
         const self = this;
 
@@ -99,30 +98,27 @@ class InstancedTileLoader {
             self.getNextDownloads();
             if (self.nextDownloads.length == 0) return;
         }
-        while (self.nextDownloads.length > 0 && concurentDownloads < 500) {
+        while (self.nextDownloads.length > 0) {
             const nextDownload = self.nextDownloads.shift();
-            if (!!nextDownload && nextDownload.shouldDoDownload()) {
+            if (!!nextDownload){//} && nextDownload.shouldDoDownload()) {
                 //nextDownload.doDownload();
-                concurentDownloads++;
                 if (nextDownload.path.includes(".b3dm")) {
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
-                            return fetch(nextDownload.path, { signal: nextDownload.abortController.signal });
+                            return fetch(nextDownload.path);
                         }
                     } else {
                         fetchFunction = () => {
                             return fetch(self.proxy,
                                 {
                                     method: 'POST',
-                                    body: nextDownload.path,
-                                    signal: nextDownload.abortController.signal
+                                    body: nextDownload.path
                                 }
                             );
                         }
                     }
                     fetchFunction().then(result => {
-                        concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + nextDownload.path)
                             throw new Error(`couldn't load "${nextDownload.path}". Request failed with status ${result.status} : ${result.statusText}`);
@@ -131,9 +127,10 @@ class InstancedTileLoader {
 
                     })
                         .then(resultArrayBuffer => {
-                            return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.zUpToYUp);
+                            return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
                         })
                         .then(mesh => {
+                            mesh.frustumCulled = false;
                             nextDownload.tile.setObject(mesh);
                             self.ready.unshift(nextDownload);
 
@@ -143,31 +140,33 @@ class InstancedTileLoader {
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
-                            return fetch(nextDownload.path, { signal: nextDownload.abortController.signal });
+                            return fetch(nextDownload.path);
                         }
                     } else {
                         fetchFunction = () => {
                             return fetch(self.proxy,
                                 {
                                     method: 'POST',
-                                    body: nextDownload.path,
-                                    signal: nextDownload.abortController.signal
+                                    body: nextDownload.path
                                 }
                             );
                         }
                     }
-                    fetchFunction().then(result=>{
+                    fetchFunction().then(result => {
                         return result.arrayBuffer();
-                    }).then(arrayBuffer=>{
+                    }).then(arrayBuffer => {
                         this.gltfLoader.parse(arrayBuffer, gltf => {
                             gltf.scene.asset = gltf.asset;
-                            if (nextDownload.zUpToYUp) {
+
+                            if (nextDownload.sceneZupToYup) {
                                 gltf.scene.applyMatrix4(zUpToYUpMatrix);
                             }
                             gltf.scene.traverse((o) => {
                                 o.geometricError = nextDownload.geometricError;
                                 if (o.isMesh) {
-                                    
+                                    if (nextDownload.meshZupToYup) {
+                                        o.applyMatrix4(zUpToYUpMatrix);
+                                    }
                                     if (!!self.meshCallback) {
                                         self.meshCallback(o);
                                     }
@@ -184,7 +183,7 @@ class InstancedTileLoader {
                                     instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, self.maxInstances);
                                     instancedMesh.baseMatrix = child.matrixWorld;
                                 }
-    
+
                             });
                             self.ready.unshift(nextDownload);
                             if (!instancedMesh) {
@@ -193,35 +192,33 @@ class InstancedTileLoader {
                                     if (c.material) c.material.dispose();
                                 });
                             } else {
+                                instancedMesh.frustumCulled = false;
                                 nextDownload.tile.setObject(instancedMesh);
                             }
                         });
-                    },e=>{
-                        throw new Error("could not load tile : "+nextDownload.path)
+                    }, e => {
+                        throw new Error("could not load tile : " + nextDownload.path)
                     });
 
-                    
+
 
                 } else if (nextDownload.path.includes(".json")) {
-                    concurentDownloads++;
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
-                            return fetch(nextDownload.path, { signal: nextDownload.abortController.signal });
+                            return fetch(nextDownload.path);
                         }
                     } else {
                         fetchFunction = () => {
                             return fetch(self.proxy,
                                 {
                                     method: 'POST',
-                                    body: nextDownload.path,
-                                    signal: nextDownload.abortController.signal
+                                    body: nextDownload.path
                                 }
                             );
                         }
                     }
                     fetchFunction().then(result => {
-                        concurentDownloads--;
                         if (!result.ok) {
                             console.error("could not load tile with path : " + nextDownload.path)
                             throw new Error(`couldn't load "${nextDownload.path}". Request failed with status ${result.status} : ${result.statusText}`);
@@ -247,7 +244,7 @@ class InstancedTileLoader {
         const download = this.nextReady.shift();
         if (!download) return 0;
 
-        if (!!download.tile.addToScene) download.tile.addToScene();
+        //if (!!download.tile.addToScene) download.tile.addToScene();
         return 1;
     }
 
@@ -280,7 +277,7 @@ class InstancedTileLoader {
         }
     }
 
-    get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level, zUpToYUp, geometricError) {
+    get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError) {
         const self = this;
         const key = simplifyPath(path);
 
@@ -300,7 +297,7 @@ class InstancedTileLoader {
                 tile.addInstance(instancedOGC3DTile);
 
                 self.cache.put(key, tile);
-
+                self.checkSize();
                 const realAbortController = new AbortController();
                 abortController.signal.addEventListener("abort", () => {
                     if (tile.getCount() == 0) {
@@ -316,7 +313,8 @@ class InstancedTileLoader {
                     getSiblings: getSiblings,
                     level: level,
                     uuid: uuid,
-                    zUpToYUp: zUpToYUp,
+                    sceneZupToYup: sceneZupToYup,
+                    meshZupToYup: meshZupToYup,
                     geometricError: geometricError,
                     shouldDoDownload: () => {
                         return true;
@@ -326,7 +324,7 @@ class InstancedTileLoader {
                 const tile = new JsonTile();
                 tile.addInstance(instancedOGC3DTile);
                 self.cache.put(key, tile);
-
+                self.checkSize();
                 const realAbortController = new AbortController();
                 abortController.signal.addEventListener("abort", () => {
                     if (tile.getCount() == 0) {
@@ -394,30 +392,11 @@ class InstancedTileLoader {
         while (self.cache.size() > self.maxCachedItems && i < self.cache.size()) {
             i++;
             const entry = self.cache.head();
-            if (entry.value.getCount() > 0) {
-                self.cache.remove(entry.key);
+            self.cache.remove(entry.key);
+            if (!entry.value.dispose()) {
                 self.cache.put(entry.key, entry.value);
-            } else {
-                self.cache.remove(entry.key);
-                if (entry.value.instancedMesh) {
-                    entry.value.instancedMesh.traverse((o) => {
-                        if (o.material) {
-                            // dispose materials
-                            if (o.material.length) {
-                                for (let i = 0; i < o.material.length; ++i) {
-                                    o.material[i].dispose();
-                                }
-                            }
-                            else {
-                                o.material.dispose()
-                            }
-                        }
-                        if (o.geometry) {
-                            // dispose geometry
-                            o.geometry.dispose();
-                        }
-                    });
-                }
+            }else{
+                //console.log("disposed and removed")
             }
 
         }

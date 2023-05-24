@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { InstancedMesh } from 'three';
 
-const t = new THREE.Matrix4();
 class MeshTile{
     constructor(scene){
         const self = this;
         self.scene = scene;
         self.instancedTiles = [];
         self.instancedMesh;
+        
 
         self.reuseableMatrix = new THREE.Matrix4();
     }
@@ -38,6 +38,11 @@ class MeshTile{
     setObject(instancedMesh){
         const self = this;
         self.instancedMesh = instancedMesh;
+        if(!self.scene.children.includes(instancedMesh)){
+            this.addToScene();
+        }else{
+            console.log("liygulygh")
+        }
         
         for(let i = 0; i<self.instancedTiles.length; i++){
             self.instancedTiles[i].loadMesh(self.instancedMesh)
@@ -55,6 +60,7 @@ class MeshTile{
         
         if(!!self.instancedMesh){
             
+            let previous = self.instancedMesh.count;
             self.instancedMesh.count = 0;
             
             for(let i = 0; i<self.instancedTiles.length; i++){
@@ -65,17 +71,49 @@ class MeshTile{
                     self.reuseableMatrix.multiply(self.instancedTiles[i].master.matrixWorld);
                     self.reuseableMatrix.multiply(self.instancedMesh.baseMatrix);
                     self.instancedMesh.setMatrixAt(self.instancedMesh.count-1, self.reuseableMatrix );
-                    self.instancedMesh.getMatrixAt(0, t);
-                    console.log()
+                    //self.instancedMesh.getMatrixAt(0, t);
+                    //console.log(self.instancedMesh.baseMatrix)
                 }
                 
             }
+            
             self.instancedMesh.instanceMatrix.needsUpdate = true;
         }
     }
 
     getCount(){
         return this.instancedTiles.length;
+    }
+
+    dispose(){
+        const self = this;
+        if(self.instancedTiles.length>0){
+            return false;
+        }
+        else{
+            if(!!self.instancedMesh){
+                //console.log(self.instancedMesh.parent)
+                self.scene.remove(self.instancedMesh);
+                self.instancedMesh.traverse((o) => {
+                    if(o.dispose) o.dispose();
+                    if (o.material) {
+                        // dispose materials
+                        if (o.material.length) {
+                            for (let i = 0; i < o.material.length; ++i) {
+                                o.material[i].dispose();
+                            }
+                        }
+                        else {
+                            o.material.dispose()
+                        }
+                    }
+                    if (o.geometry) o.geometry.dispose();
+                });
+                self.instancedMesh.dispose();
+                return true;
+            }
+            return false;
+        }
     }
 
 }export { MeshTile };

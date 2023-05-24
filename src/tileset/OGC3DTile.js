@@ -387,9 +387,7 @@ class OGC3DTile extends THREE.Object3D {
                         }, () => self.getSiblings(),
                             self.level,
                             !!self.json.boundingVolume.region?false : self.yUp === undefined || self.yUp,
-                            !!self.json.boundingVolume.region,
-                            
-                            self.geometricError
+                            !!self.json.boundingVolume.region
                         );
                     }catch(e){
                         if(self.displayErrors) showError(e)

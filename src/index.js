@@ -21,9 +21,9 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 0.03);
+//const ogc3DTiles = initTileset(scene, 0.03);
 const instancedTileLoader = createInstancedTileLoader(scene);
-//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
 /*const gltfLoader = new GLTFLoader();
@@ -223,7 +223,7 @@ function initTileset(scene, gem) {
         ogc3DTile.update(camera);
     }, 10);
 
-    ogc3DTile.scale.set(0.001, 0.001, 0.001)
+    //ogc3DTile.scale.set(0.001, 0.001, 0.001)
 
     //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
@@ -239,8 +239,8 @@ function initTileset(scene, gem) {
 function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, {
         renderer: renderer,
-        maxCachedItems: 100,
-        maxInstances: 1,
+        maxCachedItems: 0,
+        maxInstances: 256,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
@@ -254,28 +254,28 @@ function createInstancedTileLoader(scene) {
 }
 function initInstancedTilesets(instancedTileLoader) {
 
-    /*new GLTFLoader().load('http://localhost:8080/test.glb', function ( gltf ) {
-        scene.add(gltf.scene);
-    } );*/
-
     const instancedTilesets = [];
 
 
-    const tileset = new InstancedOGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
-        geometricErrorMultiplier: 0.03,
-        loadOutsideView: true,
-        tileLoader: instancedTileLoader,
-        static: false,
-        centerModel: true,
-        renderer: renderer,
-        yUp : true,
-    });
-    tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
-    tileset.updateMatrix()
-    scene.add(tileset);
-    instancedTilesets.push(tileset);
+    for (let x = 0; x < 16; x++) {
+        for (let y = 0; y < 16; y++) {
+            const tileset = new InstancedOGC3DTile({
+                url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+                geometricErrorMultiplier: 0.03,
+                loadOutsideView: true,
+                tileLoader: instancedTileLoader,
+                static: false,
+                renderer: renderer,
+            });
+            tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0);
+            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 3600*x);
+            tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 3300*y);
+            tileset.updateMatrix();
+            instancedTilesets.push(tileset);
+            scene.add(tileset);
+        }
+    }
+    
 
     scene.updateMatrixWorld(true)
     function now() {
@@ -289,7 +289,7 @@ function initInstancedTilesets(instancedTileLoader) {
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
             instancedTilesets[updateIndex].update(camera, frustum);
             updateIndex = (updateIndex + 1) % instancedTilesets.length;
-        } while (updateIndex < instancedTilesets.length && now() - startTime < 4);
+        } while (updateIndex < instancedTilesets.length && now() - startTime < 5);
     }, 40);
 
     //initLODMultiplierSlider(instancedTilesets);

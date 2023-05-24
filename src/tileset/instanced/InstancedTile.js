@@ -179,7 +179,7 @@ class InstancedTile extends THREE.Object3D {
                 this.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.y, tempVec1.z), tempVec1.distanceTo(tempVec2));
             } else if (!!this.json.boundingVolume.sphere) {
                 const sphere = this.json.boundingVolume.sphere;
-                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[2], -sphere[1]), sphere[3]);
+                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
             } else {
                 this.boundingVolume = properties.parentBoundingVolume;
             }
@@ -196,7 +196,6 @@ class InstancedTile extends THREE.Object3D {
                 this.hasMeshContent = true;
             }
             this.load();
-            //scheduleLoadTile(this);
         }
     }
 
@@ -293,11 +292,13 @@ class InstancedTile extends THREE.Object3D {
                 if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
 
+                    
                     self.tileLoader.get(self.abortController, url, self.uuid, self, !self.cameraOnLoad ? () => 0 : () => {
                         return self.calculateDistanceToCamera(self.cameraOnLoad);
                     }, () => self.getSiblings(),
                         self.level,
-                        !!self.json.boundingVolume.region || self.yUp,
+                        !!self.json.boundingVolume.region?false : self.yUp === undefined || self.yUp,
+                        !!self.json.boundingVolume.region,
                         self.geometricError);
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
@@ -336,6 +337,7 @@ class InstancedTile extends THREE.Object3D {
 
         const self = this;
         self.childrenTiles.forEach(tile => tile.dispose());
+        
         self.deleted = true;
         if (self.abortController) self.abortController.abort();
         this.parent = null;
@@ -343,10 +345,12 @@ class InstancedTile extends THREE.Object3D {
         this.dispatchEvent({ type: 'removed' });
     }
     disposeChildren() {
+        
         var self = this;
-
+        
         self.childrenTiles.forEach(tile => tile.dispose());
         self.childrenTiles = [];
+
     }
 
 
@@ -363,7 +367,7 @@ class InstancedTile extends THREE.Object3D {
         updateTree(self.metric);
         trimTree(self.metric, visibilityBeforeUpdate);
 
-
+        
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
             if (metric < 0 && self.hasMeshContent) return;
@@ -423,7 +427,7 @@ class InstancedTile extends THREE.Object3D {
             }
         }
 
-        function trimTree(metric, visibilityBeforeUpdate) {
+         function trimTree(metric, visibilityBeforeUpdate) {
             if (!self.hasMeshContent) return;
             if (!self.inFrustum) { // outside frustum
                 self.disposeChildren();
@@ -436,7 +440,32 @@ class InstancedTile extends THREE.Object3D {
                 return;
             }
 
-        }
+        } 
+         /* function trimTree(metric, visibilityBeforeUpdate) {
+            if (!self.hasMeshContent) return;
+            if (!self.inFrustum) { // outside frustum
+                self.disposeChildren();
+                updateNodeVisibility(metric);
+                return;
+            }
+            if (self.occlusionCullingService &&
+                !visibilityBeforeUpdate &&
+                self.hasMeshContent &&
+                self.meshContent &&
+                //self.meshDisplayed &&
+                self.areAllChildrenLoadedAndHidden()) {
+
+                self.disposeChildren();
+                updateNodeVisibility(metric);
+                return;
+            }
+            if (metric >= self.geometricErrorMultiplier * self.geometricError) {
+                self.disposeChildren();
+                updateNodeVisibility(metric);
+                return;
+            }
+
+        }  */
 
         function loadJsonChildren() {
             self.jsonChildren.forEach(childJSON => {
@@ -502,19 +531,6 @@ class InstancedTile extends THREE.Object3D {
         if (this.hasUnloadedJSONContent) {
             return false;
         }
-        // if this tile has no mesh content or if it's marked as visible false, look at children
-        /* if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility) && this.childrenTiles.length > 0) {
-            var allChildrenReady = true;
-            this.childrenTiles.every(child => {
-                if (!child.isReady()) {
-                    allChildrenReady = false;
-                    return false;
-                }
-                return true;
-            });
-            return allChildrenReady;
-            
-        } */
         if ((!this.hasMeshContent || !this.meshContent|| !this.materialVisibility)) {
             if(this.childrenTiles.length>0){
                 var allChildrenReady = true;
@@ -548,7 +564,7 @@ class InstancedTile extends THREE.Object3D {
         // if all meshes have been displayed once
         /* if (!this.meshContent.displayedOnce) {
             return false;
-        } */
+        }  */
         return true;
 
     }
@@ -557,14 +573,14 @@ class InstancedTile extends THREE.Object3D {
     changeContentVisibility(visibility) {
         const self = this;
         self.materialVisibility = visibility;
-
+        
         /* self.meshContent.displayedOnce = false;
         if(visibility){
             self.meshContent.onAfterRender = () => {
                 delete self.meshContent.onAfterRender;
                 self.meshContent.displayedOnce = true;
             };
-        } */
+        }  */
 
     }
     calculateUpdateMetric(camera, frustum) {
@@ -585,31 +601,24 @@ class InstancedTile extends THREE.Object3D {
         }
 
         /////// return metric based on geometric error and distance
-        if (this.boundingVolume instanceof OBB || this.boundingVolume instanceof THREE.Sphere) {
-            // box
-            const distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
-            if (distance == 0) {
-                return 0;
-            }
-            const scale = this.master.matrixWorld.getMaxScaleOnAxis();
 
-            this.master.renderer.getDrawingBufferSize(rendererSize);
-            let s = rendererSize.y;
-            let fov = camera.fov;
-            if (camera.aspect < 1) {
-                fov *= camera.aspect;
-                s = rendererSize.x;
-            }
-
-            let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
-
-            return (window.devicePixelRatio * 16 * lambda) / (s * scale);
-        } else if (this.boundingVolume instanceof THREE.Box3) {
-            // Region
-            // Region not supported
-            //throw Error("Region bounding volume not supported");
-            return -1;
+        const distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
+        if (distance == 0) {
+            return 0;
         }
+        const scale = this.matrixWorld.getMaxScaleOnAxis();
+        this.master.renderer.getDrawingBufferSize(rendererSize);
+        let s = rendererSize.y;
+        let fov = camera.fov;
+        if (camera.aspect < 1) {
+            fov *= camera.aspect;
+            s = rendererSize.x;
+        }
+
+        let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
+
+        return (window.devicePixelRatio * 16 * lambda) / (s * scale);
+        
     }
 
     getSiblings() {

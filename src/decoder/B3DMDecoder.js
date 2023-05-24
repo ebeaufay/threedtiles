@@ -53,7 +53,7 @@ export class B3DMDecoder {
 		
 	}
 
-	parseB3DM(arrayBuffer, meshCallback, geometricError, sceneZupToYUp, meshZUpToYUp) {
+	parseB3DM(arrayBuffer, meshCallback, sceneZupToYUp, meshZUpToYUp) {
 		const dataView = new DataView(arrayBuffer);
 
 		const magic =
@@ -109,10 +109,6 @@ export class B3DMDecoder {
 					model.scene.applyMatrix4(this.tempMatrix);
 				}
 
-				/* if (!zUpToYUp) {
-					model.scene.applyMatrix4(zUpToYUpMatrix);
-				} */
-
 				if (sceneZupToYUp) {
 					model.scene.applyMatrix4(zUpToYUpMatrix);
 				} 
@@ -120,7 +116,6 @@ export class B3DMDecoder {
 				model.scene.traverse((o) => {
 
 					if (o.isMesh) {
-						o.geometricError = geometricError
 						if (meshZUpToYUp) {
 							o.applyMatrix4(zUpToYUpMatrix);
 						}
@@ -137,9 +132,9 @@ export class B3DMDecoder {
 		});
 	}
 
-	parseB3DMInstanced(arrayBuffer, meshCallback, maxCount, zUpToYUp) { // expects GLTF with one node level
+	parseB3DMInstanced(arrayBuffer, meshCallback, maxCount, sceneZupToYUp, meshZupToYup) { // expects GLTF with one node level
 
-		return this.parseB3DM(arrayBuffer, meshCallback, zUpToYUp).then(mesh => {
+		return this.parseB3DM(arrayBuffer, meshCallback, sceneZupToYUp, meshZupToYup).then(mesh => {
 			// todo several meshes in a single gltf
 			let instancedMesh;
 			mesh.updateWorldMatrix(false, true)

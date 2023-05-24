@@ -37,5 +37,11 @@ class JsonTile{
             }
         }
     }
+    dispose(){
+        if(!!this.json && this.instancedTiles.length == 0){
+            return true;
+        }
+        return false;
+    }
 
 }export { JsonTile };
