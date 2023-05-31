@@ -367,7 +367,6 @@ class InstancedTile extends THREE.Object3D {
         updateTree(self.metric);
         trimTree(self.metric, visibilityBeforeUpdate);
 
-        
         function updateTree(metric) {
             // If this tile does not have mesh content but it has children
             if (metric < 0 && self.hasMeshContent) return;

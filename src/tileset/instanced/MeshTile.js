@@ -40,8 +40,6 @@ class MeshTile{
         self.instancedMesh = instancedMesh;
         if(!self.scene.children.includes(instancedMesh)){
             this.addToScene();
-        }else{
-            console.log("liygulygh")
         }
         
         for(let i = 0; i<self.instancedTiles.length; i++){

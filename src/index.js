@@ -12,10 +12,22 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { Sky } from "three/examples/jsm/objects/Sky";
+import { ShadowMapViewer } from 'three/addons/utils/ShadowMapViewer.js';
 
+let lightShadowMapViewer;
+const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
+let cameraToLight = new THREE.Vector3(-1000, 1000, -1000);
+let lightVector = new THREE.Vector3(1000, -1000, 1000);
+let lightTarget = new THREE.Object3D();
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
+
+/* const m = new THREE.Mesh(new THREE.TorusGeometry(), new THREE.MeshPhongMaterial());
+m.castShadow = true;
+m.receiveShadow = true;
+m.scale.set(50,50,50)
+scene.add(m); */
 
 const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
@@ -103,12 +115,12 @@ function initSky() {
 }
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.15, 0.2, 0);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 0.2, 0);
 
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
-    composer.addPass(bloomPass);
+    //composer.addPass(bloomPass);
     return composer;
 }
 function initScene() {
@@ -116,12 +128,23 @@ function initScene() {
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
     scene.background = new THREE.Color(0xE5E3E4);
-    //const dirLight = new THREE.DirectionalLight(0xFFFFFF, 1.0);
-    //dirLight.position.set(100,100,100);
-    //dirLight.lookAt(new THREE.Vector3(0,0,0));
+
+    
+
+
+    //scene.add(lightTarget)
+    //const helper = new THREE.DirectionalLightHelper(dirLight, 50);
+    //scene.add(helper);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    //scene.add(dirLight)
+    scene.add(dirLight)
+
+    /* lightShadowMapViewer = new ShadowMapViewer(dirLight);
+    lightShadowMapViewer.position.x = 10;
+    lightShadowMapViewer.position.y = 110;
+    lightShadowMapViewer.size.width = 400;
+    lightShadowMapViewer.size.height = 400;
+    lightShadowMapViewer.update(); */
 
     /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
     const sphere = new THREE.SphereGeometry(2, 16, 8);
@@ -156,7 +179,10 @@ function initRenderer(camera, dom) {
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     //renderer.toneMapping = THREE.ReinhardToneMapping;
-    //renderer.toneMappingExposure = Math.pow(0.8, 4.0);
+    //renderer.toneMappingExposure = Math.pow(0.8, 2.0);
+
+    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.autoClear = false;
 
     dom.appendChild(renderer.domElement);
@@ -191,24 +217,34 @@ function initTileset(scene, gem) {
         maxCachedItems: 1000,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
+            //mesh.material = new THREE.MeshPhongMaterial({color:0xff0000}),
             mesh.material.wireframe = false;
-            mesh.material.side = THREE.DoubleSide;
-            //mesh.material.transparent = true
+            mesh.material.side = THREE.FrontSide;
+            mesh.castShadow = true
+            mesh.receiveShadow = true;
+            mesh.geometry.computeVertexNormals();
+            //console.log(mesh.material.type)
+            mesh.material.shadowSide = THREE.BackSide;
+            mesh.material.flatShading = true;
             //mesh.material.needsUpdate = true
             //mesh.material.metalness = 0.0
+
+            let meshURLs = [];
+            let transforms = [];
+            console.log(mesh.matrixWorld)
+
         },
         pointsCallback: points => {
             points.material.size = Math.min(1.0, 0.1 * Math.sqrt(points.geometricError));
             points.material.sizeAttenuation = true;
         }
     });
-
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
-        
-        geometricErrorMultiplier: 0.03,
-        loadOutsideView: true,
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        url: "http://localhost:8080/tileset.json",
+
+        geometricErrorMultiplier: 1,
+        loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
@@ -216,16 +252,19 @@ function initTileset(scene, gem) {
         renderer: renderer,
         //yUp : false,
         //displayErrors: true,
-        //displayCopyright: true
+        //displayCopyright: true,
+
 
     });
     setIntervalAsync(function () {
+
+
         ogc3DTile.update(camera);
     }, 10);
 
     //ogc3DTile.scale.set(0.001, 0.001, 0.001)
 
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -268,14 +307,14 @@ function initInstancedTilesets(instancedTileLoader) {
                 renderer: renderer,
             });
             tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0);
-            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 3600*x);
-            tileset.translateOnAxis(new THREE.Vector3(0, 0, 1), 3300*y);
+            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 3000 * x);
+            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 3000 * y);
             tileset.updateMatrix();
             instancedTilesets.push(tileset);
             scene.add(tileset);
         }
     }
-    
+
 
     scene.updateMatrixWorld(true)
     function now() {
@@ -303,7 +342,7 @@ function initCamera(width, height) {
 
     camera.matrixAutoUpdate = true;
 
-    document.addEventListener('keydown', function(event) {
+    document.addEventListener('keydown', function (event) {
         if (event.key === 'p') {
             console.log(camera.position);
         }
@@ -327,10 +366,17 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
+
+    //dirLight.position.addVectors(controller.target, cameraToLight);
+    //dirLight.lookAt(dirLight.position.x+lightVector.x, dirLight.position.y+lightVector.y, dirLight.position.z+lightVector.z);
+    //console.log(controller);
+    //lightTarget.position.addVectors(dirLight.position, lightVector);
+    //dirLight.needsUpdate = true;
     instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();
+    //lightShadowMapViewer.render(renderer);
 }
 
 function setIntervalAsync(fn, delay) {

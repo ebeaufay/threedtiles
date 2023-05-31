@@ -48,6 +48,7 @@ class OGC3DTile extends THREE.Object3D {
     constructor(properties) {
         super();
         const self = this;
+        
         this.proxy = properties.proxy;
         this.yUp = properties.yUp;
         this.displayErrors = properties.displayErrors;
@@ -108,8 +109,8 @@ class OGC3DTile extends THREE.Object3D {
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
-        this.layers.disable(0);
-        this.octree = new Octree();
+        //this.layers.disable(0);
+        //this.octree = new Octree();
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
             self.setup(properties);
