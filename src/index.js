@@ -33,9 +33,9 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-//const ogc3DTiles = initTileset(scene, 0.03);
-const instancedTileLoader = createInstancedTileLoader(scene);
-const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+const ogc3DTiles = initTileset(scene, 0.03);
+//const instancedTileLoader = createInstancedTileLoader(scene);
+//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
 /*const gltfLoader = new GLTFLoader();
@@ -372,7 +372,7 @@ function animate() {
     //console.log(controller);
     //lightTarget.position.addVectors(dirLight.position, lightVector);
     //dirLight.needsUpdate = true;
-    instancedTileLoader.update();
+    //instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();

@@ -70,6 +70,7 @@ class OGC3DTile extends THREE.Object3D {
                 points.material.sizeAttenuation = true;
             } : properties.pointsCallback;
             tileLoaderOptions.proxy = this.proxy;
+            tileLoaderOptions.renderer = properties.renderer;
             this.tileLoader = new TileLoader(tileLoaderOptions);
         }
         this.displayCopyright = !!properties.displayCopyright;
