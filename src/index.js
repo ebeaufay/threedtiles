@@ -16,6 +16,7 @@ import { ShadowMapViewer } from 'three/addons/utils/ShadowMapViewer.js';
 
 let lightShadowMapViewer;
 const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
+dirLight.position.set(1,1,1);
 let cameraToLight = new THREE.Vector3(-1000, 1000, -1000);
 let lightVector = new THREE.Vector3(1000, -1000, 1000);
 let lightTarget = new THREE.Object3D();
@@ -33,9 +34,9 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTiles = initTileset(scene, 0.03);
-//const instancedTileLoader = createInstancedTileLoader(scene);
-//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+//const ogc3DTilesStatic = initTileset(scene, 0.03);
+const instancedTileLoader = createInstancedTileLoader(scene);
+const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
 /*const gltfLoader = new GLTFLoader();
@@ -115,12 +116,12 @@ function initSky() {
 }
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 0.2, 0);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.0, 0.5, 0.4);
 
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
-    //composer.addPass(bloomPass);
+    composer.addPass(bloomPass);
     return composer;
 }
 function initScene() {
@@ -135,7 +136,7 @@ function initScene() {
     //scene.add(lightTarget)
     //const helper = new THREE.DirectionalLightHelper(dirLight, 50);
     //scene.add(helper);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
 
     scene.add(dirLight)
 
@@ -219,7 +220,7 @@ function initTileset(scene, gem) {
             //// Insert code to be called on every newly decoded mesh e.g.:
             //mesh.material = new THREE.MeshPhongMaterial({color:0xff0000}),
             mesh.material.wireframe = false;
-            mesh.material.side = THREE.FrontSide;
+            mesh.material.side = THREE.DoubleSide;
             mesh.castShadow = true
             mesh.receiveShadow = true;
             mesh.geometry.computeVertexNormals();
@@ -227,11 +228,10 @@ function initTileset(scene, gem) {
             mesh.material.shadowSide = THREE.BackSide;
             mesh.material.flatShading = true;
             //mesh.material.needsUpdate = true
-            //mesh.material.metalness = 0.0
+            mesh.material.metalness = 0.0
 
             let meshURLs = [];
             let transforms = [];
-            console.log(mesh.matrixWorld)
 
         },
         pointsCallback: points => {
@@ -241,9 +241,10 @@ function initTileset(scene, gem) {
     });
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        url: "http://localhost:8082/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/2x2/1/tileset.json",
 
-        geometricErrorMultiplier: 1,
+        geometricErrorMultiplier: 1.0,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -264,8 +265,8 @@ function initTileset(scene, gem) {
 
     //ogc3DTile.scale.set(0.001, 0.001, 0.001)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0)
-    //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 1)
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
+    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP */
@@ -279,11 +280,19 @@ function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, {
         renderer: renderer,
         maxCachedItems: 0,
-        maxInstances: 256,
+        maxInstances: 1024,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
+            //mesh.geometry.computeVertexNormals();
+            //console.log(mesh.material.type)
+            //mesh.material.shadowSide = THREE.BackSide;
+            //mesh.material.flatShading = true;
+            //mesh.material.needsUpdate = true
+            mesh.material.metalness = 1.0
+            mesh.material.emissiveIntensity = 1.0
+            mesh.material.roughness = 0.1
         },
         pointsCallback: points => {
             points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
@@ -296,19 +305,20 @@ function initInstancedTilesets(instancedTileLoader) {
     const instancedTilesets = [];
 
 
-    for (let x = 0; x < 16; x++) {
-        for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 32; x++) {
+        for (let y = 0; y < 32; y++) {
             const tileset = new InstancedOGC3DTile({
-                url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-                geometricErrorMultiplier: 0.03,
+                //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+                url: "http://localhost:8082/tileset.json",
+                geometricErrorMultiplier: 1,
                 loadOutsideView: true,
                 tileLoader: instancedTileLoader,
                 static: false,
                 renderer: renderer,
             });
-            tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -1.0);
-            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 3000 * x);
-            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 3000 * y);
+            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50000 * x);
+            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 50000 * y);
+            tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
             tileset.updateMatrix();
             instancedTilesets.push(tileset);
             scene.add(tileset);
@@ -372,7 +382,7 @@ function animate() {
     //console.log(controller);
     //lightTarget.position.addVectors(dirLight.position, lightVector);
     //dirLight.needsUpdate = true;
-    //instancedTileLoader.update();
+    instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();

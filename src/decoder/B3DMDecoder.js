@@ -3,6 +3,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
 import * as THREE from 'three';
 import { FeatureTable, BatchTable } from './FeatureTable';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(
@@ -137,15 +138,64 @@ export class B3DMDecoder {
 		return this.parseB3DM(arrayBuffer, meshCallback, sceneZupToYUp, meshZupToYup).then(mesh => {
 			// todo several meshes in a single gltf
 			let instancedMesh;
+			let geometries = [];
+			let materials = [];
+			let matrices = [];
 			mesh.updateWorldMatrix(false, true)
 			mesh.traverse(child => {
 				if (child.isMesh) {
-					instancedMesh = new THREE.InstancedMesh(child.geometry, child.material, maxCount);
-					instancedMesh.baseMatrix = child.matrixWorld;
+					matrices.push(child.matrixWorld);
+					child.geometry.applyMatrix4(child.matrixWorld);
+					geometries.push(child.geometry);
+					materials.push(child.material);
+					
 				}
 			});
+			let mergedGeometry = normalizeAndMergeGeometries(geometries);
+			instancedMesh = new THREE.InstancedMesh(mergedGeometry, materials, maxCount);
+			instancedMesh.baseMatrix = new THREE.Matrix4().identity();
 			return instancedMesh;
 		});
 
 	}
 }
+
+function normalizeAndMergeGeometries(geometries) {
+	// Identify all unique attributes across all geometries.
+	let allAttributes = new Set();
+	geometries.forEach(geometry => {
+	  for (let attribute in geometry.attributes) {
+		allAttributes.add(attribute);
+	  }
+	});
+  
+	// Ensure every geometry has every attribute, adding default filled ones if necessary.
+	geometries.forEach(geometry => {
+	  allAttributes.forEach(attribute => {
+		if (!geometry.attributes[attribute]) {
+		  const attributeSize = getAttributeSize(attribute);
+		  const buffer = new Float32Array(attributeSize * geometry.getAttribute('position').count).fill(0);
+		  geometry.setAttribute(attribute, new THREE.BufferAttribute(buffer, attributeSize));
+		}
+	  });
+	});
+  
+	// Now merge the geometries.
+	let mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(geometries, true);
+	return mergedGeometry;
+  }
+
+  function getAttributeSize(attribute) {
+	switch (attribute) {
+	  case 'position':
+	  case 'normal':
+	  case 'color':
+		return 3;
+	  case 'uv':
+	  case 'uv2':
+		return 2;
+	  // Add other attribute cases as needed.
+	  default:
+		throw new Error(`Unknown attribute ${attribute}`);
+	}
+  }
