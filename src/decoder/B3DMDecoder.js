@@ -1,9 +1,9 @@
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 import * as THREE from 'three';
 import { FeatureTable, BatchTable } from './FeatureTable';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(

@@ -3,9 +3,9 @@ import { B3DMDecoder } from "../../decoder/B3DMDecoder";
 import * as THREE from 'three';
 import { MeshTile } from './MeshTile';
 import { JsonTile } from './JsonTile';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 
 
 const zUpToYUpMatrix = new THREE.Matrix4();
