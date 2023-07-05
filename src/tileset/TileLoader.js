@@ -273,7 +273,8 @@ class TileLoader {
                             throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                         }
                         return result.arrayBuffer();
-                    }).then(arrayBuffer => {
+                    }).then(async arrayBuffer => {
+                        await checkLoaderInitialized(this.gltfLoader);
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
                             gltf.scene.asset = gltf.asset;
                             if (sceneZupToYup) {
@@ -426,6 +427,17 @@ function setIntervalAsync(fn, delay) {
 
     return { clearInterval: () => clearTimeout(timeout) };
 }
+
+async function checkLoaderInitialized(loader) {
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (loader.dracoLoader && loader.ktx2Loader) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 10); // check every 100ms
+    });
+  };
 
 function simplifyPath(main_path) {
 

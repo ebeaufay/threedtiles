@@ -136,7 +136,7 @@ function initScene() {
     //scene.add(lightTarget)
     //const helper = new THREE.DirectionalLightHelper(dirLight, 50);
     //scene.add(helper);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.5));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
     scene.add(dirLight)
 
@@ -226,7 +226,7 @@ function initTileset(scene, gem) {
             mesh.geometry.computeVertexNormals();
             //console.log(mesh.material.type)
             mesh.material.shadowSide = THREE.BackSide;
-            mesh.material.flatShading = true;
+            mesh.material.flatShading = false;
             //mesh.material.needsUpdate = true
             mesh.material.metalness = 0.0
 
@@ -244,7 +244,7 @@ function initTileset(scene, gem) {
         url: "http://localhost:8082/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/2x2/1/tileset.json",
 
-        geometricErrorMultiplier: 1.0,
+        geometricErrorMultiplier: 2.0,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -280,19 +280,29 @@ function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, {
         renderer: renderer,
         maxCachedItems: 0,
-        maxInstances: 1024,
+        maxInstances: 1,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-            //mesh.geometry.computeVertexNormals();
+            mesh.geometry.computeVertexNormals();
             //console.log(mesh.material.type)
             //mesh.material.shadowSide = THREE.BackSide;
             //mesh.material.flatShading = true;
             //mesh.material.needsUpdate = true
-            mesh.material.metalness = 1.0
-            mesh.material.emissiveIntensity = 1.0
-            mesh.material.roughness = 0.1
+            //mesh.material.map = mesh.material.metalnessMap
+            mesh.material.metalness = 0.5
+            //mesh.material.metalnessMap = undefined
+            //mesh.material.emissiveIntensity = 0
+            //mesh.material.emissive = new THREE.Color( 0xffffff );
+            //mesh.material.map = undefined
+            //mesh.material.emissiveMap = undefined
+            //mesh.material.aoMap = undefined
+            //mesh.material.aoMapIntensity = 0
+            //mesh.material.normalMap = undefined
+            mesh.material.roughness = 0.5
+            //mesh.material.roughnessMap = undefined
+
         },
         pointsCallback: points => {
             points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
@@ -305,19 +315,19 @@ function initInstancedTilesets(instancedTileLoader) {
     const instancedTilesets = [];
 
 
-    for (let x = 0; x < 32; x++) {
-        for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 1; x++) {
+        for (let y = 0; y < 1; y++) {
             const tileset = new InstancedOGC3DTile({
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-                url: "http://localhost:8082/tileset.json",
-                geometricErrorMultiplier: 1,
+                url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
+                geometricErrorMultiplier: 2,
                 loadOutsideView: true,
                 tileLoader: instancedTileLoader,
                 static: false,
                 renderer: renderer,
             });
-            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50000 * x);
-            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 50000 * y);
+            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 100000 * x);
+            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 100000 * y);
             tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
             tileset.updateMatrix();
             instancedTilesets.push(tileset);
@@ -338,7 +348,7 @@ function initInstancedTilesets(instancedTileLoader) {
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
             instancedTilesets[updateIndex].update(camera, frustum);
             updateIndex = (updateIndex + 1) % instancedTilesets.length;
-        } while (updateIndex < instancedTilesets.length && now() - startTime < 5);
+        } while (updateIndex < instancedTilesets.length && now() - startTime < 10);
     }, 40);
 
     //initLODMultiplierSlider(instancedTilesets);

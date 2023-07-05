@@ -85,8 +85,8 @@ export class B3DMDecoder {
 		const gltfBuffer = glbBytes.slice().buffer;
 
 
-		return new Promise((resolve, reject) => {
-
+		return new Promise(async (resolve, reject) => {
+			await this.checkLoaderInitialized();
 			this.gltfLoader.parse(gltfBuffer, null, model => {
 
 				////TODO
@@ -133,6 +133,16 @@ export class B3DMDecoder {
 		});
 	}
 
+	checkLoaderInitialized = async () => {
+		return new Promise((resolve) => {
+		  const interval = setInterval(() => {
+			if (this.gltfLoader.dracoLoader && this.gltfLoader.ktx2Loader) {
+			  clearInterval(interval);
+			  resolve();
+			}
+		  }, 10); // check every 100ms
+		});
+	  };
 	parseB3DMInstanced(arrayBuffer, meshCallback, maxCount, sceneZupToYUp, meshZupToYup) { // expects GLTF with one node level
 
 		return this.parseB3DM(arrayBuffer, meshCallback, sceneZupToYUp, meshZupToYup).then(mesh => {

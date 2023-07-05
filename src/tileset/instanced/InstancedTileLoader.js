@@ -154,7 +154,8 @@ class InstancedTileLoader {
                     }
                     fetchFunction().then(result => {
                         return result.arrayBuffer();
-                    }).then(arrayBuffer => {
+                    }).then(async arrayBuffer => {
+                        await checkLoaderInitialized(this.gltfLoader);
                         this.gltfLoader.parse(arrayBuffer, gltf => {
                             gltf.scene.asset = gltf.asset;
 
@@ -402,6 +403,17 @@ class InstancedTileLoader {
         }
     }
 }
+
+async function checkLoaderInitialized(loader) {
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (loader.dracoLoader && loader.ktx2Loader) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 10); // check every 100ms
+    });
+  };
 function setIntervalAsync(fn, delay) {
     let timeout;
 
