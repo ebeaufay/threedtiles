@@ -605,7 +605,7 @@ class InstancedTile extends THREE.Object3D {
         if (distance == 0) {
             return 0;
         }
-        const scale = this.matrixWorld.getMaxScaleOnAxis();
+        const scale = this.master.matrixWorld.getMaxScaleOnAxis();
         this.master.renderer.getDrawingBufferSize(rendererSize);
         let s = rendererSize.y;
         let fov = camera.fov;

@@ -330,6 +330,7 @@ function initInstancedTilesets(instancedTileLoader) {
             tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 100000 * y);
             tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
             tileset.updateMatrix();
+            tileset.scale.set(0.1,0.1,0.1)
             instancedTilesets.push(tileset);
             scene.add(tileset);
         }
@@ -357,7 +358,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 200000);
-    camera.position.set(100, 100, 100);
+    camera.position.set(10, 10, 10);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
