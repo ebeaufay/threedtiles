@@ -318,8 +318,8 @@ function initInstancedTilesets(instancedTileLoader) {
     for (let x = 0; x < 1; x++) {
         for (let y = 0; y < 1; y++) {
             const tileset = new InstancedOGC3DTile({
-                //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-                url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
+                url: "http://localhost:8083/1x1/a2/tileset.json",
+                //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 2,
                 loadOutsideView: true,
                 tileLoader: instancedTileLoader,

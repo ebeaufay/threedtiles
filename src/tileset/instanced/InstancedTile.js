@@ -314,7 +314,6 @@ class InstancedTile extends THREE.Object3D {
         if (self.deleted) {
             return;
         }
-
         //self.updateWorldMatrix(false, true);
         self.meshContent = mesh;
 

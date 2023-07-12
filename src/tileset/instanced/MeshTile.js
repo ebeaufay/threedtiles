@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { InstancedMesh } from 'three';
 
 class MeshTile{
     constructor(scene){
@@ -74,6 +73,7 @@ class MeshTile{
                 }
                 
             }
+            self.instancedMesh.instancedTiles = self.instancedTiles;
             
             self.instancedMesh.instanceMatrix.needsUpdate = true;
         }
