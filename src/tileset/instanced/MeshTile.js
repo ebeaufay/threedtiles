@@ -57,7 +57,6 @@ class MeshTile{
         
         if(!!self.instancedMesh){
             
-            let previous = self.instancedMesh.count;
             self.instancedMesh.count = 0;
             self.instancedMesh.instancedTiles = [];
             for(let i = 0; i<self.instancedTiles.length; i++){
@@ -75,6 +74,7 @@ class MeshTile{
             }
             
             self.instancedMesh.instanceMatrix.needsUpdate = true;
+            self.instancedMesh.needsUpdate = true;
         }
     }
 
