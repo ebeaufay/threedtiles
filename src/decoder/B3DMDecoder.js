@@ -191,7 +191,7 @@ function normalizeAndMergeGeometries(geometries) {
 	});
   
 	// Now merge the geometries.
-	let mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(geometries, true);
+	let mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, true);
 	return mergedGeometry;
   }
 

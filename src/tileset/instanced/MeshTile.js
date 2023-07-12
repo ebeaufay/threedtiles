@@ -59,7 +59,7 @@ class MeshTile{
             
             let previous = self.instancedMesh.count;
             self.instancedMesh.count = 0;
-            
+            self.instancedMesh.instancedTiles = [];
             for(let i = 0; i<self.instancedTiles.length; i++){
                 self.instancedTiles[i].meshContent = self.instancedMesh;
                 if(self.instancedTiles[i].materialVisibility && !!self.instancedTiles[i].meshContent){
@@ -70,10 +70,9 @@ class MeshTile{
                     self.instancedMesh.setMatrixAt(self.instancedMesh.count-1, self.reuseableMatrix );
                     //self.instancedMesh.getMatrixAt(0, t);
                     //console.log(self.instancedMesh.baseMatrix)
+                    self.instancedMesh.instancedTiles.push(self.instancedTiles[i])
                 }
-                
             }
-            self.instancedMesh.instancedTiles = self.instancedTiles;
             
             self.instancedMesh.instanceMatrix.needsUpdate = true;
         }
