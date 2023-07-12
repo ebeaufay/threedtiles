@@ -75,6 +75,7 @@ class MeshTile{
             
             self.instancedMesh.instanceMatrix.needsUpdate = true;
             self.instancedMesh.needsUpdate = true;
+            self.instancedMesh.computeBoundingSphere();
         }
     }
 
