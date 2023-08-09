@@ -7,7 +7,7 @@
 
 The fastest 3DTiles viewer for three.js
 
-[Google Map Tile API](https://www.jdultra.com/mapTiles/index.html) (experimental service with limited availability)
+[Google Map Tile API](https://www.jdultra.com/google-tiles/index.html) (experimental service with limited availability)
 
 [Photogrametry (OBJ conversion)](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
 
