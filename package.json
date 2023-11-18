@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "9.1.20",
+    "version": "9.1.21",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "files": [
@@ -28,7 +28,7 @@
     "author": "Emeric Beaufays",
     "license": "MIT",
     "peerDependencies": {
-        "three": "^0.152.0"
+        "three": "^0.158.0"
     },
     "dependencies": {
         "js-utils-z": "^1.2.1",

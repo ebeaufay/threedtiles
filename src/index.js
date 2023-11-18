@@ -13,6 +13,7 @@ import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { Sky } from "three/examples/jsm/objects/Sky";
 import { ShadowMapViewer } from 'three/addons/utils/ShadowMapViewer.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 let lightShadowMapViewer;
 const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
@@ -34,24 +35,19 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-//const ogc3DTilesStatic = initTileset(scene, 0.03);
-const instancedTileLoader = createInstancedTileLoader(scene);
-const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+const ogc3DTilesStatic = initTileset(scene, 0.03);
+//const instancedTileLoader = createInstancedTileLoader(scene);
+//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
-/*const gltfLoader = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
-gltfLoader.setDRACOLoader(dracoLoader);
+const gltfLoader = new GLTFLoader();
 
-const ktx2Loader = new KTX2Loader();
-ktx2Loader.setTranscoderPath('jsm/libs/basis/');
 //gltfLoader.setKTX2Loader(ktx2Loader)
 
 
-gltfLoader.load(
+/*gltfLoader.load(
     // resource URL
-    'http://localhost:8080/3/15.glb',
+    'http://localhost:8080/House-02.glb',
     // called when the resource is loaded
     function (gltf) {
 
@@ -221,14 +217,14 @@ function initTileset(scene, gem) {
             //mesh.material = new THREE.MeshPhongMaterial({color:0xff0000}),
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
-            mesh.castShadow = true
-            mesh.receiveShadow = true;
+            //mesh.castShadow = true
+            //mesh.receiveShadow = true;
             mesh.geometry.computeVertexNormals();
             //console.log(mesh.material.type)
-            mesh.material.shadowSide = THREE.BackSide;
-            mesh.material.flatShading = false;
-            //mesh.material.needsUpdate = true
-            mesh.material.metalness = 0.0
+            //mesh.material.shadowSide = THREE.BackSide;
+            mesh.material.flatShading = true;
+            mesh.material.needsUpdate = true
+            mesh.material.metalness = 0.5
 
             let meshURLs = [];
             let transforms = [];
@@ -241,20 +237,22 @@ function initTileset(scene, gem) {
     });
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8082/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/2x2/1/tileset.json",
 
-        geometricErrorMultiplier: 2.0,
+        geometricErrorMultiplier: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
         centerModel: true,
         renderer: renderer,
-        //yUp : false,
+        //yUp:false,
         //displayErrors: true,
         //displayCopyright: true,
-
+        onLoadCallback:(e)=>{
+            console.log(e)
+        }
 
     });
     setIntervalAsync(function () {
@@ -263,10 +261,10 @@ function initTileset(scene, gem) {
         ogc3DTile.update(camera);
     }, 10);
 
-    //ogc3DTile.scale.set(0.001, 0.001, 0.001)
+    ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
     ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
-    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
+    //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP */
@@ -284,14 +282,15 @@ function createInstancedTileLoader(scene) {
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
-            mesh.material.side = THREE.DoubleSide;
-            mesh.geometry.computeVertexNormals();
+            //mesh.material.alphaMap = mesh.material.map;
+            //mesh.material.side = THREE.DoubleSide;
+            //mesh.geometry.computeVertexNormals();
             //console.log(mesh.material.type)
             //mesh.material.shadowSide = THREE.BackSide;
             //mesh.material.flatShading = true;
             //mesh.material.needsUpdate = true
             //mesh.material.map = mesh.material.metalnessMap
-            mesh.material.metalness = 0.5
+            //mesh.material.metalness = 0.5
             //mesh.material.metalnessMap = undefined
             //mesh.material.emissiveIntensity = 0
             //mesh.material.emissive = new THREE.Color( 0xffffff );
@@ -300,7 +299,7 @@ function createInstancedTileLoader(scene) {
             //mesh.material.aoMap = undefined
             //mesh.material.aoMapIntensity = 0
             //mesh.material.normalMap = undefined
-            mesh.material.roughness = 0.5
+            //mesh.material.roughness = 0.5
             //mesh.material.roughnessMap = undefined
 
         },
@@ -318,13 +317,14 @@ function initInstancedTilesets(instancedTileLoader) {
     for (let x = 0; x < 1; x++) {
         for (let y = 0; y < 1; y++) {
             const tileset = new InstancedOGC3DTile({
-                url: "http://localhost:8083/1x1/a2/tileset.json",
+                url: "http://localhost:8080/georef_tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
-                geometricErrorMultiplier: 2,
+                geometricErrorMultiplier: 0.1,
                 loadOutsideView: true,
                 tileLoader: instancedTileLoader,
                 static: false,
                 renderer: renderer,
+                centerModel: false
             });
             tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 100000 * x);
             tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 100000 * y);
@@ -393,7 +393,7 @@ function animate() {
     //console.log(controller);
     //lightTarget.position.addVectors(dirLight.position, lightVector);
     //dirLight.needsUpdate = true;
-    instancedTileLoader.update();
+    //instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();

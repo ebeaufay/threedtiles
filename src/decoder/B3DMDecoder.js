@@ -150,11 +150,9 @@ export class B3DMDecoder {
 			let instancedMesh;
 			let geometries = [];
 			let materials = [];
-			let matrices = [];
 			mesh.updateWorldMatrix(false, true)
 			mesh.traverse(child => {
 				if (child.isMesh) {
-					matrices.push(child.matrixWorld);
 					child.geometry.applyMatrix4(child.matrixWorld);
 					geometries.push(child.geometry);
 					materials.push(child.material);

@@ -6,7 +6,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 
 const sourceDir = path.resolve(__dirname);
-const DEFAULT_WEBPACK_PORT = 3001;
+const DEFAULT_WEBPACK_PORT = 3002;
 
 module.exports = {
   mode: "production",
