@@ -38,7 +38,7 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Object} [properties.json] - optional json object representing the tileset sub-tree
      * @param {Object} [properties.parentGeometricError] - optional geometric error of the parent
      * @param {Object} [properties.parentBoundingVolume] - optional bounding volume of the parent
-     * @param {Object} [properties.parentRefinement] - optional refinement strategy of the parent of the parent
+     * @param {Object} [properties.parentRefine] - optional refine strategy of the parent of the parent
      * @param {Object} [properties.cameraOnLoad] - optional the camera used when loading this particular sub-tile
      * @param {Object} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
      * @param {Object} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
@@ -98,7 +98,7 @@ class OGC3DTile extends THREE.Object3D {
         this.childrenTiles = [];
         this.meshContent;
         this.tileContent;
-        this.refinement; // defaults to "REPLACE"
+        this.refine; // defaults to "REPLACE"
         this.rootPath;
         this.geometricError;
         this.boundingVolume;
@@ -122,7 +122,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.queryParams) {
                 var props = "";
                 for (let key in self.queryParams) {
-                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                    if (self.queryParams.hasOwnProperty(key)) { 
                         props += "&" + key + "=" + self.queryParams[key];
                     }
                 }
@@ -192,7 +192,7 @@ class OGC3DTile extends THREE.Object3D {
     setup(properties) {
         if (!!properties.json.root) {
             this.json = properties.json.root;
-            if (!this.json.refinement) this.json.refinement = properties.json.refinement;
+            if (!this.json.refine) this.json.refine = properties.json.refine;
             if (!this.json.geometricError) this.json.geometricError = properties.json.geometricError;
             if (!this.json.transform) this.json.transform = properties.json.transform;
             if (!this.json.boundingVolume) this.json.boundingVolume = properties.json.boundingVolume;
@@ -201,11 +201,11 @@ class OGC3DTile extends THREE.Object3D {
         }
         this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
 
-        // decode refinement
-        if (!!this.json.refinement) {
-            this.refinement = this.json.refinement;
+        // decode refine
+        if (!!this.json.refine) {
+            this.refine = this.json.refine;
         } else {
-            this.refinement = properties.parentRefinement;
+            this.refine = properties.parentRefine;
         }
         // decode geometric error
         if (!!this.json.geometricError) {
@@ -521,19 +521,22 @@ class OGC3DTile extends THREE.Object3D {
                 self.changeContentVisibility(true);
             } else if (metric < self.geometricErrorMultiplier * self.geometricError) { // Ideal LOD is past this one
                 // if children are visible and have been displayed, can be hidden
-                let allChildrenReady = true;
-                self.childrenTiles.every(child => {
-
-                    if (!child.isReady()) {
-                        allChildrenReady = false;
-                        return false;
+                if(self.refine == "REPLACE"){
+                    let allChildrenReady = true;
+                    self.childrenTiles.every(child => {
+    
+                        if (!child.isReady()) {
+                            allChildrenReady = false;
+                            return false;
+                        }
+                        return true;
+                    });
+                    if (allChildrenReady) {
+                        self.changeContentVisibility(false);
+    
                     }
-                    return true;
-                });
-                if (allChildrenReady) {
-                    self.changeContentVisibility(false);
-
                 }
+                
 
             }
         }
@@ -571,7 +574,7 @@ class OGC3DTile extends THREE.Object3D {
                     queryParams: self.queryParams,
                     parentGeometricError: self.geometricError,
                     parentBoundingVolume: self.boundingVolume,
-                    parentRefinement: self.refinement,
+                    parentRefine: self.refine,
                     json: childJSON,
                     rootPath: self.rootPath,
                     geometricErrorMultiplier: self.geometricErrorMultiplier,

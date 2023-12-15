@@ -45,9 +45,9 @@ const gltfLoader = new GLTFLoader();
 //gltfLoader.setKTX2Loader(ktx2Loader)
 
 
-/*gltfLoader.load(
+/* gltfLoader.load(
     // resource URL
-    'http://localhost:8080/House-02.glb',
+    'http://localhost:8080/export.glb',
     // called when the resource is loaded
     function (gltf) {
 
@@ -66,7 +66,7 @@ const gltfLoader = new GLTFLoader();
         console.log('An error happened : ' + error);
 
     }
-);*/
+); */
 // Optional: Provide a DRACOLoader instance to decode compressed mesh data
 
 const controller = initController(camera, domContainer);
@@ -237,15 +237,15 @@ function initTileset(scene, gem) {
     });
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8080/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/2x2/1/tileset.json",
+        //url: "http://localhost:8080/tileset.json",
+        url: "https://storage.googleapis.com/rg-inserts/n1598-n12619/GreenValleyGap_MiddleWall_200k/tileset.json",
 
-        geometricErrorMultiplier: 1,
+        geometricErrorMultiplier: 0.01,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
-        centerModel: true,
+        centerModel: false,
         renderer: renderer,
         //yUp:false,
         //displayErrors: true,
@@ -261,7 +261,7 @@ function initTileset(scene, gem) {
         ogc3DTile.update(camera);
     }, 10);
 
-    ogc3DTile.scale.set(0.01, 0.01, 0.01)
+    //ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
     ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
