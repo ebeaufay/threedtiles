@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "9.2.0",
+    "version": "9.2.1",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "files": [
