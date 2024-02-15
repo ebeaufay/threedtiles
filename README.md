@@ -7,6 +7,8 @@
 
 The fastest 3DTiles viewer for three.js
 
+[Windows desktop viewer](https://github.com/ebeaufay/desktop-3dtiles-viewer)
+
 [Google Map Tile API](https://www.jdultra.com/google-tiles/index.html) (experimental service with limited availability)
 
 [Photogrametry (OBJ conversion)](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
@@ -18,8 +20,6 @@ The fastest 3DTiles viewer for three.js
 [Occlusion culling (IFC conversion)](https://www.jdultra.com/occlusion/index.html)
 
 [Instanced Tileset (pilot a swarm of highly detailed spaceships)](https://www.jdultra.com/instanced/index.html)
-
-[Windows desktop viewer](https://github.com/ebeaufay/desktop-3dtiles-viewer)
 
 install the library and threejs if not done already:
 
