@@ -169,7 +169,7 @@ class InstancedTileLoader {
                                         o.applyMatrix4(zUpToYUpMatrix);
                                     }
                                     if (!!self.meshCallback) {
-                                        self.meshCallback(o);
+                                        self.meshCallback(o, o.geometricError);
                                     }
                                 }
                                 if (o.isPoints) {

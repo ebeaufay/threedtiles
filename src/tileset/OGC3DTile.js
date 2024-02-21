@@ -22,28 +22,27 @@ class OGC3DTile extends THREE.Object3D {
 
     /**
      * @param {Object} [properties] - the properties for this tileset
-     * @param {Object} [properties.renderer] - the renderer used to display the tileset
-     * @param {Object} [properties.url] - the url to the parent tileset.json
-     * @param {Object} [properties.queryParams] - optional, path params to add to individual tile urls (starts with "?").
-     * @param {Object} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
-     * @param {Object} [properties.loadOutsideView] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
-     * @param {Object} [properties.tileLoader] - A tile loader that can be shared among tilesets in order to share a common cache.
-     * @param {Object} [properties.meshCallback] - A callback function that will be called on every mesh
-     * @param {Object} [properties.pointsCallback] - A callback function that will be called on every points
-     * @param {Object} [properties.onLoadCallback] - A callback function that will be called when the root tile has been loaded
-     * @param {Object} [properties.occlusionCullingService] - A service that handles occlusion culling
-     * @param {Object} [properties.centerModel] - If true, the tileset will be centered on 0,0,0 and in the case of georeferenced tilesets that use the "region" bounding volume, it will also be rotated so that the up axis matched the world y axis.
-     * @param {Object} [properties.static] - If true, the tileset is considered static which improves performance but the tileset cannot be moved
-     * @param {Object} [properties.rootPath] - optional the root path for fetching children
-     * @param {Object} [properties.json] - optional json object representing the tileset sub-tree
-     * @param {Object} [properties.parentGeometricError] - optional geometric error of the parent
+     * @param {THREE.Renderer} [properties.renderer] - the renderer used to display the tileset
+     * @param {String} [properties.url] - the url to the parent tileset.json
+     * @param {String} [properties.queryParams] - optional, path params to add to individual tile urls (starts with "?").
+     * @param {Number} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
+     * @param {Boolean} [properties.loadOutsideView] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
+     * @param {TileLoader} [properties.tileLoader] - A tile loader that can be shared among tilesets in order to share a common cache.
+     * @param {Function} [properties.meshCallback] - A callback function that will be called on every mesh
+     * @param {Function} [properties.pointsCallback] - A callback function that will be called on every points
+     * @param {Function} [properties.onLoadCallback] - A callback function that will be called when the root tile has been loaded
+     * @param {OcclusionCullingService} [properties.occlusionCullingService] - A service that handles occlusion culling
+     * @param {Boolean} [properties.centerModel] - If true, the tileset will be centered on 0,0,0 and in the case of georeferenced tilesets that use the "region" bounding volume, it will also be rotated so that the up axis matched the world y axis.
+     * @param {Boolean} [properties.static] - If true, the tileset is considered static which improves performance but the matrices aren't automatically updated
+     * @param {String} [properties.rootPath] - optional the root path for fetching children
+     * @param {String} [properties.json] - optional json object representing the tileset sub-tree
+     * @param {Number} [properties.parentGeometricError] - optional geometric error of the parent
      * @param {Object} [properties.parentBoundingVolume] - optional bounding volume of the parent
-     * @param {Object} [properties.parentRefine] - optional refine strategy of the parent of the parent
-     * @param {Object} [properties.cameraOnLoad] - optional the camera used when loading this particular sub-tile
-     * @param {Object} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
-     * @param {Object} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
-     * @param {Object} [properties.yUp] - optional value indicating the meshes are y up rather than z-up. This parameter is used only for box and sphere bounding volumes.
-     * @param {Object} [properties.displayErrors] - optional value indicating that errors should be shown on screen.
+     * @param {String} [properties.parentRefine] - optional refine strategy of the parent of the parent
+     * @param {THREE.Camera} [properties.cameraOnLoad] - optional the camera used when loading this particular sub-tile
+     * @param {OGC3DTile} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
+     * @param {String} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
+     * @param {Boolean} [properties.displayErrors] - optional value indicating that errors should be shown on screen.
      */
     constructor(properties) {
         super();
@@ -61,12 +60,12 @@ class OGC3DTile extends THREE.Object3D {
             this.tileLoader = properties.tileLoader;
         } else {
             const tileLoaderOptions = {};
-            tileLoaderOptions.meshCallback = !properties.meshCallback ? mesh => {
+            tileLoaderOptions.meshCallback = !properties.meshCallback ? (mesh, geometricError) => {
                 mesh.material.wireframe = false;
                 mesh.material.side = THREE.DoubleSide;
             } : properties.meshCallback;
-            tileLoaderOptions.pointsCallback = !properties.pointsCallback ? points => {
-                points.material.size = 0.1;
+            tileLoaderOptions.pointsCallback = !properties.pointsCallback ? (points, geometricError) => {
+                points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
                 points.material.sizeAttenuation = true;
             } : properties.pointsCallback;
             tileLoaderOptions.proxy = this.proxy;
@@ -389,7 +388,8 @@ class OGC3DTile extends THREE.Object3D {
                         }, () => self.getSiblings(),
                             self.level,
                             !!self.json.boundingVolume.region?false : self.yUp === undefined || self.yUp,
-                            !!self.json.boundingVolume.region
+                            !!self.json.boundingVolume.region,
+                            self.geometricError
                         );
                     }catch(e){
                         if(self.displayErrors) showError(e)
@@ -686,7 +686,6 @@ class OGC3DTile extends THREE.Object3D {
 
     changeContentVisibility(visibility) {
         const self = this;
-
         if (self.hasMeshContent && self.meshContent) {
             if (visibility) {
                 self.layers.enable(0);
@@ -703,24 +702,24 @@ class OGC3DTile extends THREE.Object3D {
                 });
             }
         }
+        
         if (self.materialVisibility == visibility) {
             return;
         }
         self.materialVisibility = visibility
 
         self.meshDisplayed = true;
-        if (!!self.meshContent.traverse) {
-            self.meshContent.traverse(function (element) {
-                if (element.material) setMeshVisibility(element, visibility);
+        /* if (!!self.meshContent && !!self.meshContent.traverse) {
+            self.meshContent.traverse((element) => {
+                if (element.material) firstRenderCalback(element, visibility);
             });
-        } else if (!!self.meshContent.scenes) {
+        } else if (!!self.meshContent && !!self.meshContent.scenes) {
             self.meshContent.scenes.forEach(scene => scene.traverse(function (element) {
-                if (element.material) setMeshVisibility(element, visibility);
+                if (element.material) firstRenderCalback(element, visibility);
             }));
         }
 
-        function setMeshVisibility(mesh, visibility) {
-            //mesh.material.visible = visibility;
+        function firstRenderCalback(mesh, visibility) {
             if (!!visibility) {
                 mesh.onAfterRender = () => {
                     delete mesh.onAfterRender;
@@ -728,7 +727,9 @@ class OGC3DTile extends THREE.Object3D {
                 };
             }
 
-        }
+        } */
+
+        
     }
     calculateUpdateMetric(camera, frustum) {
         ////// return -1 if not in frustum

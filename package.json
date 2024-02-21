@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "9.2.2",
+    "version": "9.2.4",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "files": [
@@ -33,6 +33,7 @@
     "dependencies": {
         "js-utils-z": "^1.2.1",
         "path-browserify": "^1.0.1",
+        "proj4": "^2.10.0",
         "regenerator-runtime": "^0.13.11",
         "uuid": "^8.3.2"
     },

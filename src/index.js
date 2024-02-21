@@ -212,7 +212,7 @@ function initTileset(scene, gem) {
     const tileLoader = new TileLoader({
         renderer: renderer,
         maxCachedItems: 1000,
-        meshCallback: mesh => {
+        meshCallback: (mesh, geometricError) => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             //mesh.material = new THREE.MeshPhongMaterial({color:0xff0000}),
             mesh.material.wireframe = false;
@@ -230,17 +230,17 @@ function initTileset(scene, gem) {
             let transforms = [];
 
         },
-        pointsCallback: points => {
-            points.material.size = Math.min(1.0, 0.1 * Math.sqrt(points.geometricError));
+        pointsCallback: (points, geometricError) => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
         }
     });
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8081/tileset.json",
+        url: "http://localhost:8990/tileset.json",
         //url: "https://storage.googleapis.com/rg-inserts/n1598-n12619/GreenValleyGap_MiddleWall_200k/tileset.json",
 
-        geometricErrorMultiplier: 0.10,
+        geometricErrorMultiplier: 1.0,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -263,7 +263,7 @@ function initTileset(scene, gem) {
 
     //ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -317,7 +317,7 @@ function initInstancedTilesets(instancedTileLoader) {
     for (let x = 0; x < 1; x++) {
         for (let y = 0; y < 1; y++) {
             const tileset = new InstancedOGC3DTile({
-                url: "http://localhost:8082/tileset.json",
+                url: "http://localhost:8080/tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 0.1,
                 loadOutsideView: true,

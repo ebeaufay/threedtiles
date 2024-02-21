@@ -186,7 +186,7 @@ class TileLoader {
     }
 
 
-    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError) {
         const self = this;
         const key = simplifyPath(path);
 
@@ -287,13 +287,13 @@ class TileLoader {
                                         o.applyMatrix4(zUpToYUpMatrix);
                                     }
                                     if (!!self.meshCallback) {
-                                        self.meshCallback(o);
+                                        self.meshCallback(o, geometricError);
                                     }
                                 }
                                 if (o.isPoints) {
                                     
                                     if (!!self.pointsCallback) {
-                                        self.pointsCallback(o);
+                                        self.pointsCallback(o, geometricError);
                                     }
                                 }
                             });
