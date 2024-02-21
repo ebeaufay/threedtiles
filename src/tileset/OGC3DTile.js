@@ -356,8 +356,13 @@ class OGC3DTile extends THREE.Object3D {
                                 } 
                             }
                             mesh.traverse((o) => {
-                                if (o.isMesh) {
+                                if(o.isMesh || o.isPoints){
                                     o.layers.disable(0);
+                                    if (self.static) {
+                                        o.matrixAutoUpdate = false;
+                                    }
+                                }
+                                if (o.isMesh) { 
                                     if (self.occlusionCullingService) {
                                         const position = o.geometry.attributes.position;
                                         const colors = [];
@@ -366,9 +371,7 @@ class OGC3DTile extends THREE.Object3D {
                                         }
                                         o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                                     }
-                                    if (self.static) {
-                                        o.matrixAutoUpdate = false;
-                                    }
+                                    
                                     //o.material.visible = false;
                                 }
                             });
@@ -690,13 +693,13 @@ class OGC3DTile extends THREE.Object3D {
             if (visibility) {
                 self.layers.enable(0);
                 self.meshContent.traverse((o) => {
-                    if (o.isMesh) {
+                    if (o.isMesh || o.isPoints) {
                         o.layers.enable(0);
                     }
                 });
             } else {
                 self.meshContent.traverse((o) => {
-                    if (o.isMesh) {
+                    if (o.isMesh || o.isPoints) {
                         o.layers.disable(0);
                     }
                 });

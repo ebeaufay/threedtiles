@@ -233,6 +233,7 @@ function initTileset(scene, gem) {
         pointsCallback: (points, geometricError) => {
             points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
+            
         }
     });
     const ogc3DTile = new OGC3DTile({
@@ -245,7 +246,7 @@ function initTileset(scene, gem) {
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
         static: false,
-        centerModel: false,
+        centerModel: true,
         renderer: renderer,
         //yUp:false,
         //displayErrors: true,
