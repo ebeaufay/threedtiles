@@ -197,14 +197,14 @@ import { TileLoader } from '@jdultra/threedtiles';
 const tileLoader = new TileLoader({
         renderer: renderer,
         maxCachedItems: 100,
-        meshCallback: mesh => {
+        meshCallback: (mesh, geometricError) => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             mesh.material.side = THREE.DoubleSide;
             //mesh.material.metalness = 0.0
         },
-        pointsCallback: points => {
-            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
+        pointsCallback: (points, geometricError) => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
         }
     });
