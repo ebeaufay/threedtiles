@@ -238,7 +238,7 @@ function initTileset(scene, gem) {
     });
     const ogc3DTile = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyBkYnnU1tR5GH-nr7gsT4kVvLUT8DE8Vko" },
+        queryParams: { key: "" },
         yUp: false, // this value is normally true by default
         renderer: renderer,
         loadOutsideView: false
