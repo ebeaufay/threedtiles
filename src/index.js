@@ -238,7 +238,7 @@ function initTileset(scene, gem) {
     });
     const ogc3DTile = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyDu4WDgdVbpDMw5SLKJG73RSI5EbEbV9gk" },
+        queryParams: { key: "AIzaSyBkYnnU1tR5GH-nr7gsT4kVvLUT8DE8Vko" },
         yUp: false, // this value is normally true by default
         renderer: renderer,
         loadOutsideView: false
@@ -366,7 +366,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 10, 20000);
-    camera.position.set(4201173.180162432,171355.60577048702,4780351.047130905);
+    camera.position.set(5156133.951904419,-489621.1220340345,3715081.6064258493);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -383,7 +383,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(4201170.180162432,171355.60577048702,4780351.047130905);
+    controller.target.set(5156130.951904419,-489621.1220340345,3715081.6064258493);
 
 
     controller.minDistance = 10;

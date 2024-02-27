@@ -47,7 +47,7 @@ class OGC3DTile extends THREE.Object3D {
     constructor(properties) {
         super();
         const self = this;
-        
+
         this.proxy = properties.proxy;
         this.displayErrors = properties.displayErrors;
         this.displayCopyright = properties.displayCopyright;
@@ -94,7 +94,7 @@ class OGC3DTile extends THREE.Object3D {
 
         // declare properties specific to the tile for clarity
         this.childrenTiles = [];
-        this.meshContent;
+        this.meshContent = [];
         this.tileContent;
         this.refine; // defaults to "REPLACE"
         this.rootPath;
@@ -104,7 +104,7 @@ class OGC3DTile extends THREE.Object3D {
         this.materialVisibility = false;
         this.inFrustum = true;
         this.level = properties.level ? properties.level : 0;
-        this.hasMeshContent = false; // true when the provided json has a content field pointing to a B3DM file
+        this.hasMeshContent = 0; // true when the provided json has a content field pointing to a B3DM file
         this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
@@ -112,7 +112,7 @@ class OGC3DTile extends THREE.Object3D {
         //this.octree = new Octree();
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
-            
+
             self.setup(properties);
             if (properties.onLoadCallback) properties.onLoadCallback(self);
 
@@ -121,7 +121,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.queryParams) {
                 var props = "";
                 for (let key in self.queryParams) {
-                    if (self.queryParams.hasOwnProperty(key)) { 
+                    if (self.queryParams.hasOwnProperty(key)) {
                         props += "&" + key + "=" + self.queryParams[key];
                     }
                 }
@@ -184,11 +184,12 @@ class OGC3DTile extends THREE.Object3D {
 
                     }
                 });
-            }).catch(e => {if(self.displayErrors) showError(e)});
+            }).catch(e => { if (self.displayErrors) showError(e) });
         }
     }
 
     setup(properties) {
+        const self = this;
         if (!!properties.json.root) {
             this.json = properties.json.root;
             if (!this.json.refine) this.json.refine = properties.json.refine;
@@ -198,7 +199,7 @@ class OGC3DTile extends THREE.Object3D {
         } else {
             this.json = properties.json;
         }
-        
+
         this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
 
         // decode refine
@@ -244,15 +245,23 @@ class OGC3DTile extends THREE.Object3D {
 
 
 
-        if (!!this.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
-            if (!!this.json.content.uri && this.json.content.uri.includes("json")) {
-                this.hasUnloadedJSONContent = true;
-            } else if (!!this.json.content.url && this.json.content.url.includes("json")) {
-                this.hasUnloadedJSONContent = true;
-            } else {
-                this.hasMeshContent = true;
+        if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
+            function checkContent(e) {
+                if (!!e.uri && e.uri.includes("json")) {
+                    self.hasUnloadedJSONContent = true;
+                } else if (!!e.url && e.url.includes("json")) {
+                    self.hasUnloadedJSONContent = true;
+                } else {
+                    self.hasMeshContent++;
+                }
             }
-            this.load();
+            if (Array.isArray(self.json.content)) {
+                self.json.content.forEach(e => checkContent(e))
+            } else {
+                checkContent(self.json.content)
+            }
+
+            self.load();
             //scheduleLoadTile(this);
         }
     }
@@ -303,115 +312,130 @@ class OGC3DTile extends THREE.Object3D {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
-            let url;
-            if (!!self.json.content.uri) {
-                url = self.json.content.uri;
-            } else if (!!self.json.content.url) {
-                url = self.json.content.url;
-            }
-            const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
-
-            if (urlRegex.test(self.rootPath)) { // url
-
-                if (!urlRegex.test(url)) {
-                    url = self.assembleURL(self.rootPath, url);
+            if(Array.isArray(self.json.content)){
+                for(let i = 0; i<self.json.content.length; i++){
+                    self.json.content.forEach(content=> loadContent(content, i))
                 }
-            } else { //path
-                if (path.isAbsolute(self.rootPath)) {
-                    url = self.rootPath + path.sep + url;
-                }
+                
+            }else{
+                loadContent(self.json.content, null);
             }
-            url = self.extractQueryParams(url, self.queryParams);
-            if (self.queryParams) {
-                var props = "";
-                for (let key in self.queryParams) {
-                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
-                        props += "&" + key + "=" + self.queryParams[key];
+            function loadContent(content, contentIndex) {
+                let url;
+                if (!!content.uri) {
+                    url = content.uri;
+                } else if (!!content.url) {
+                    url = content.url;
+                }
+                const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+
+                if (urlRegex.test(self.rootPath)) { // url
+
+                    if (!urlRegex.test(url)) {
+                        url = self.assembleURL(self.rootPath, url);
+                    }
+                } else { //path
+                    if (path.isAbsolute(self.rootPath)) {
+                        url = self.rootPath + path.sep + url;
                     }
                 }
-                if (url.includes("?")) {
-                    url += props;
-                } else {
-                    url += "?" + props.substring(1);
+                url = self.extractQueryParams(url, self.queryParams);
+                if (self.queryParams) {
+                    var props = "";
+                    for (let key in self.queryParams) {
+                        if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                            props += "&" + key + "=" + self.queryParams[key];
+                        }
+                    }
+                    if (url.includes("?")) {
+                        url += props;
+                    } else {
+                        url += "?" + props.substring(1);
+                    }
                 }
-            }
 
-            if (!!url) {
-                if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
-                    self.contentURL = url;
+                if (!!url) {
+                    if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
+                        self.contentURL = url;
 
-                    try{
-                        self.tileLoader.get(self.abortController, this.uuid, url, mesh => {
-                            if (!!self.deleted) return;
-                            
-                            if(mesh.asset && mesh.asset.copyright){
-                                mesh.asset.copyright.split(';').forEach(s=>{
-                                    if(!!copyright[s]){
-                                        copyright[s]++;
-                                    }else{
-                                        copyright[s] = 1;
+                        try {
+                            self.tileLoader.get(self.abortController, self.uuid, url, mesh => {
+                                if (!!self.deleted) return;
+
+                                if (mesh.asset && mesh.asset.copyright) {
+                                    mesh.asset.copyright.split(';').forEach(s => {
+                                        if (!!copyright[s]) {
+                                            copyright[s]++;
+                                        } else {
+                                            copyright[s] = 1;
+                                        }
+                                    });
+                                    if (self.displayCopyright) {
+                                        updateCopyrightLabel();
+                                    }
+                                }
+                                mesh.traverse((o) => {
+                                    if (o.isMesh || o.isPoints) {
+                                        o.layers.disable(0);
+                                        if (self.static) {
+                                            o.matrixAutoUpdate = false;
+                                        }
+                                        //if(o.material.transparent) o.layers.enable(31);
+                                    }
+                                    if (o.isMesh) {
+                                        if (self.occlusionCullingService) {
+                                            const position = o.geometry.attributes.position;
+                                            const colors = [];
+                                            for (let i = 0; i < position.count; i++) {
+                                                colors.push(self.color.r, self.color.g, self.color.b);
+                                            }
+                                            o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                                        }
+
+                                        //o.material.visible = false;
                                     }
                                 });
-                                if(self.displayCopyright){
-                                    updateCopyrightLabel();
-                                } 
+                                let s = Date.now();
+                                //self.octree.fromGraphNode( mesh );
+                                /*averageTime*=numTiles;
+                                averageTime+=Date.now()-s;
+                                numTiles++;
+                                averageTime/=numTiles;
+                                console.log(averageTime);*/
+                                self.add(mesh);
+                                self.updateWorldMatrix(false, true);
+                                // mesh.layers.disable(0);
+                                self.meshContent.push(mesh);
+                            }, !self.cameraOnLoad ? () => 0 : () => {
+                                return self.calculateDistanceToCamera(self.cameraOnLoad);
+                            }, () => self.getSiblings(),
+                                self.level,
+                                !!self.json.boundingVolume.region ? false : true,
+                                !!self.json.boundingVolume.region,
+                                self.geometricError
+                            );
+                        } catch (e) {
+                            if (self.displayErrors) showError(e)
+                        }
+
+                    } else if (url.includes(".json")) {
+                        self.tileLoader.get(self.abortController, self.uuid, url, json => {
+                            if (!!self.deleted) return;
+                            if (!self.json.children) self.json.children = [];
+                            json.rootPath = path.dirname(url);
+                            self.json.children.push(json);
+                            if(contentIndex==null){
+                                delete self.json.content;
+                            }else{
+                                delete self.json.content.splice(contentIndex, 1);
                             }
-                            mesh.traverse((o) => {
-                                if(o.isMesh || o.isPoints){
-                                    o.layers.disable(0);
-                                    if (self.static) {
-                                        o.matrixAutoUpdate = false;
-                                    }
-                                    //if(o.material.transparent) o.layers.enable(31);
-                                }
-                                if (o.isMesh) { 
-                                    if (self.occlusionCullingService) {
-                                        const position = o.geometry.attributes.position;
-                                        const colors = [];
-                                        for (let i = 0; i < position.count; i++) {
-                                            colors.push(self.color.r, self.color.g, self.color.b);
-                                        }
-                                        o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-                                    }
-                                    
-                                    //o.material.visible = false;
-                                }
-                            });
-                            let s = Date.now();
-                            //self.octree.fromGraphNode( mesh );
-                            /*averageTime*=numTiles;
-                            averageTime+=Date.now()-s;
-                            numTiles++;
-                            averageTime/=numTiles;
-                            console.log(averageTime);*/
-                            self.add(mesh);
-                            self.updateWorldMatrix(false, true);
-                            // mesh.layers.disable(0);
-                            self.meshContent = mesh;
-                        }, !self.cameraOnLoad ? () => 0 : () => {
-                            return self.calculateDistanceToCamera(self.cameraOnLoad);
-                        }, () => self.getSiblings(),
-                            self.level,
-                            !!self.json.boundingVolume.region?false : true,
-                            !!self.json.boundingVolume.region,
-                            self.geometricError
-                        );
-                    }catch(e){
-                        if(self.displayErrors) showError(e)
+                            
+                            self.hasUnloadedJSONContent = false;
+                        });
+
                     }
-                    
-                } else if (url.includes(".json")) {
-                    self.tileLoader.get(self.abortController, this.uuid, url, json => {
-                        if (!!self.deleted) return;
-                        if (!self.json.children) self.json.children = [];
-                        json.rootPath = path.dirname(url);
-                        self.json.children.push(json);
-                        delete self.json.content;
-                        self.hasUnloadedJSONContent = false;
-                    });
 
                 }
-
             }
         }
     }
@@ -419,17 +443,20 @@ class OGC3DTile extends THREE.Object3D {
     dispose() {
 
         const self = this;
-        if(!!self.meshContent && !!self.meshContent.asset && self.meshContent.asset.copyright){
-            self.meshContent.asset.copyright.split(';').forEach(s=>{
-                if(!!copyright[s]){
-                    copyright[s]--;
+        self.meshContent.forEach(mc => {
+            if (!!mc && !!mc.asset && mc.asset.copyright) {
+                mc.asset.copyright.split(';').forEach(s => {
+                    if (!!copyright[s]) {
+                        copyright[s]--;
+                    }
+                });
+                if (self.displayCopyright) {
+                    updateCopyrightLabel();
                 }
-            });
-            if(self.displayCopyright){
-                updateCopyrightLabel();
             }
-        }
-        
+        })
+
+
 
         self.childrenTiles.forEach(tile => tile.dispose());
         self.deleted = true;
@@ -452,7 +479,11 @@ class OGC3DTile extends THREE.Object3D {
         self.childrenTiles.forEach(tile => tile.dispose());
         self.childrenTiles = [];
         self.children = [];
-        if (!!self.meshContent) self.children.push(self.meshContent);
+        if (self.meshContent.length > 0) {
+            self.meshContent.forEach(mc => {
+                self.children.push(mc);
+            });
+        }
     }
 
 
@@ -487,7 +518,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.occlusionCullingService && self.hasMeshContent && !self.occlusionCullingService.hasID(self.colorID)) {
                 return;
             }
-            if (!self.hasMeshContent || (metric < self.geometricErrorMultiplier * self.geometricError && !!self.meshContent)) {
+            if (!self.hasMeshContent || (metric < self.geometricErrorMultiplier * self.geometricError && self.meshContent.length > 0)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     loadJsonChildren();
                     return;
@@ -501,7 +532,7 @@ class OGC3DTile extends THREE.Object3D {
             if (!self.hasMeshContent) return;
 
             // mesh content not yet loaded
-            if (!self.meshContent) {
+            if (self.meshContent < self.hasMeshContent) {
                 return;
             }
 
@@ -526,10 +557,10 @@ class OGC3DTile extends THREE.Object3D {
                 self.changeContentVisibility(true);
             } else if (metric < self.geometricErrorMultiplier * self.geometricError) { // Ideal LOD is past this one
                 // if children are visible and have been displayed, can be hidden
-                if(self.refine == "REPLACE"){
+                if (self.refine == "REPLACE") {
                     let allChildrenReady = true;
                     self.childrenTiles.every(child => {
-    
+
                         if (!child.isReady()) {
                             allChildrenReady = false;
                             return false;
@@ -540,7 +571,7 @@ class OGC3DTile extends THREE.Object3D {
                         self.changeContentVisibility(false);
                     }
                 }
-                
+
 
             }
         }
@@ -555,7 +586,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.occlusionCullingService &&
                 !visibilityBeforeUpdate &&
                 self.hasMeshContent &&
-                self.meshContent &&
+                self.meshContent.length > 0 &&
                 self.meshDisplayed &&
                 self.areAllChildrenLoadedAndHidden()) {
 
@@ -572,11 +603,13 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         function loadJsonChildren() {
-            
-            self.json.children.forEach(childJSON => {
-                if(!childJSON.root && !childJSON.children && !childJSON.content ){
-                    return;
+            for (let i = self.json.children.length - 1; i >= 0; i--) {
+                if (!self.json.children[i].root && !self.json.children[i].children && !self.json.children[i].content) {
+                    self.json.children.splice(i, 1);
                 }
+            }
+            self.json.children.forEach(childJSON => {
+
                 let childTile = new OGC3DTile({
                     parentTile: self,
                     queryParams: self.queryParams,
@@ -648,7 +681,7 @@ class OGC3DTile extends THREE.Object3D {
             return false;
         }
         // if this tile has no mesh content or if it's marked as visible false, look at children
-        if ((!this.hasMeshContent || !this.meshContent || !this.materialVisibility)) {
+        if ((!this.hasMeshContent || this.length == 0 || !this.materialVisibility)) {
             if (this.children.length > 0) {
                 var allChildrenReady = true;
                 this.childrenTiles.every(child => {
@@ -670,7 +703,7 @@ class OGC3DTile extends THREE.Object3D {
             return true;
         }
         // if mesh content not yet loaded
-        if (!this.meshContent) {
+        if (this.meshContent.length < this.hasMeshContent) {
             return false;
         }
 
@@ -693,50 +726,37 @@ class OGC3DTile extends THREE.Object3D {
 
     changeContentVisibility(visibility) {
         const self = this;
-        if (self.hasMeshContent && self.meshContent) {
+        if (self.hasMeshContent && self.meshContent.length > 0) {
             if (visibility) {
-                
-                self.meshContent.traverse((o) => {
-                    if (o.isMesh || o.isPoints) {
-                        o.layers.enable(0);
-                    }
-                });
+                self.meshContent.forEach(mc => {
+                    mc.traverse((o) => {
+                        if (o.isMesh || o.isPoints) {
+                            o.layers.enable(0);
+                        }
+                    });
+                })
+
             } else {
-                self.meshContent.traverse((o) => {
-                    if (o.isMesh || o.isPoints) {
-                        o.layers.disable(0);
-                    }
-                });
+                self.meshContent.forEach(mc => {
+                    mc.traverse((o) => {
+                        if (o.isMesh || o.isPoints) {
+                            o.layers.disable(0);
+                        }
+                    });
+                })
+
             }
         }
-        
+
         if (self.materialVisibility == visibility) {
             return;
         }
         self.materialVisibility = visibility
 
         self.meshDisplayed = true;
-        /* if (!!self.meshContent && !!self.meshContent.traverse) {
-            self.meshContent.traverse((element) => {
-                if (element.material) firstRenderCalback(element, visibility);
-            });
-        } else if (!!self.meshContent && !!self.meshContent.scenes) {
-            self.meshContent.scenes.forEach(scene => scene.traverse(function (element) {
-                if (element.material) firstRenderCalback(element, visibility);
-            }));
-        }
 
-        function firstRenderCalback(mesh, visibility) {
-            if (!!visibility) {
-                mesh.onAfterRender = () => {
-                    delete mesh.onAfterRender;
-                    self.meshDisplayed = true;
-                };
-            }
 
-        } */
 
-        
     }
     calculateUpdateMetric(camera, frustum) {
         ////// return -1 if not in frustum
@@ -857,25 +877,25 @@ function showError(error) {
     document.body.appendChild(errorDiv);
 
     // After 3 seconds, remove the error message
-    setTimeout(function() {
+    setTimeout(function () {
         errorDiv.remove();
     }, 8000);
 }
 
-function updateCopyrightLabel(){
+function updateCopyrightLabel() {
     // Create a new div
-    if(!copyrightDiv){
+    if (!copyrightDiv) {
         copyrightDiv = document.createElement('div');
     }
 
     // Join the array elements with a comma and a space
     var list = "";
-    for(let key in copyright) {
-        if(copyright.hasOwnProperty(key) && copyright[key] > 0) { // This checks if the key is actually part of the object and not its prototype.
-            list+= key+", ";
+    for (let key in copyright) {
+        if (copyright.hasOwnProperty(key) && copyright[key] > 0) { // This checks if the key is actually part of the object and not its prototype.
+            list += key + ", ";
         }
     }
-    
+
     // Set the text content of the div
     copyrightDiv.textContent = list;
 
@@ -887,7 +907,7 @@ function updateCopyrightLabel(){
     copyrightDiv.style.textShadow = '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000';
     copyrightDiv.style.padding = '10px';
     copyrightDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'; // semi-transparent black background
-    
+
     // Append the div to the body of the document
     document.body.appendChild(copyrightDiv);
 }
