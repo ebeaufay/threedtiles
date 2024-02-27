@@ -35,9 +35,9 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTilesStatic = initTileset(scene, 0.03);
-//const instancedTileLoader = createInstancedTileLoader(scene);
-//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+//const ogc3DTilesStatic = initTileset(scene, 0.03);
+const instancedTileLoader = createInstancedTileLoader(scene);
+const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
 const gltfLoader = new GLTFLoader();
@@ -286,7 +286,7 @@ function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, {
         renderer: renderer,
         maxCachedItems: 0,
-        maxInstances: 1,
+        maxInstances: 2,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
@@ -323,10 +323,10 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
     for (let x = 0; x < 1; x++) {
-        for (let y = 0; y < 1; y++) {
+        for (let y = 0; y < 2; y++) {
             const tileset = new InstancedOGC3DTile({
-                url: "http://localhost:8080/tileset.json",
-                //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
+                //url: "http://localhost:8080/tileset.json",
+                url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 0.1,
                 loadOutsideView: false,
                 tileLoader: instancedTileLoader,
@@ -335,7 +335,7 @@ function initInstancedTilesets(instancedTileLoader) {
                 centerModel: false
             });
             tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 100000 * x);
-            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 100000 * y);
+            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 10000 * y);
             tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
             tileset.updateMatrix();
             tileset.scale.set(0.1,0.1,0.1)
@@ -366,7 +366,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 10, 20000);
-    camera.position.set(5156133.951904419,-489621.1220340345,3715081.6064258493);
+    camera.position.set(1000,1000,1000);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -383,7 +383,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(5156130.951904419,-489621.1220340345,3715081.6064258493);
+    controller.target.set(0,0,0);
 
 
     controller.minDistance = 10;
@@ -401,7 +401,7 @@ function animate() {
     //console.log(controller);
     //lightTarget.position.addVectors(dirLight.position, lightVector);
     //dirLight.needsUpdate = true;
-    //instancedTileLoader.update();
+    instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();

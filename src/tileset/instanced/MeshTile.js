@@ -60,8 +60,8 @@ class MeshTile{
             self.instancedMesh.count = 0;
             self.instancedMesh.instancedTiles = [];
             for(let i = 0; i<self.instancedTiles.length; i++){
-                self.instancedTiles[i].meshContent = self.instancedMesh;
-                if(self.instancedTiles[i].materialVisibility && !!self.instancedTiles[i].meshContent){
+                self.instancedTiles[i].meshContent.add(self.instancedMesh);
+                if(self.instancedTiles[i].materialVisibility){
                     self.instancedMesh.count++;
                     self.reuseableMatrix.set(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
                     self.reuseableMatrix.multiply(self.instancedTiles[i].master.matrixWorld);
