@@ -237,6 +237,13 @@ function initTileset(scene, gem) {
         }
     });
     const ogc3DTile = new OGC3DTile({
+        url: "https://tile.googleapis.com/v1/3dtiles/root.json",
+        queryParams: { key: "AIzaSyDu4WDgdVbpDMw5SLKJG73RSI5EbEbV9gk" },
+        yUp: false, // this value is normally true by default
+        renderer: renderer,
+        loadOutsideView: false
+    });
+    /* const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
         url: "http://localhost:8990/tileset.json",
         //url: "https://storage.googleapis.com/rg-inserts/n1598-n12619/GreenValleyGap_MiddleWall_200k/tileset.json",
@@ -255,7 +262,7 @@ function initTileset(scene, gem) {
             console.log(e)
         }
 
-    });
+    }); */
     setIntervalAsync(function () {
 
 
@@ -264,7 +271,7 @@ function initTileset(scene, gem) {
 
     //ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1)
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -321,7 +328,7 @@ function initInstancedTilesets(instancedTileLoader) {
                 url: "http://localhost:8080/tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 0.1,
-                loadOutsideView: true,
+                loadOutsideView: false,
                 tileLoader: instancedTileLoader,
                 static: false,
                 renderer: renderer,
@@ -358,8 +365,8 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 20000);
-    camera.position.set(10, 10, 10);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 10, 20000);
+    camera.position.set(4201173.180162432,171355.60577048702,4780351.047130905);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -376,11 +383,11 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0, 0, 0);
+    controller.target.set(4201170.180162432,171355.60577048702,4780351.047130905);
 
 
-    controller.minDistance = 0.1;
-    controller.maxDistance = 30000;
+    controller.minDistance = 10;
+    controller.maxDistance = 3000000;
     controller.update();
     return controller;
 }

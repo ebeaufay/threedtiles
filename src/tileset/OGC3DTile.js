@@ -49,7 +49,6 @@ class OGC3DTile extends THREE.Object3D {
         const self = this;
         
         this.proxy = properties.proxy;
-        this.yUp = properties.yUp;
         this.displayErrors = properties.displayErrors;
         this.displayCopyright = properties.displayCopyright;
         if (properties.queryParams) {
@@ -65,7 +64,7 @@ class OGC3DTile extends THREE.Object3D {
                 mesh.material.side = THREE.DoubleSide;
             } : properties.meshCallback;
             tileLoaderOptions.pointsCallback = !properties.pointsCallback ? (points, geometricError) => {
-                points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
+                points.material.size = Math.pow(geometricError, 0.33);
                 points.material.sizeAttenuation = true;
             } : properties.pointsCallback;
             tileLoaderOptions.proxy = this.proxy;
@@ -113,6 +112,7 @@ class OGC3DTile extends THREE.Object3D {
         //this.octree = new Octree();
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
+            
             self.setup(properties);
             if (properties.onLoadCallback) properties.onLoadCallback(self);
 
@@ -198,6 +198,7 @@ class OGC3DTile extends THREE.Object3D {
         } else {
             this.json = properties.json;
         }
+        
         this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
 
         // decode refine
@@ -361,6 +362,7 @@ class OGC3DTile extends THREE.Object3D {
                                     if (self.static) {
                                         o.matrixAutoUpdate = false;
                                     }
+                                    //if(o.material.transparent) o.layers.enable(31);
                                 }
                                 if (o.isMesh) { 
                                     if (self.occlusionCullingService) {
@@ -390,7 +392,7 @@ class OGC3DTile extends THREE.Object3D {
                             return self.calculateDistanceToCamera(self.cameraOnLoad);
                         }, () => self.getSiblings(),
                             self.level,
-                            !!self.json.boundingVolume.region?false : self.yUp === undefined || self.yUp,
+                            !!self.json.boundingVolume.region?false : true,
                             !!self.json.boundingVolume.region,
                             self.geometricError
                         );
@@ -536,7 +538,6 @@ class OGC3DTile extends THREE.Object3D {
                     });
                     if (allChildrenReady) {
                         self.changeContentVisibility(false);
-    
                     }
                 }
                 
@@ -564,14 +565,18 @@ class OGC3DTile extends THREE.Object3D {
             }
             if (metric >= self.geometricErrorMultiplier * self.geometricError) {
                 self.disposeChildren();
-                updateNodeVisibility();
+                updateNodeVisibility(metric);
                 return;
             }
 
         }
 
         function loadJsonChildren() {
+            
             self.json.children.forEach(childJSON => {
+                if(!childJSON.root && !childJSON.children && !childJSON.content ){
+                    return;
+                }
                 let childTile = new OGC3DTile({
                     parentTile: self,
                     queryParams: self.queryParams,
@@ -589,7 +594,6 @@ class OGC3DTile extends THREE.Object3D {
                     renderer: self.renderer,
                     static: self.static,
                     centerModel: false,
-                    yUp: self.yUp,
                     displayErrors: self.displayErrors,
                     displayCopyright: self.displayCopyright
                 });
@@ -691,7 +695,7 @@ class OGC3DTile extends THREE.Object3D {
         const self = this;
         if (self.hasMeshContent && self.meshContent) {
             if (visibility) {
-                self.layers.enable(0);
+                
                 self.meshContent.traverse((o) => {
                     if (o.isMesh || o.isPoints) {
                         o.layers.enable(0);
