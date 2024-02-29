@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
+import {resolveImplicite} from './implicit/ImplicitTileResolver.js';
 
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
@@ -34,7 +35,6 @@ class TileLoader {
             this.meshCallback = options.meshCallback;
             this.pointsCallback = options.pointsCallback;
             if (options.maxCachedItems) this.maxCachedItems = options.maxCachedItems;
-
         }
 
         this.gltfLoader = new GLTFLoader();
@@ -333,6 +333,8 @@ class TileLoader {
                         }
                         return result.json();
 
+                    }).then(json=>{
+                        return resolveImplicite(json, path)
                     }).then(json => {
                         self.cache.put(key, json);
                         self.checkSize();

@@ -6,7 +6,7 @@ import { JsonTile } from './JsonTile';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
-
+import {resolveImplicite} from '../implicit/ImplicitTileResolver.js';
 
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
@@ -70,7 +70,7 @@ class InstancedTileLoader {
 
     update() {
         const self = this;
-
+        self.checkSize();
         self.cache._data.forEach(v => {
             v.update();
         })
@@ -153,10 +153,13 @@ class InstancedTileLoader {
                         }
                     }
                     fetchFunction().then(result => {
+                        if(!result.ok) {
+                            throw new Error("missing content");
+                        }
                         return result.arrayBuffer();
                     }).then(async arrayBuffer => {
                         await checkLoaderInitialized(this.gltfLoader);
-                        this.gltfLoader.parse(arrayBuffer, gltf => {
+                        this.gltfLoader.parse(arrayBuffer, null, gltf => {
                             gltf.scene.asset = gltf.asset;
 
                             if (nextDownload.sceneZupToYup) {
@@ -198,7 +201,7 @@ class InstancedTileLoader {
                             }
                         });
                     }, e => {
-                        throw new Error("could not load tile : " + nextDownload.path)
+                        console.error("could not load tile : " + nextDownload.path)
                     });
 
 
@@ -226,6 +229,8 @@ class InstancedTileLoader {
                         }
                         return result.json();
 
+                    }).then(json=>{
+                        return resolveImplicite(json,nextDownload.path)
                     }).then(json => {
                         nextDownload.tile.setObject(json, nextDownload.path);
                         self.ready.unshift(nextDownload);
@@ -298,7 +303,7 @@ class InstancedTileLoader {
                 tile.addInstance(instancedOGC3DTile);
 
                 self.cache.put(key, tile);
-                self.checkSize();
+                //self.checkSize();
                 const realAbortController = new AbortController();
                 abortController.signal.addEventListener("abort", () => {
                     if (tile.getCount() == 0) {
@@ -325,7 +330,7 @@ class InstancedTileLoader {
                 const tile = new JsonTile();
                 tile.addInstance(instancedOGC3DTile);
                 self.cache.put(key, tile);
-                self.checkSize();
+                //self.checkSize();
                 const realAbortController = new AbortController();
                 abortController.signal.addEventListener("abort", () => {
                     if (tile.getCount() == 0) {

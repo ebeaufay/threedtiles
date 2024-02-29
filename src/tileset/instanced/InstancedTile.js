@@ -66,7 +66,7 @@ class InstancedTile extends THREE.Object3D {
         this.inFrustum = true;
         this.level = properties.level ? properties.level : 0;
         this.hasMeshContent = 0; // true when the provided json has a content field pointing to a B3DM file
-        this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
+        this.hasUnloadedJSONContent = 0; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
         this.centerModel = properties.centerModel;
 
         this.deleted = false;
@@ -76,42 +76,15 @@ class InstancedTile extends THREE.Object3D {
             this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
             if (properties.json.children) this.jsonChildren = properties.json.children;
             self.setup(properties);
-            if (properties.onLoadCallback) properties.onLoadCallback(self);
         } else if (properties.url) { // If only the url to the tileset.json is provided
 
 
             this.loadJson = (json, url) => {
                 //json = JSON.parse(JSON.stringify(json))
                 const p = path.dirname(url);
-                self.setup({ rootPath: p, json: json });
-                if (!!self.centerModel) {
-                    const tempSphere = new THREE.Sphere();
-                    if (self.boundingVolume instanceof OBB) {
-                        // box
-                        tempSphere.copy(self.boundingVolume.sphere);
-                    } else if (self.boundingVolume instanceof THREE.Sphere) {
-                        //sphere
-                        tempSphere.copy(self.boundingVolume);
-                    }
-
-                    //tempSphere.applyMatrix4(self.matrixWorld);
-                    if (!!this.json.boundingVolume.region) {
-                        self.transformWGS84ToCartesian(
-                            (self.json.boundingVolume.region[0] + self.json.boundingVolume.region[2]) * 0.5,
-                            (self.json.boundingVolume.region[1] + self.json.boundingVolume.region[3]) * 0.5,
-                            (self.json.boundingVolume.region[4] + self.json.boundingVolume.region[5]) * 0.5,
-                            tempVec1);
-
-                        tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
-                        self.master.applyQuaternion(tempQuaternion);
-                        self.master.updateWorldMatrix(false, false)
-                    }
-                    tempMatrix.makeTranslation(-tempSphere.center.x * self.scale.x, -tempSphere.center.y * self.scale.y, -tempSphere.center.z * self.scale.z);
-                    //self.master.applyMatrix4(tempMatrix);
-                    self.master.matrix.multiply(tempMatrix);
-                    self.master.matrix.decompose(self.master.position, self.master.quaternion, self.master.scale);
-                }
-                if (properties.onLoadCallback) properties.onLoadCallback(self);
+                self.setup({ rootPath: p, json: json, onLoadCallback: properties.onLoadCallback });
+                
+                
 
             }
             var url = properties.url;
@@ -132,11 +105,14 @@ class InstancedTile extends THREE.Object3D {
         }
     }
 
-    setup(properties) {
+    async setup(properties) {
         const self = this;
-        self.isSetup = true;
+        
         if (!!properties.json.root) {
             self.json = properties.json.root;
+            if(!self.json.children && self.json.getChildren){
+                self.json.children = await self.json.getChildren();
+            }
             self.jsonChildren = self.json.children;
             if (!self.json.refinement) self.json.refinement = properties.json.refinement;
             if (!self.json.geometricError) self.json.geometricError = properties.json.geometricError;
@@ -144,8 +120,12 @@ class InstancedTile extends THREE.Object3D {
             if (!self.json.boundingVolume) self.json.boundingVolume = properties.json.boundingVolume;
         } else {
             self.json = properties.json;
+            if(!self.json.children && self.json.getChildren){
+                self.json.children = await self.json.getChildren();
+                self.jsonChildren = self.json.children;
+            }
         }
-
+        
         self.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
 
         // decode refinement
@@ -186,25 +166,56 @@ class InstancedTile extends THREE.Object3D {
             self.boundingVolume = properties.parentBoundingVolume;
         }
 
-        if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
-
-            function checkContent(e) {
-                if (!!e.uri && e.uri.includes("json")) {
-                    self.hasUnloadedJSONContent = true;
-                } else if (!!e.url && e.url.includes("json")) {
-                    self.hasUnloadedJSONContent = true;
-                } else {
-                    self.hasMeshContent++;
-                }
-            }
-            if (Array.isArray(self.json.content)) {
-                self.json.content.forEach(e => checkContent(e))
+        function checkContent(e) {
+            if (!!e.uri && e.uri.includes("json")) {
+                self.hasUnloadedJSONContent++;
+            } else if (!!e.url && e.url.includes("json")) {
+                self.hasUnloadedJSONContent++;
             } else {
-                checkContent(self.json.content)
+                self.hasMeshContent++;
             }
+        }
+        if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
+            checkContent(self.json.content);
+            
+            self.load();
+        } else if (!!self.json.contents) { //if there is a content, json or otherwise, schedule it to be loaded 
+            self.json.contents.forEach(e => checkContent(e))
 
             self.load();
+            //scheduleLoadTile(this);
         }
+
+        if (!!self.centerModel) {
+            const tempSphere = new THREE.Sphere();
+            if (self.boundingVolume instanceof OBB) {
+                // box
+                tempSphere.copy(self.boundingVolume.sphere);
+            } else if (self.boundingVolume instanceof THREE.Sphere) {
+                //sphere
+                tempSphere.copy(self.boundingVolume);
+            }
+
+            //tempSphere.applyMatrix4(self.matrixWorld);
+            if (!!this.json.boundingVolume.region) {
+                self.transformWGS84ToCartesian(
+                    (self.json.boundingVolume.region[0] + self.json.boundingVolume.region[2]) * 0.5,
+                    (self.json.boundingVolume.region[1] + self.json.boundingVolume.region[3]) * 0.5,
+                    (self.json.boundingVolume.region[4] + self.json.boundingVolume.region[5]) * 0.5,
+                    tempVec1);
+
+                tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
+                self.master.applyQuaternion(tempQuaternion);
+                self.master.updateWorldMatrix(false, false)
+            }
+            tempMatrix.makeTranslation(-tempSphere.center.x * self.scale.x, -tempSphere.center.y * self.scale.y, -tempSphere.center.z * self.scale.z);
+            //self.master.applyMatrix4(tempMatrix);
+            self.master.matrix.multiply(tempMatrix);
+            self.master.matrix.decompose(self.master.position, self.master.quaternion, self.master.scale);
+        }
+
+        self.isSetup = true;
+        if (properties.onLoadCallback) properties.onLoadCallback(self);
     }
 
     isAbsolutePathOrURL(input) {
@@ -264,11 +275,17 @@ class InstancedTile extends THREE.Object3D {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
+            
+            loadContent(self.json.content);
+        }else if(!!self.json.contents){
+            self.json.contents.forEach(content=>loadContent(content))
+        }
+        function loadContent(content){
             let url;
-            if (!!self.json.content.uri) {
-                url = self.json.content.uri;
-            } else if (!!self.json.content.url) {
-                url = self.json.content.url;
+            if (!!content.uri) {
+                url = content.uri;
+            } else if (!!content.url) {
+                url = content.url;
             }
             const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
 
@@ -337,7 +354,7 @@ class InstancedTile extends THREE.Object3D {
 
         json.rootPath = path.dirname(url);
         this.jsonChildren.push(json);
-        this.hasUnloadedJSONContent = false;
+        this.hasUnloadedJSONContent--;
     }
 
     dispose() {
@@ -363,6 +380,8 @@ class InstancedTile extends THREE.Object3D {
 
     _update(camera, frustum) {
         const self = this;
+        if(!self.isSetup) return;
+        
         const visibilityBeforeUpdate = self.materialVisibility;
 
         if (!!self.boundingVolume && !!self.geometricError) {
@@ -451,7 +470,7 @@ class InstancedTile extends THREE.Object3D {
 
         function loadJsonChildren() {
             self.jsonChildren.forEach(childJSON => {
-                if(!childJSON.root && !childJSON.children && !childJSON.content ){
+                if(!childJSON.root && !childJSON.children && !childJSON.getChildren && !childJSON.content && !childJSON.contents ){
                     return;
                 }
                 let childTile = new InstancedTile({

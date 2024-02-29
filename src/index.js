@@ -236,16 +236,16 @@ function initTileset(scene, gem) {
             
         }
     });
-    const ogc3DTile = new OGC3DTile({
+    /*const ogc3DTile = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
         queryParams: { key: "" },
         yUp: false, // this value is normally true by default
         renderer: renderer,
         loadOutsideView: false
-    });
-    /* const ogc3DTile = new OGC3DTile({
+    });*/
+    const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8990/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/rg-inserts/n1598-n12619/GreenValleyGap_MiddleWall_200k/tileset.json",
 
         geometricErrorMultiplier: 1.0,
@@ -262,7 +262,7 @@ function initTileset(scene, gem) {
             console.log(e)
         }
 
-    }); */
+    });
     setIntervalAsync(function () {
 
 
@@ -271,7 +271,7 @@ function initTileset(scene, gem) {
 
     //ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1)
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -286,12 +286,12 @@ function createInstancedTileLoader(scene) {
     return new InstancedTileLoader(scene, {
         renderer: renderer,
         maxCachedItems: 0,
-        maxInstances: 2,
+        maxInstances: 100,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
             mesh.material.wireframe = false;
             //mesh.material.alphaMap = mesh.material.map;
-            //mesh.material.side = THREE.DoubleSide;
+            mesh.material.side = THREE.DoubleSide;
             //mesh.geometry.computeVertexNormals();
             //console.log(mesh.material.type)
             //mesh.material.shadowSide = THREE.BackSide;
@@ -322,23 +322,23 @@ function initInstancedTilesets(instancedTileLoader) {
     const instancedTilesets = [];
 
 
-    for (let x = 0; x < 1; x++) {
-        for (let y = 0; y < 2; y++) {
+    for (let x = 0; x < 10; x++) {
+        for (let y = 0; y < 10; y++) {
             const tileset = new InstancedOGC3DTile({
-                //url: "http://localhost:8080/tileset.json",
-                url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
-                geometricErrorMultiplier: 0.1,
+                url: "http://localhost:8080/tileset.json",
+                //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
+                geometricErrorMultiplier: 1,
                 loadOutsideView: false,
                 tileLoader: instancedTileLoader,
                 static: false,
                 renderer: renderer,
-                centerModel: false
+                centerModel: true
             });
-            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 100000 * x);
-            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 10000 * y);
+            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 1000 * x);
+            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 1000 * y);
             tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
             tileset.updateMatrix();
-            tileset.scale.set(0.1,0.1,0.1)
+            //tileset.scale.set(0.1,0.1,0.1)
             instancedTilesets.push(tileset);
             scene.add(tileset);
         }
@@ -349,24 +349,27 @@ function initInstancedTilesets(instancedTileLoader) {
     function now() {
         return (typeof performance === 'undefined' ? Date : performance).now();
     }
-    let updateIndex = 0;
+    let lastUpdateIndex = 0;
     setInterval(() => {
         let startTime = now();
+        let updateIndex = lastUpdateIndex;
         do {
             const frustum = new THREE.Frustum();
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
             instancedTilesets[updateIndex].update(camera, frustum);
-            updateIndex = (updateIndex + 1) % instancedTilesets.length;
+            updateIndex++;
+            
         } while (updateIndex < instancedTilesets.length && now() - startTime < 10);
-    }, 40);
+        lastUpdateIndex = updateIndex % instancedTilesets.length;
+    }, 100);
 
     //initLODMultiplierSlider(instancedTilesets);
 }
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 10, 20000);
-    camera.position.set(1000,1000,1000);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 40000);
+    camera.position.set(3000,0,0);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -386,8 +389,8 @@ function initController(camera, dom) {
     controller.target.set(0,0,0);
 
 
-    controller.minDistance = 10;
-    controller.maxDistance = 3000000;
+    controller.minDistance = 1;
+    controller.maxDistance = 30000;
     controller.update();
     return controller;
 }

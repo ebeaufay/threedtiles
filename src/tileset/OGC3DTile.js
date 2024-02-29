@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { clamp } from "three/src/math/MathUtils";
 import { Octree } from 'three/addons/math/Octree.js';
+import {resolveImplicite} from './implicit/ImplicitTileResolver.js';
 //import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 var averageTime = 0;
 var numTiles = 0;
@@ -105,7 +106,7 @@ class OGC3DTile extends THREE.Object3D {
         this.inFrustum = true;
         this.level = properties.level ? properties.level : 0;
         this.hasMeshContent = 0; // true when the provided json has a content field pointing to a B3DM file
-        this.hasUnloadedJSONContent = false; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
+        this.hasUnloadedJSONContent = 0; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
         //this.layers.disable(0);
@@ -114,7 +115,7 @@ class OGC3DTile extends THREE.Object3D {
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
 
             self.setup(properties);
-            if (properties.onLoadCallback) properties.onLoadCallback(self);
+            
 
         } else if (properties.url) { // If only the url to the tileset.json is provided
             var url = properties.url;
@@ -153,117 +154,128 @@ class OGC3DTile extends THREE.Object3D {
                 if (!result.ok) {
                     throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }
-                result.json().then(json => {
-                    self.setup({ rootPath: path.dirname(properties.url), json: json });
-                    if (properties.onLoadCallback) properties.onLoadCallback(self);
-                    if (!!self.centerModel) {
-                        const tempSphere = new THREE.Sphere();
-                        if (self.boundingVolume instanceof OBB) {
-                            // box
-                            tempSphere.copy(self.boundingVolume.sphere);
-                        } else if (self.boundingVolume instanceof THREE.Sphere) {
-                            //sphere
-                            tempSphere.copy(self.boundingVolume);
-                        }
-
-                        //tempSphere.applyMatrix4(self.matrixWorld);
-                        if (!!this.json.boundingVolume.region) {
-                            this.transformWGS84ToCartesian(
-                                (this.json.boundingVolume.region[0] + this.json.boundingVolume.region[2]) * 0.5,
-                                (this.json.boundingVolume.region[1] + this.json.boundingVolume.region[3]) * 0.5,
-                                (this.json.boundingVolume.region[4] + this.json.boundingVolume.region[5]) * 0.5,
-                                tempVec1);
-
-                            tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
-                            self.applyQuaternion(tempQuaternion);
-                        }
-
-                        self.translateX(-tempSphere.center.x * self.scale.x);
-                        self.translateY(-tempSphere.center.y * self.scale.y);
-                        self.translateZ(-tempSphere.center.z * self.scale.z);
-
-                    }
+                result.json().then(json=>{return resolveImplicite(json, url)}).then(json => {
+                    self.setup({ rootPath: path.dirname(properties.url), json: json, onLoadCallback: properties.onLoadCallback });
+                    
                 });
             }).catch(e => { if (self.displayErrors) showError(e) });
         }
     }
 
-    setup(properties) {
+    async setup(properties) {
         const self = this;
         if (!!properties.json.root) {
-            this.json = properties.json.root;
-            if (!this.json.refine) this.json.refine = properties.json.refine;
-            if (!this.json.geometricError) this.json.geometricError = properties.json.geometricError;
-            if (!this.json.transform) this.json.transform = properties.json.transform;
-            if (!this.json.boundingVolume) this.json.boundingVolume = properties.json.boundingVolume;
+            self.json = properties.json.root;
+            if (!self.json.refine) self.json.refine = properties.json.refine;
+            if (!self.json.geometricError) self.json.geometricError = properties.json.geometricError;
+            if (!self.json.transform) self.json.transform = properties.json.transform;
+            if (!self.json.boundingVolume) self.json.boundingVolume = properties.json.boundingVolume;
         } else {
-            this.json = properties.json;
+            self.json = properties.json;
         }
 
-        this.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
+        if (!self.json.children) {
+            if (self.json.getChildren) {
+                self.json.children = await self.json.getChildren();
+            } else {
+                self.json.children = [];
+            }
+        }
+        self.rootPath = !!properties.json.rootPath ? properties.json.rootPath : properties.rootPath;
 
         // decode refine
-        if (!!this.json.refine) {
-            this.refine = this.json.refine;
+        if (!!self.json.refine) {
+            self.refine = self.json.refine;
         } else {
-            this.refine = properties.parentRefine;
+            self.refine = properties.parentRefine;
         }
         // decode geometric error
-        if (!!this.json.geometricError) {
-            this.geometricError = this.json.geometricError;
+        if (!!self.json.geometricError) {
+            self.geometricError = self.json.geometricError;
         } else {
-            this.geometricError = properties.parentGeometricError;
+            self.geometricError = properties.parentGeometricError;
         }
 
 
         // decode transform
-        if (!!this.json.transform && !this.centerModel) {
+        if (!!self.json.transform && !self.centerModel) {
             let mat = new THREE.Matrix4();
-            mat.elements = this.json.transform;
-            this.applyMatrix4(mat);
+            mat.elements = self.json.transform;
+            self.applyMatrix4(mat);
         }
 
         // decode volume
-        if (!!this.json.boundingVolume) {
-            if (!!this.json.boundingVolume.box) {
-                this.boundingVolume = new OBB(this.json.boundingVolume.box);
-            } else if (!!this.json.boundingVolume.region) {
-                const region = this.json.boundingVolume.region;
-                this.transformWGS84ToCartesian(region[0], region[1], region[4], tempVec1);
-                this.transformWGS84ToCartesian(region[2], region[3], region[5], tempVec2);
+        if (!!self.json.boundingVolume) {
+            if (!!self.json.boundingVolume.box) {
+                self.boundingVolume = new OBB(self.json.boundingVolume.box);
+            } else if (!!self.json.boundingVolume.region) {
+                const region = self.json.boundingVolume.region;
+                self.transformWGS84ToCartesian(region[0], region[1], region[4], tempVec1);
+                self.transformWGS84ToCartesian(region[2], region[3], region[5], tempVec2);
                 tempVec1.lerp(tempVec2, 0.5);
-                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.y, tempVec1.z), tempVec1.distanceTo(tempVec2));
-            } else if (!!this.json.boundingVolume.sphere) {
-                const sphere = this.json.boundingVolume.sphere;
-                this.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
+                self.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.y, tempVec1.z), tempVec1.distanceTo(tempVec2));
+            } else if (!!self.json.boundingVolume.sphere) {
+                const sphere = self.json.boundingVolume.sphere;
+                self.boundingVolume = new THREE.Sphere(new THREE.Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
             } else {
-                this.boundingVolume = properties.parentBoundingVolume;
+                self.boundingVolume = properties.parentBoundingVolume;
             }
         } else {
-            this.boundingVolume = properties.parentBoundingVolume;
+            self.boundingVolume = properties.parentBoundingVolume;
         }
 
 
 
-        if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
-            function checkContent(e) {
-                if (!!e.uri && e.uri.includes("json")) {
-                    self.hasUnloadedJSONContent = true;
-                } else if (!!e.url && e.url.includes("json")) {
-                    self.hasUnloadedJSONContent = true;
-                } else {
-                    self.hasMeshContent++;
-                }
-            }
-            if (Array.isArray(self.json.content)) {
-                self.json.content.forEach(e => checkContent(e))
+        function checkContent(e) {
+            if (!!e.uri && e.uri.includes("json")) {
+                self.hasUnloadedJSONContent++;
+            } else if (!!e.url && e.url.includes("json")) {
+                self.hasUnloadedJSONContent++;
             } else {
-                checkContent(self.json.content)
+                self.hasMeshContent++;
             }
+        }
+        if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
+            checkContent(self.json.content);
+
+            self.load();
+        } else if (!!self.json.contents) { //if there is a content, json or otherwise, schedule it to be loaded 
+            self.json.contents.forEach(e => checkContent(e))
 
             self.load();
             //scheduleLoadTile(this);
         }
+
+        
+        if (!!self.centerModel) {
+            const tempSphere = new THREE.Sphere();
+            if (self.boundingVolume instanceof OBB) {
+                // box
+                tempSphere.copy(self.boundingVolume.sphere);
+            } else if (self.boundingVolume instanceof THREE.Sphere) {
+                //sphere
+                tempSphere.copy(self.boundingVolume);
+            }
+
+            //tempSphere.applyMatrix4(self.matrixWorld);
+            if (!!this.json.boundingVolume.region) {
+                this.transformWGS84ToCartesian(
+                    (this.json.boundingVolume.region[0] + this.json.boundingVolume.region[2]) * 0.5,
+                    (this.json.boundingVolume.region[1] + this.json.boundingVolume.region[3]) * 0.5,
+                    (this.json.boundingVolume.region[4] + this.json.boundingVolume.region[5]) * 0.5,
+                    tempVec1);
+
+                tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
+                self.applyQuaternion(tempQuaternion);
+            }
+
+            self.translateX(-tempSphere.center.x * self.scale.x);
+            self.translateY(-tempSphere.center.y * self.scale.y);
+            self.translateZ(-tempSphere.center.z * self.scale.z);
+
+        }
+        if (properties.onLoadCallback) properties.onLoadCallback(self);
+        self.isSetup = true;
     }
     assembleURL(root, relative) {
         // Append a slash to the root URL if it doesn't already have one
@@ -308,134 +320,133 @@ class OGC3DTile extends THREE.Object3D {
         urlObj.search = '';
         return urlObj.toString();
     }
-    load() {
+    async load() {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
-            if(Array.isArray(self.json.content)){
-                for(let i = 0; i<self.json.content.length; i++){
-                    self.json.content.forEach(content=> loadContent(content, i))
-                }
-                
-            }else{
-                loadContent(self.json.content, null);
+            await loadContent(self.json.content, null);
+        } else if (!!self.json.contents) {
+            let promises = self.json.contents.map((content, index) => loadContent(content, index));
+
+            Promise.all(promises)
+            //self.json.contents.forEach(content=> loadContent(content, i))
+        }
+
+        async function loadContent(content, contentIndex) {
+            let url;
+            if (!!content.uri) {
+                url = content.uri;
+            } else if (!!content.url) {
+                url = content.url;
             }
-            function loadContent(content, contentIndex) {
-                let url;
-                if (!!content.uri) {
-                    url = content.uri;
-                } else if (!!content.url) {
-                    url = content.url;
-                }
-                const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
+            const urlRegex = /^(?:http|https|ftp|tcp|udp):\/\/\S+/;
 
-                if (urlRegex.test(self.rootPath)) { // url
+            if (urlRegex.test(self.rootPath)) { // url
 
-                    if (!urlRegex.test(url)) {
-                        url = self.assembleURL(self.rootPath, url);
-                    }
-                } else { //path
-                    if (path.isAbsolute(self.rootPath)) {
-                        url = self.rootPath + path.sep + url;
-                    }
+                if (!urlRegex.test(url)) {
+                    url = self.assembleURL(self.rootPath, url);
                 }
-                url = self.extractQueryParams(url, self.queryParams);
-                if (self.queryParams) {
-                    var props = "";
-                    for (let key in self.queryParams) {
-                        if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
-                            props += "&" + key + "=" + self.queryParams[key];
-                        }
-                    }
-                    if (url.includes("?")) {
-                        url += props;
-                    } else {
-                        url += "?" + props.substring(1);
+            } else { //path
+                if (path.isAbsolute(self.rootPath)) {
+                    url = self.rootPath + path.sep + url;
+                }
+            }
+            url = self.extractQueryParams(url, self.queryParams);
+            if (self.queryParams) {
+                var props = "";
+                for (let key in self.queryParams) {
+                    if (self.queryParams.hasOwnProperty(key)) { // This check is necessary to skip properties from the object's prototype chain
+                        props += "&" + key + "=" + self.queryParams[key];
                     }
                 }
+                if (url.includes("?")) {
+                    url += props;
+                } else {
+                    url += "?" + props.substring(1);
+                }
+            }
 
-                if (!!url) {
-                    if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
-                        self.contentURL = url;
+            if (!!url) {
+                if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
+                    self.contentURL = url;
 
-                        try {
-                            self.tileLoader.get(self.abortController, self.uuid, url, mesh => {
-                                if (!!self.deleted) return;
+                    try {
+                        self.tileLoader.get(self.abortController, self.uuid, url, mesh => {
+                            if (!!self.deleted) return;
 
-                                if (mesh.asset && mesh.asset.copyright) {
-                                    mesh.asset.copyright.split(';').forEach(s => {
-                                        if (!!copyright[s]) {
-                                            copyright[s]++;
-                                        } else {
-                                            copyright[s] = 1;
-                                        }
-                                    });
-                                    if (self.displayCopyright) {
-                                        updateCopyrightLabel();
-                                    }
-                                }
-                                mesh.traverse((o) => {
-                                    if (o.isMesh || o.isPoints) {
-                                        o.layers.disable(0);
-                                        if (self.static) {
-                                            o.matrixAutoUpdate = false;
-                                        }
-                                        //if(o.material.transparent) o.layers.enable(31);
-                                    }
-                                    if (o.isMesh) {
-                                        if (self.occlusionCullingService) {
-                                            const position = o.geometry.attributes.position;
-                                            const colors = [];
-                                            for (let i = 0; i < position.count; i++) {
-                                                colors.push(self.color.r, self.color.g, self.color.b);
-                                            }
-                                            o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-                                        }
-
-                                        //o.material.visible = false;
+                            if (mesh.asset && mesh.asset.copyright) {
+                                mesh.asset.copyright.split(';').forEach(s => {
+                                    if (!!copyright[s]) {
+                                        copyright[s]++;
+                                    } else {
+                                        copyright[s] = 1;
                                     }
                                 });
-                                let s = Date.now();
-                                //self.octree.fromGraphNode( mesh );
-                                /*averageTime*=numTiles;
-                                averageTime+=Date.now()-s;
-                                numTiles++;
-                                averageTime/=numTiles;
-                                console.log(averageTime);*/
-                                self.add(mesh);
-                                self.updateWorldMatrix(false, true);
-                                // mesh.layers.disable(0);
-                                self.meshContent.push(mesh);
-                            }, !self.cameraOnLoad ? () => 0 : () => {
-                                return self.calculateDistanceToCamera(self.cameraOnLoad);
-                            }, () => self.getSiblings(),
-                                self.level,
-                                !!self.json.boundingVolume.region ? false : true,
-                                !!self.json.boundingVolume.region,
-                                self.geometricError
-                            );
-                        } catch (e) {
-                            if (self.displayErrors) showError(e)
-                        }
-
-                    } else if (url.includes(".json")) {
-                        self.tileLoader.get(self.abortController, self.uuid, url, json => {
-                            if (!!self.deleted) return;
-                            if (!self.json.children) self.json.children = [];
-                            json.rootPath = path.dirname(url);
-                            self.json.children.push(json);
-                            if(contentIndex==null){
-                                delete self.json.content;
-                            }else{
-                                delete self.json.content.splice(contentIndex, 1);
+                                if (self.displayCopyright) {
+                                    updateCopyrightLabel();
+                                }
                             }
-                            
-                            self.hasUnloadedJSONContent = false;
-                        });
+                            mesh.traverse((o) => {
+                                if (o.isMesh || o.isPoints) {
+                                    o.layers.disable(0);
+                                    if (self.static) {
+                                        o.matrixAutoUpdate = false;
+                                    }
+                                    //if(o.material.transparent) o.layers.enable(31);
+                                }
+                                if (o.isMesh) {
+                                    if (self.occlusionCullingService) {
+                                        const position = o.geometry.attributes.position;
+                                        const colors = [];
+                                        for (let i = 0; i < position.count; i++) {
+                                            colors.push(self.color.r, self.color.g, self.color.b);
+                                        }
+                                        o.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                                    }
 
+                                    //o.material.visible = false;
+                                }
+                            });
+                            let s = Date.now();
+                            //self.octree.fromGraphNode( mesh );
+                            /*averageTime*=numTiles;
+                            averageTime+=Date.now()-s;
+                            numTiles++;
+                            averageTime/=numTiles;
+                            console.log(averageTime);*/
+                            self.add(mesh);
+                            self.updateWorldMatrix(false, true);
+                            // mesh.layers.disable(0);
+                            self.meshContent.push(mesh);
+                        }, !self.cameraOnLoad ? () => 0 : () => {
+                            return self.calculateDistanceToCamera(self.cameraOnLoad);
+                        }, () => self.getSiblings(),
+                            self.level,
+                            !!self.json.boundingVolume.region ? false : true,
+                            !!self.json.boundingVolume.region,
+                            self.geometricError
+                        );
+                    } catch (e) {
+                        if (self.displayErrors) showError(e)
                     }
 
+                } else if (url.includes(".json")) {
+                    self.tileLoader.get(self.abortController, self.uuid, url, async json => {
+                        if (!!self.deleted) return;
+
+                        json.rootPath = path.dirname(url);
+                        self.json.children.push(json);
+                        if (contentIndex == null) {
+                            delete self.json.content;
+                        } else {
+                            delete self.json.contents.splice(contentIndex, 1);
+                        }
+
+                        self.hasUnloadedJSONContent--;
+                    });
+
                 }
+
             }
         }
     }
@@ -488,13 +499,14 @@ class OGC3DTile extends THREE.Object3D {
 
 
     update(camera) {
+    
         const frustum = new THREE.Frustum();
         frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
         this._update(camera, frustum);
     }
     _update(camera, frustum) {
         const self = this;
-
+        if(!self.isSetup) return;
         // let dist = self.boundingVolume.distanceToPoint(new THREE.Vector3(3980, 4980.416656099139, 3.2851604304346775));
         // if (dist< 1) {
         //     self.changeContentVisibility(false);
@@ -604,7 +616,7 @@ class OGC3DTile extends THREE.Object3D {
 
         function loadJsonChildren() {
             for (let i = self.json.children.length - 1; i >= 0; i--) {
-                if (!self.json.children[i].root && !self.json.children[i].children && !self.json.children[i].content) {
+                if (!self.json.children[i].root && !self.json.children[i].children && !self.json.children[i].getChildren && !self.json.children[i].content && !self.json.children[i].contents) {
                     self.json.children.splice(i, 1);
                 }
             }
