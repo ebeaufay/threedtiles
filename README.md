@@ -67,12 +67,6 @@ There's support for OBJ, IFC and glTF meshes and las/laz point clouds.
 I aim for optimal quality in terms of mesh, texture and tileset structure and for optimal streaming speed, with no limit to the size of the input data.
 Contact: emeric.beaufays@jdultra.com
 
-## Road to OGC 3DTiles 1.1
-
-- Support for structured metadata that can be associated with tilesets, tiles, tile content, and tile content groups *WON'T DO* (unless serious request)
-- Directly support glTF assets as tile contents - *DONE*
-- Support for multiple tile contents - *DONE*
-- Support for implicit tiling schemes -*UNDERWAY*
 
 ## Features
 
@@ -85,7 +79,7 @@ Contact: emeric.beaufays@jdultra.com
 - Occlusion culling
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
-- gltf/glb tiles (OGC3DTiles 1.1)
+- OGC 3DTiles 1.0 and 1.1
 - draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 
