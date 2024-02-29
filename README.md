@@ -79,7 +79,7 @@ Contact: emeric.beaufays@jdultra.com
 - Occlusion culling
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
-- OGC 3DTiles 1.0 and 1.1
+- OGC 3DTiles 1.0 and 1.1 (implicit tiling)
 - draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 
