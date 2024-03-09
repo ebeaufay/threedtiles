@@ -79,12 +79,11 @@ Contact: emeric.beaufays@jdultra.com
 - Occlusion culling
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
-- OGC 3DTiles 1.0 and 1.1 (implicit tiling)
 - draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 
-Support for OGC3DTiles 1.1 is underway. gltf/glb tiles are already supported but not yet implicit tiling.
-There is no plan to support .pnts or .i3dm tiles as points and instanced meshes are already supported through gltf tiles.
+OGC3DTiles 1.1 are supported.
+There is no plan to support .pnts, .i3dm or .cmpt  tiles as these formats are deprecated in favor of glb/gltf tiles.
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
