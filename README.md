@@ -4,8 +4,7 @@
 # T H R E E D T I L E S : http://www.jdultra.com/
 
 
-
-The fastest 3DTiles viewer for three.js
+A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support
 
 [Windows desktop viewer](https://github.com/ebeaufay/desktop-3dtiles-viewer)
 
@@ -118,10 +117,8 @@ const ogc3DTile = new OGC3DTile({
 ```
 
 ### Google Maps 3D Tiles
-Google maps 3DTiles can be loaded similarly although there is a slight differnce in that the tileset isn't a regular OGC3DTile tileset but "3DTiles NEXT" with a specific extension for glb tiles.
-An extra rotation needs to be applied to straighten the globe.
-On top of that, the API key mechanism requires is passed as a query param to all fetched tiles.
-note that the "queryParams" parameter below can be used to add any query parameters for tiles.
+Google maps 3DTiles can be loaded similarly.
+The API key mechanism requires that a token be passed as a query param to all fetched tiles.
 
 ```
 const ogc3DTile = new OGC3DTile({
