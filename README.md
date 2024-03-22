@@ -4,8 +4,7 @@
 # T H R E E D T I L E S : http://www.jdultra.com/
 
 
-
-The fastest 3DTiles viewer for three.js
+A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support
 
 [Windows desktop viewer](https://github.com/ebeaufay/desktop-3dtiles-viewer)
 
@@ -49,8 +48,6 @@ setInterval(function () {
 }, 20);
 ```
 
-The library is limmited to B3DM and glb/gltf tiles.
-
 Here is a simple project : [Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link)
 
 Unzip and run :
@@ -67,12 +64,6 @@ There's support for OBJ, IFC and glTF meshes and las/laz point clouds.
 I aim for optimal quality in terms of mesh, texture and tileset structure and for optimal streaming speed, with no limit to the size of the input data.
 Contact: emeric.beaufays@jdultra.com
 
-## Road to OGC 3DTiles 1.1
-
-- Support for structured metadata that can be associated with tilesets, tiles, tile content, and tile content groups *WON'T DO* (unless serious request)
-- Directly support glTF assets as tile contents - *DONE*
-- Support for multiple tile contents - *DONE*
-- Support for implicit tiling schemes -*UNDERWAY*
 
 ## Features
 
@@ -85,12 +76,11 @@ Contact: emeric.beaufays@jdultra.com
 - Occlusion culling
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
-- gltf/glb tiles (OGC3DTiles 1.1)
 - draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 
-Support for OGC3DTiles 1.1 is underway. gltf/glb tiles are already supported but not yet implicit tiling.
-There is no plan to support .pnts or .i3dm tiles as points and instanced meshes are already supported through gltf tiles.
+OGC3DTiles 1.1 are supported.
+There is no plan to support .pnts, .i3dm or .cmpt  tiles as these formats are deprecated in favor of glb/gltf tiles.
 
 ### geometric Error Multiplier
 The geometric error multiplier allows you to multiply the geometric error by a factor.
@@ -127,10 +117,8 @@ const ogc3DTile = new OGC3DTile({
 ```
 
 ### Google Maps 3D Tiles
-Google maps 3DTiles can be loaded similarly although there is a slight differnce in that the tileset isn't a regular OGC3DTile tileset but "3DTiles NEXT" with a specific extension for glb tiles.
-An extra rotation needs to be applied to straighten the globe.
-On top of that, the API key mechanism requires is passed as a query param to all fetched tiles.
-note that the "queryParams" parameter below can be used to add any query parameters for tiles.
+Google maps 3DTiles can be loaded similarly.
+The API key mechanism requires that a token be passed as a query param to all fetched tiles.
 
 ```
 const ogc3DTile = new OGC3DTile({
