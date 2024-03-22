@@ -35,9 +35,9 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-//const ogc3DTilesStatic = initTileset(scene, 0.03);
-const instancedTileLoader = createInstancedTileLoader(scene);
-const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+const ogc3DTilesStatic = initTileset(scene, 0.03);
+//const instancedTileLoader = createInstancedTileLoader(scene);
+//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
 
 
 const gltfLoader = new GLTFLoader();
@@ -244,11 +244,11 @@ function initTileset(scene, gem) {
         loadOutsideView: false
     });*/
     const ogc3DTile = new OGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
+        //url: "http://localhost:8080/tileset.json",
         //url: "https://storage.googleapis.com/rg-inserts/n1598-n12619/GreenValleyGap_MiddleWall_200k/tileset.json",
 
-        geometricErrorMultiplier: 1.0,
+        geometricErrorMultiplier: 0.03,
         loadOutsideView: false,
         tileLoader: tileLoader,
         //occlusionCullingService: occlusionCullingService,
@@ -271,7 +271,7 @@ function initTileset(scene, gem) {
 
     //ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5)
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
@@ -327,7 +327,7 @@ function initInstancedTilesets(instancedTileLoader) {
             const tileset = new InstancedOGC3DTile({
                 url: "http://localhost:8080/tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
-                geometricErrorMultiplier: 1,
+                geometricErrorMultiplier: 0.0001,
                 loadOutsideView: false,
                 tileLoader: instancedTileLoader,
                 static: false,
@@ -369,7 +369,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 1, 40000);
-    camera.position.set(3000,0,0);
+    camera.position.set(1500,20,0);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -404,7 +404,7 @@ function animate() {
     //console.log(controller);
     //lightTarget.position.addVectors(dirLight.position, lightVector);
     //dirLight.needsUpdate = true;
-    instancedTileLoader.update();
+    //instancedTileLoader.update();
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();

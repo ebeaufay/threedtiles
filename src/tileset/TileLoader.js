@@ -54,7 +54,7 @@ class TileLoader {
 
         this.cache = new LinkedHashMap();
         this.register = {};
-
+        this.concurrentDownloads = 0;
 
         this.ready = [];
         this.downloads = [];
@@ -68,6 +68,7 @@ class TileLoader {
 
         const self = this;
         setIntervalAsync(() => {
+            if(self.concurrentDownloads>8)return;
             self.download();
         }, 10);
         setIntervalAsync(() => {
@@ -149,7 +150,7 @@ class TileLoader {
             this.nextDownloads.push(closestItem);
             const siblings = closestItem.getSiblings();
             for (let i = this.downloads.length - 1; i >= 0; i--) {
-                if (siblings.includes(this.downloads[i].uuid)) {
+                if (siblings.map(s=>s.uuid).includes(this.downloads[i].uuid)) {
                     this.nextDownloads.push(this.downloads.splice(i, 1).pop());
                 }
             }
@@ -176,12 +177,12 @@ class TileLoader {
         if (closest >= 0) {
             const closestItem = this.ready.splice(closest, 1).pop();
             this.nextReady.push(closestItem);
-            const siblings = closestItem[4]();
+           /*  const siblings = closestItem[4]();
             for (let i = this.ready.length - 1; i >= 0; i--) {
-                if (siblings.includes(this.ready[i][6])) {
-                    this.nextready.push(this.ready.splice(i, 1).pop());
+                if (siblings.map(s=>s.uuid).includes(this.ready[i][6])) {
+                    this.nextReady.push(this.ready.splice(i, 1).pop());
                 }
-            }
+            } */
         }
     }
 
@@ -232,6 +233,7 @@ class TileLoader {
                             );
                         }
                     }
+                    self.concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -247,6 +249,8 @@ class TileLoader {
                         this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                     }).catch((e) => {
                         console.error(e)
+                    }).finally(()=>{
+                        self.concurrentDownloads--;
                     });
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
@@ -267,6 +271,7 @@ class TileLoader {
                             );
                         }
                     }
+                    self.concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -304,6 +309,8 @@ class TileLoader {
                         });
                     }).catch((e) => {
                         console.error(e)
+                    }).finally(()=>{
+                        self.concurrentDownloads--;
                     });
 
 
@@ -326,6 +333,7 @@ class TileLoader {
                             );
                         }
                     }
+                    self.concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -341,6 +349,8 @@ class TileLoader {
                         self.meshReceived(self.cache, self.register, key);
                     }).catch((e) => {
                         console.error(e)
+                    }).finally(()=>{
+                        self.concurrentDownloads--;
                     });
                 }
             }
