@@ -15,6 +15,7 @@ import { Sky } from "three/examples/jsm/objects/Sky";
 import { ShadowMapViewer } from 'three/addons/utils/ShadowMapViewer.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+let t = 0;
 let lightShadowMapViewer;
 const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
 dirLight.position.set(1,1,1);
@@ -35,12 +36,31 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const ogc3DTilesStatic = initTileset(scene, 0.03);
-//const instancedTileLoader = createInstancedTileLoader(scene);
-//const ogc3DTiles = initInstancedTilesets(instancedTileLoader);
+//const tileLoader = initTileLoader();
+//const ogc3DTiles = initTileset(scene, tileLoader);
+
+const tileLoader = createInstancedTileLoader(scene);
+initInstancedTilesets(tileLoader);
 
 
+function initTileLoader(){
+    const tileLoader = new TileLoader({
+        renderer: renderer,
+        maxCachedItems: 1000,
+        meshCallback: (mesh, geometricError) => {
+            mesh.material.wireframe = false;
+            mesh.material.side = THREE.DoubleSide;
+        },
+        pointsCallback: (points, geometricError) => {
+            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
+            points.material.sizeAttenuation = true;
+            
+        }
+    });
+    return tileLoader;
+}
 const gltfLoader = new GLTFLoader();
+
 
 //gltfLoader.setKTX2Loader(ktx2Loader)
 
@@ -85,12 +105,12 @@ function initSky() {
     sun = new THREE.Vector3();
 
     const effectController = {
-        turbidity: 10,
-        rayleigh: 1,
+        turbidity: 0.1,
+        rayleigh: 0.1,
         mieCoefficient: 0.005,
         mieDirectionalG: 0.3,
-        elevation: 5,
-        azimuth: 40,
+        elevation: 25,
+        azimuth: 20,
         exposure: renderer.toneMappingExposure
     };
 
@@ -112,12 +132,12 @@ function initSky() {
 }
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.0, 0.5, 0.4);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.1, 0.5, 0.4);
 
 
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
-    composer.addPass(bloomPass);
+    //composer.addPass(bloomPass);
     return composer;
 }
 function initScene() {
@@ -172,11 +192,11 @@ function initDomContainer(divID) {
 function initRenderer(camera, dom) {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(1);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    //renderer.toneMapping = THREE.ReinhardToneMapping;
-    //renderer.toneMappingExposure = Math.pow(0.8, 2.0);
+    renderer.toneMapping = THREE.LinearToneMapping;
+    renderer.toneMappingExposure = 2.5;
 
     renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -207,77 +227,51 @@ function initStats(dom) {
 
 
 
-function initTileset(scene, gem) {
+function initTileset(scene, tileLoader) {
 
-    const tileLoader = new TileLoader({
-        renderer: renderer,
-        maxCachedItems: 1000,
-        meshCallback: (mesh, geometricError) => {
-            //// Insert code to be called on every newly decoded mesh e.g.:
-            //mesh.material = new THREE.MeshPhongMaterial({color:0xff0000}),
-            mesh.material.wireframe = false;
-            mesh.material.side = THREE.DoubleSide;
-            //mesh.castShadow = true
-            //mesh.receiveShadow = true;
-            mesh.geometry.computeVertexNormals();
-            //console.log(mesh.material.type)
-            //mesh.material.shadowSide = THREE.BackSide;
-            mesh.material.flatShading = true;
-            mesh.material.needsUpdate = true
-            mesh.material.metalness = 0.0
-
-            let meshURLs = [];
-            let transforms = [];
-
-        },
-        pointsCallback: (points, geometricError) => {
-            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
-            points.material.sizeAttenuation = true;
-            
-        }
-    });
-    /*const ogc3DTile = new OGC3DTile({
-        url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "" },
-        yUp: false, // this value is normally true by default
-        renderer: renderer,
-        loadOutsideView: false
-    });*/
+    
+    
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/berlinTileset/tileset.json",
-        //url: "http://localhost:8080/tileset.json",
-        //url: "https://storage.googleapis.com/rg-inserts/n1598-n12619/GreenValleyGap_MiddleWall_200k/tileset.json",
-
-        geometricErrorMultiplier: 0.03,
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/miraiMedian/tileset.json",
+        url: "http://localhost:8081/tileset.json",
+        
+        geometricErrorMultiplier: _isMobileDevice()?0.1:1.0,
         loadOutsideView: false,
         tileLoader: tileLoader,
-        //occlusionCullingService: occlusionCullingService,
-        static: false,
+        static: true,
         centerModel: true,
         renderer: renderer,
-        //yUp:false,
-        //displayErrors: true,
-        //displayCopyright: true,
         onLoadCallback:(e)=>{
             console.log(e)
         }
 
     });
-    setIntervalAsync(function () {
+    
+    scene.add(ogc3DTile);
+    setTimeout(()=>{
 
-
-        ogc3DTile.update(camera);
-    }, 10);
+        ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
+        ogc3DTile.updateMatrix();
+        ogc3DTile.updateMatrixWorld(true);
+    },1000)
+    //ogc3DTile.matrixWorldNeedsUpdate = true;
+    //ogc3DTile.updateMatrixWorld(true);
+    //scene.updateWorldMatrix(true, true);
 
     //ogc3DTile.scale.set(0.01, 0.01, 0.01)
 
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1)
     //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
     /* 
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
     ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP */
-    scene.add(ogc3DTile);
-
+    if(_isMobileDevice()){
+        document.getElementById('multiplierValue').textContent = 0.1;
+        document.getElementById('lodMultiplier').value = 0.1;
+    }
+    document.getElementById('lodMultiplier').addEventListener('input', function () {
+        document.getElementById('multiplierValue').textContent = this.value;
+        ogc3DTile.setGeometricErrorMultiplier(this.value);
+    });
     return ogc3DTile;
 }
 
@@ -325,19 +319,23 @@ function initInstancedTilesets(instancedTileLoader) {
     for (let x = 0; x < 10; x++) {
         for (let y = 0; y < 10; y++) {
             const tileset = new InstancedOGC3DTile({
-                url: "http://localhost:8080/tileset.json",
-                //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
-                geometricErrorMultiplier: 0.0001,
+                //url: "http://localhost:8080/tileset.json",
+                url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
+                geometricErrorMultiplier: 1,
                 loadOutsideView: false,
                 tileLoader: instancedTileLoader,
-                static: false,
+                static: true,
                 renderer: renderer,
                 centerModel: true
             });
-            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 1000 * x);
-            tileset.translateOnAxis(new THREE.Vector3(0,0, 1), 1000 * y);
-            tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
-            tileset.updateMatrix();
+            setTimeout(()=>{
+                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 100000 * x);
+                tileset.translateOnAxis(new THREE.Vector3(0,0, 1),100000 * y);
+                tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
+                tileset.updateMatrix();
+                tileset.updateMatrixWorld(true);
+            },1000);
+            
             //tileset.scale.set(0.1,0.1,0.1)
             instancedTilesets.push(tileset);
             scene.add(tileset);
@@ -363,13 +361,13 @@ function initInstancedTilesets(instancedTileLoader) {
         lastUpdateIndex = updateIndex % instancedTilesets.length;
     }, 100);
 
-    //initLODMultiplierSlider(instancedTilesets);
+    
 }
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 40000);
-    camera.position.set(1500,20,0);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 400000);
+    camera.position.set(200,10,10);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -386,7 +384,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0,0,0);
+    controller.target.set(100,0,50);
 
 
     controller.minDistance = 1;
@@ -398,41 +396,25 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-
+    t++;
+    /* if(t%5 == 0) {
+        ogc3DTiles.update(camera);
+    } */
+    tileLoader.update();
     //dirLight.position.addVectors(controller.target, cameraToLight);
     //dirLight.lookAt(dirLight.position.x+lightVector.x, dirLight.position.y+lightVector.y, dirLight.position.z+lightVector.z);
     //console.log(controller);
     //lightTarget.position.addVectors(dirLight.position, lightVector);
     //dirLight.needsUpdate = true;
-    //instancedTileLoader.update();
+    
     composer.render();
     //occlusionCullingService.update(scene, renderer, camera)
     stats.update();
     //lightShadowMapViewer.render(renderer);
 }
 
-function setIntervalAsync(fn, delay) {
-    let timeout;
-
-    const run = async () => {
-        const startTime = Date.now();
-        try {
-            await fn();
-        } catch (err) {
-            console.error(err);
-        } finally {
-            const endTime = Date.now();
-            const elapsedTime = endTime - startTime;
-            const nextDelay = elapsedTime >= delay ? 0 : delay - elapsedTime;
-            timeout = setTimeout(run, nextDelay);
-        }
-    };
-
-    timeout = setTimeout(run, delay);
-
-    return { clearInterval: () => clearTimeout(timeout) };
-}
 
 
-
-
+function _isMobileDevice() {
+    return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+};

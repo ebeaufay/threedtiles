@@ -41,12 +41,21 @@ const ogc3DTile = new OGC3DTile({
 scene.add(ogc3DTile);
 ```
 
-It's up to the user to call updates on the tileset. You might call them whenever the camera moves or at regular time intervals like here:
+It's up to the user to call updates on the tileset. 
 ```
-setInterval(function () {
+function animate() {
+    requestAnimationFrame(animate);
+    
     ogc3DTile.update(camera);
-}, 20);
+    ogc3DTile.tileLoader.update(); // important, since v10!
+    
+    ...
+
+}
 ```
+
+It is discouraged to call the update functions outside the render loop in a setInterval for example.
+While that may work fine on desktop, mobile browsers tend to block an entire frame when a timeout triggers in it.
 
 Here is a simple project : [Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link)
 
@@ -175,9 +184,11 @@ const ogc3DTile = new OGC3DTile({
 ```
 If using a shared cache between tilesets, check out the next section.
 
-### Cache
-You may instanciate a cache through the TileLoader class and re-use it for several or all your tilesets. 
-The limitation is that all the tilesets using the same cache will have the same callback.
+### Cache and TileLoader
+The Tile loader handles the loading strategy, managing a cache and the order for tile downloads and loads.
+
+You may re-use the Tile loader for several or all your tilesets. 
+The limitation is that all the tilesets using the same TileLoader will have the same mesh/points callback.
 
 The TileLoader takes an optional object as argument:
 @param {Object} [options] - Optional configuration object.
@@ -203,12 +214,33 @@ const tileLoader = new TileLoader({
             points.material.sizeAttenuation = true;
         }
     });
-const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+const ogc3DTile1 = new OGC3DTile({
+        url: "...",
         renderer: renderer,
         tileLoader: tileLoader,
         meshCallback: mesh => { mesh.material.wireframe = true;} // This callback will not be used as the callback provided to the TileLoader takes priority
     });
+
+const ogc3DTile2 = new OGC3DTile({
+        url: "...",
+        renderer: renderer,
+        tileLoader: tileLoader
+    });    
+```
+
+If you use the same tile loader for several tilesets, you can call update on it just once per frame:
+
+```
+function animate() {
+    requestAnimationFrame(animate);
+    
+    ogc3DTile1.update(camera);
+    ogc3DTile2.update(camera);
+    tileLoader.update(); // important! since v10
+    
+    ...
+
+}
 ```
 
 ### Transformations
@@ -305,11 +337,11 @@ for (let i = 0; i < 100; i++) {
         geometricErrorMultiplier: 1.0,
         loadOutsideView: false,
         tileLoader: instancedTileLoader,
-        static: true // when static is set to true, don't forget to call InstancedOGC3DTile#updateMatrix manually
+        static: true // when static is set to true, you must call InstancedOGC3DTile#updateMatrix manually
     });
     
     tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * i);
-    tileset.updateMatrix();
+    tileset.updateMatrix(); // important when static property is true
     scene.add(tileset);
     instancedTilesets.push(tileset);
 }
@@ -344,9 +376,13 @@ const ogc3DTile = new OGC3DTile({
 ```
 This property is also available for instanced models.
 
-### static tilesets and other performance tips
-When you know your tileset will be static, you can specify it in the OGC3DTile object constructor parameter.
+### Performance tips
+
+#### static tilesets
+When you know your tileset will be static or move rarely, you can specify it in the OGC3DTile object constructor parameter.
 This will skip recalculating the transformation matrix of every tile each frame and give a few extra frames per second.
+
+However, you'll need to manually call #updateMatrix and #updateMatrixWorld on the OGC3DTile object whenever you apply a transformation.
 
 ```
 const ogc3DTile = new OGC3DTile({
@@ -354,17 +390,26 @@ const ogc3DTile = new OGC3DTile({
         renderer: renderer,
         static: true
     });
+
+    setTimeout(()=>{
+
+        ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
+        ogc3DTile.updateMatrix();
+        ogc3DTile.updateMatrixWorld(true);
+    },1000)
 ```
 
-Either way, it's advised to set the autoUpdate property of the scene to false and call Scene#updateMatrixWorld manually whenever you move things around.
+For InstancedOGC3DTile objects, You only need to call instancedOgc3DTile#updateMatrix() and the gains will be much less significant.
 
 ```
-scene.matrixAutoUpdate = false;
-scene.matrixWorldAutoUpdate = false;
+const ogc3DTile = new InstancedOGC3DTile({
+        ...
+    });
 
-// and when objects move:
-scene.updateMatrixWorld(true);
-
+    setTimeout(()=>{
+        ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
+        ogc3DTile.updateMatrix();
+    },1000)
 ```
 ### Draco and Ktx2
 Compressed meshes via Draco and compressed textures in Ktx2 format are supported automatically using the threejs plugins.

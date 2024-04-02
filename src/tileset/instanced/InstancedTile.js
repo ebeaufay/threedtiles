@@ -56,6 +56,11 @@ class InstancedTile extends THREE.Object3D {
         this.jsonChildren = [];
         this.meshContent = new Set();
 
+        this.static = properties.static;
+        if (this.static) {
+            this.matrixAutoUpdate = false;
+            this.matrixWorldAutoUpdate = false;
+        }
         this.tileContent;
         this.refinement; // defaults to "REPLACE"
         this.rootPath;

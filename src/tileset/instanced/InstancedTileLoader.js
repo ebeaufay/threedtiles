@@ -6,8 +6,9 @@ import { JsonTile } from './JsonTile';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
-import {resolveImplicite} from '../implicit/ImplicitTileResolver.js';
+import { resolveImplicite } from '../implicit/ImplicitTileResolver.js';
 
+let concurrentDownloads = 0;
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
     0, 0, -1, 0,
@@ -64,7 +65,9 @@ class InstancedTileLoader {
         this.downloads = [];
         this.nextReady = [];
         this.nextDownloads = [];
-        this.init();
+
+
+        //this.init();
     }
 
 
@@ -75,22 +78,12 @@ class InstancedTileLoader {
             v.update();
         })
 
-    }
-    init() {
-
-        const self = this;
-        setIntervalAsync(() => {
+        if(concurrentDownloads<8) {
             self.download();
-        }, 10);
-        setIntervalAsync(() => {
-            const start = Date.now();
-            let loaded = 0;
-            do {
-                loaded = self.loadBatch();
-            } while (loaded > 0 && (Date.now() - start) <= 0)
-
-        }, 10);
+        }
+        self.loadBatch();
     }
+    
 
     download() {
         const self = this;
@@ -100,7 +93,7 @@ class InstancedTileLoader {
         }
         while (self.nextDownloads.length > 0) {
             const nextDownload = self.nextDownloads.shift();
-            if (!!nextDownload){//} && nextDownload.shouldDoDownload()) {
+            if (!!nextDownload) {//} && nextDownload.shouldDoDownload()) {
                 //nextDownload.doDownload();
                 if (nextDownload.path.includes(".b3dm")) {
                     var fetchFunction;
@@ -118,6 +111,7 @@ class InstancedTileLoader {
                             );
                         }
                     }
+                    concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + nextDownload.path)
@@ -125,17 +119,17 @@ class InstancedTileLoader {
                         }
                         return result.arrayBuffer();
 
-                    })
-                        .then(resultArrayBuffer => {
-                            return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
-                        })
-                        .then(mesh => {
-                            mesh.frustumCulled = false;
-                            nextDownload.tile.setObject(mesh);
-                            self.ready.unshift(nextDownload);
+                    }).then(resultArrayBuffer => {
+                        return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
+                    }).then(mesh => {
+                        mesh.frustumCulled = false;
+                        nextDownload.tile.setObject(mesh);
+                        self.ready.unshift(nextDownload);
 
-                        })
-                        .catch(e => console.error(e));
+                    }).catch(e => console.error(e))
+                    .finally(()=>{
+                        concurrentDownloads--;
+                    });
                 } if (nextDownload.path.includes(".glb") || (nextDownload.path.includes(".gltf"))) {
                     var fetchFunction;
                     if (!self.proxy) {
@@ -152,8 +146,9 @@ class InstancedTileLoader {
                             );
                         }
                     }
+                    concurrentDownloads++;
                     fetchFunction().then(result => {
-                        if(!result.ok) {
+                        if (!result.ok) {
                             throw new Error("missing content");
                         }
                         return result.arrayBuffer();
@@ -202,6 +197,8 @@ class InstancedTileLoader {
                         });
                     }, e => {
                         console.error("could not load tile : " + nextDownload.path)
+                    }).finally(()=>{
+                        concurrentDownloads--;
                     });
 
 
@@ -222,6 +219,7 @@ class InstancedTileLoader {
                             );
                         }
                     }
+                    concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + nextDownload.path)
@@ -229,13 +227,15 @@ class InstancedTileLoader {
                         }
                         return result.json();
 
-                    }).then(json=>{
-                        return resolveImplicite(json,nextDownload.path)
+                    }).then(json => {
+                        return resolveImplicite(json, nextDownload.path)
                     }).then(json => {
                         nextDownload.tile.setObject(json, nextDownload.path);
                         self.ready.unshift(nextDownload);
                     })
-                        .catch(e => console.error(e))
+                        .catch(e => console.error(e)).finally(()=>{
+                            concurrentDownloads--;
+                        });
                 }
             }
         }
@@ -401,7 +401,7 @@ class InstancedTileLoader {
             self.cache.remove(entry.key);
             if (!entry.value.dispose()) {
                 self.cache.put(entry.key, entry.value);
-            }else{
+            } else {
                 //console.log("disposed and removed")
             }
 
@@ -411,14 +411,14 @@ class InstancedTileLoader {
 
 async function checkLoaderInitialized(loader) {
     return new Promise((resolve) => {
-      const interval = setInterval(() => {
-        if (loader.dracoLoader && loader.ktx2Loader) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 10); // check every 100ms
+        const interval = setInterval(() => {
+            if (loader.dracoLoader && loader.ktx2Loader) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 10); // check every 100ms
     });
-  };
+};
 function setIntervalAsync(fn, delay) {
     let timeout;
 

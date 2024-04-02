@@ -37,6 +37,8 @@ class MeshTile{
     setObject(instancedMesh){
         const self = this;
         self.instancedMesh = instancedMesh;
+        self.instancedMesh.matrixAutoUpdate = false;
+        self.instancedMesh.matrixWorldAutoUpdate = false;
         if(!self.scene.children.includes(instancedMesh)){
             this.addToScene();
         }

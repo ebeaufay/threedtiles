@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "9.2.17",
+    "version": "10.0.0",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "files": [
@@ -10,6 +10,7 @@
     ],
     "scripts": {
         "build": "webpack --config webpack.prod.config.js",
+        "build-dev": "webpack --config webpack.dev.config.js",
         "watch": "webpack --watch --config webpack.dev.config.js",
         "dev": "webpack-dev-server --config webpack.dev.config.js"
     },

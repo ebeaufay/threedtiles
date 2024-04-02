@@ -71,6 +71,10 @@ class OGC3DTile extends THREE.Object3D {
             tileLoaderOptions.proxy = this.proxy;
             tileLoaderOptions.renderer = properties.renderer;
             this.tileLoader = new TileLoader(tileLoaderOptions);
+            this.update = (camera)=>{
+                this.update(camera);
+                this.tileLoader.update();
+            }
         }
         this.displayCopyright = !!properties.displayCopyright;
         // set properties general to the entire tileset
@@ -91,6 +95,7 @@ class OGC3DTile extends THREE.Object3D {
         }
         if (this.static) {
             this.matrixAutoUpdate = false;
+            this.matrixWorldAutoUpdate = false;
         }
 
         // declare properties specific to the tile for clarity
@@ -415,7 +420,16 @@ class OGC3DTile extends THREE.Object3D {
                             averageTime/=numTiles;
                             console.log(averageTime);*/
                             self.add(mesh);
-                            self.updateWorldMatrix(false, true);
+                            if(self.static){
+                                self.matrixWorldNeedsUpdate = true;
+                                self.updateMatrix();
+                                if(self.parentTile){
+                                    self.parentTile.updateMatrixWorld(true);
+                                }
+                            }
+                            
+                            
+                            
                             // mesh.layers.disable(0);
                             self.meshContent.push(mesh);
                         }, !self.cameraOnLoad ? () => 0 : () => {

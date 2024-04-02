@@ -35,6 +35,7 @@ class InstancedOGC3DTile extends THREE.Object3D {
         if (properties.static) {
             this.matrixAutoUpdate = false;
         }
+        this.tileLoader = properties.tileLoader;
     }
 
     update(camera, frustum){

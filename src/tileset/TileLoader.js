@@ -4,8 +4,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
-import {resolveImplicite} from './implicit/ImplicitTileResolver.js';
+import { resolveImplicite } from './implicit/ImplicitTileResolver.js';
 
+let concurrentDownloads = 0;
+let concurrentLoads = 0;
 const zUpToYUpMatrix = new THREE.Matrix4();
 zUpToYUpMatrix.set(1, 0, 0, 0,
     0, 0, -1, 0,
@@ -54,32 +56,24 @@ class TileLoader {
 
         this.cache = new LinkedHashMap();
         this.register = {};
-        this.concurrentDownloads = 0;
+        
 
         this.ready = [];
         this.downloads = [];
         this.nextReady = [];
         this.nextDownloads = [];
-        this.init();
+        
     }
 
 
-    init() {
-
+    update() {
         const self = this;
-        setIntervalAsync(() => {
-            if(self.concurrentDownloads>8)return;
+        if (concurrentDownloads < 8) {
             self.download();
-        }, 10);
-        setIntervalAsync(() => {
-            const start = Date.now();
-            let loaded = 0;
-            do {
-                loaded = self.loadBatch();
-            } while (loaded > 0 && (Date.now() - start) <= 0)
-
-        }, 10);
+        }
+        self.loadBatch();
     }
+    
 
     scheduleDownload(f) {
         this.downloads.unshift(f);
@@ -150,7 +144,7 @@ class TileLoader {
             this.nextDownloads.push(closestItem);
             const siblings = closestItem.getSiblings();
             for (let i = this.downloads.length - 1; i >= 0; i--) {
-                if (siblings.map(s=>s.uuid).includes(this.downloads[i].uuid)) {
+                if (siblings.map(s => s.uuid).includes(this.downloads[i].uuid)) {
                     this.nextDownloads.push(this.downloads.splice(i, 1).pop());
                 }
             }
@@ -177,12 +171,12 @@ class TileLoader {
         if (closest >= 0) {
             const closestItem = this.ready.splice(closest, 1).pop();
             this.nextReady.push(closestItem);
-           /*  const siblings = closestItem[4]();
-            for (let i = this.ready.length - 1; i >= 0; i--) {
-                if (siblings.map(s=>s.uuid).includes(this.ready[i][6])) {
-                    this.nextReady.push(this.ready.splice(i, 1).pop());
-                }
-            } */
+            /*  const siblings = closestItem[4]();
+             for (let i = this.ready.length - 1; i >= 0; i--) {
+                 if (siblings.map(s=>s.uuid).includes(this.ready[i][6])) {
+                     this.nextReady.push(this.ready.splice(i, 1).pop());
+                 }
+             } */
         }
     }
 
@@ -233,7 +227,7 @@ class TileLoader {
                             );
                         }
                     }
-                    self.concurrentDownloads++;
+                    concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -249,8 +243,8 @@ class TileLoader {
                         this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                     }).catch((e) => {
                         console.error(e)
-                    }).finally(()=>{
-                        self.concurrentDownloads--;
+                    }).finally(() => {
+                        concurrentDownloads--;
                     });
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
@@ -271,7 +265,7 @@ class TileLoader {
                             );
                         }
                     }
-                    self.concurrentDownloads++;
+                    concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -286,7 +280,7 @@ class TileLoader {
                                 gltf.scene.applyMatrix4(zUpToYUpMatrix);
                             }
                             gltf.scene.traverse((o) => {
-                                
+
                                 if (o.isMesh) {
                                     if (meshZupToYup) {
                                         o.applyMatrix4(zUpToYUpMatrix);
@@ -296,21 +290,21 @@ class TileLoader {
                                     }
                                 }
                                 if (o.isPoints) {
-                                    
+
                                     if (!!self.pointsCallback) {
                                         self.pointsCallback(o, geometricError);
                                     }
                                 }
                             });
-                            
+
                             self.cache.put(key, gltf.scene);
                             self.checkSize();
                             self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
                     }).catch((e) => {
                         console.error(e)
-                    }).finally(()=>{
-                        self.concurrentDownloads--;
+                    }).finally(() => {
+                        concurrentDownloads--;
                     });
 
 
@@ -333,7 +327,7 @@ class TileLoader {
                             );
                         }
                     }
-                    self.concurrentDownloads++;
+                    concurrentDownloads++;
                     fetchFunction().then(result => {
                         if (!result.ok) {
                             console.error("could not load tile with path : " + path)
@@ -341,7 +335,7 @@ class TileLoader {
                         }
                         return result.json();
 
-                    }).then(json=>{
+                    }).then(json => {
                         return resolveImplicite(json, path)
                     }).then(json => {
                         self.cache.put(key, json);
@@ -349,8 +343,8 @@ class TileLoader {
                         self.meshReceived(self.cache, self.register, key);
                     }).catch((e) => {
                         console.error(e)
-                    }).finally(()=>{
-                        self.concurrentDownloads--;
+                    }).finally(() => {
+                        concurrentDownloads--;
                     });
                 }
             }
@@ -442,14 +436,14 @@ function setIntervalAsync(fn, delay) {
 
 async function checkLoaderInitialized(loader) {
     return new Promise((resolve) => {
-      const interval = setInterval(() => {
-        if (loader.dracoLoader && loader.ktx2Loader) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 10); // check every 100ms
+        const interval = setInterval(() => {
+            if (loader.dracoLoader && loader.ktx2Loader) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 10); // check every 100ms
     });
-  };
+};
 
 function simplifyPath(main_path) {
 
