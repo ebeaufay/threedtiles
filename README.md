@@ -69,7 +69,7 @@ Unzip and run :
 
 If you need to convert meshes to 3DTiles, from small assets to gigabytes of data, contact me for a trial on UltraMesh tool.
 It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures.
-There's support for OBJ, IFC and glTF meshes and las/laz point clouds.
+There's support for OBJ, IFC, Collada and glTF meshes and las/laz point clouds.
 I aim for optimal quality in terms of mesh, texture and tileset structure and for optimal streaming speed, with no limit to the size of the input data.
 Contact: emeric.beaufays@jdultra.com
 
