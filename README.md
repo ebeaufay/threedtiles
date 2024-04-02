@@ -46,8 +46,8 @@ It's up to the user to call updates on the tileset.
 function animate() {
     requestAnimationFrame(animate);
     
-    ogc3DTile.update(camera);
-    ogc3DTile.tileLoader.update(); // important, since v10!
+    ogc3DTile.update(camera); // computes what tiles need to be refined and what tiles can be disposed.
+    ogc3DTile.tileLoader.update(); // downloads, loads and caches tiles in optimal order.
     
     ...
 
