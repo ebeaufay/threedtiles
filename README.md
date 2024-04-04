@@ -57,7 +57,7 @@ function animate() {
 It is discouraged to call the update functions outside the render loop in a setInterval for example.
 While that may work fine on desktop, mobile browsers tend to block an entire frame when a timeout triggers in it.
 
-Here is a simple project : [Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link)
+Here is a simple project : [Getting started](https://drive.google.com/file/d/14lipb5eUqfad-n7EUgXuXul-drPdLifV/view?usp=sharing)
 
 Unzip and run :
 
