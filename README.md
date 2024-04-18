@@ -6,24 +6,35 @@
 
 A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support
 
+## Demos
+
+[Google Tiles overlay](https://www.jdultra.com/overlay/index.html)
+overlay high quality meshes over google tiles with some shader magic to avoid overlap
+
 [Windows desktop viewer](https://github.com/ebeaufay/desktop-3dtiles-viewer)
+A viewer for windows based on flutter and this library
 
-[Google Map Tile API](https://www.jdultra.com/google-tiles/index.html) (experimental service with limited availability)
+[Google Map Tile API](https://www.jdultra.com/google-tiles/index.html) 
+google tiles in a geospatial framework [ULTRAGLOBE](https://github.com/ebeaufay/UltraGlobe)
 
-[Photogrametry (OBJ conversion)](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
+[Photogrametry](https://ebeaufay.github.io/ThreedTilesViewer.github.io/)
+Some tiles converted from OBJ via proprietary ULTRAMESH tool
 
 [Point cloud vs Mesh](https://www.jdultra.com/pointmeshing/index.html)
 
 [PBR material (GlTF conversion)](https://www.jdultra.com/pbr/)
 
 [Occlusion culling (IFC conversion)](https://www.jdultra.com/occlusion/index.html)
+Occlusion culling applied at the tile-loading level. This isn't just GPU occlusion culling, hidden tiles aren't even downloaded.
 
-[Instanced Tileset (pilot a swarm of highly detailed spaceships)](https://www.jdultra.com/instanced/index.html)
+[Instanced Tileset](https://www.jdultra.com/instanced/index.html)
+A multitude of identical meshes, each with its own LOD hiearchy but duplicate tiles are instanced
 
-install the library and threejs if not done already:
+## Getting started
+install the library:
 
 ```
-npm install three @jdultra/threedtiles --legacy-peer-deps
+npm install three @jdultra/threedtiles
 ```
 
 Adding a tileset to a scene is as easy as :
@@ -283,6 +294,8 @@ const ogc3DTile = new OGC3DTile({
 Then, you must update the occlusionCullingService within your render loop:
 ```
 function animate() {
+    ogc3DTile.update(camera);
+    ogc3DTile.tileLoader.update();
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
     occlusionCullingService.update(scene, renderer, camera)
@@ -418,30 +431,17 @@ KTX uses an external wasm loaded at runtime so if you have trouble packaging you
 
 ### tileset update loop
 Updating a single tileset via OGC3DTile#update or InstancedOGC3DTile#update is quite fast, even when the tree is deep.
-For a single tileset, it's safe to call it regularly with a setInterval:
+For a single tileset, it's safe to call it on every frame:
 ```
-function startInterval() {
-        interval = setIntervalAsync(function () {
-            ogc3DTile.update(camera);
-        }, 20);
-    }
-```
-
-However, with instancedTilesets, you may have hundreds or even thousands of LOD trees that need to be updated individually. In order to preserve frame-rate,
-you may want to implement something a little smarter that yields the CPU to the render loop. In the example below, the process tries to update as many tilesets as it can in under 4 ms.
-
-```
-function now() {
-    return (typeof performance === 'undefined' ? Date : performance).now();
+function animate() {
+    requestAnimationFrame(animate);
+    ogc3DTile.update(camera);
+    ogc3DTile.tileLoader.update();
+    
+    ... // rest of render loop
 }
-let updateIndex = 0;
-setInterval(() => {
-    let startTime = now();
-    do{
-        instancedTilesets[updateIndex].update(camera);
-        updateIndex= (updateIndex+1)%instancedTilesets.length;
-    }while(updateIndex < instancedTilesets.length && now()-startTime<4);
-},50);
+animate();
 ```
 
-window#requestIdleCallback is also a good option but the rate of updates becomes slightly unpredictable.
+However, if you have several OGC3DTiles loaded or when you use instancedTilesets, you may have hundreds or even thousands of LOD trees that need to be updated individually. In order to preserve frame-rate,
+you'll want to avoid updating every single tileset on every frame.
