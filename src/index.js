@@ -37,7 +37,7 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 //const tileLoader = initTileLoader();
-//const ogc3DTiles = initTileset(scene, tileLoader);
+//const ogc3DTiles = initTilesets(scene, tileLoader);
 
 const tileLoader = createInstancedTileLoader(scene);
 initInstancedTilesets(tileLoader);
@@ -227,13 +227,13 @@ function initStats(dom) {
 
 
 
-function initTileset(scene, tileLoader) {
+function initTilesets(scene, tileLoader) {
 
     
     
     const ogc3DTile = new OGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/miraiMedian/tileset.json",
-        url: "http://localhost:8081/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/Cales/tileset.json",
+        //url: "http://localhost:8081/tileset.json",
         
         geometricErrorMultiplier: _isMobileDevice()?0.1:1.0,
         loadOutsideView: false,
@@ -248,22 +248,37 @@ function initTileset(scene, tileLoader) {
     });
     
     scene.add(ogc3DTile);
-    setTimeout(()=>{
-
-        ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
+    
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0.0, -0.05), Math.PI * -0.49);
         ogc3DTile.updateMatrix();
         ogc3DTile.updateMatrixWorld(true);
-    },1000)
-    //ogc3DTile.matrixWorldNeedsUpdate = true;
-    //ogc3DTile.updateMatrixWorld(true);
-    //scene.updateWorldMatrix(true, true);
 
-    //ogc3DTile.scale.set(0.01, 0.01, 0.01)
-
-    //ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 7)
-    /* 
-    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 0, 1), 10) // Z-UP to Y-UP
-    ogc3DTile.translateOnAxis(new THREE.Vector3(0, 1, 0), 18.5) // Z-UP to Y-UP */
+        const ogc3DTile2 = new OGC3DTile({
+            url: "http://localhost:8082/4/7a905742-d0e9-40f6-99d8-93d65c8cb25c.json",
+            //url: "http://localhost:8081/tileset.json",
+            
+            geometricErrorMultiplier: _isMobileDevice()?0.1:1.0,
+            loadOutsideView: false,
+            tileLoader: tileLoader,
+            static: true,
+            centerModel: true,
+            renderer: renderer,
+            onLoadCallback:(e)=>{
+                console.log(e)
+            }
+    
+        });
+        
+        scene.add(ogc3DTile2);
+        
+        ogc3DTile2.rotateOnAxis(new THREE.Vector3(0, 0.2, 1), Math.PI * -0.5);
+        ogc3DTile2.translateOnAxis(new THREE.Vector3(1, 0, 0), 12);
+        ogc3DTile2.translateOnAxis(new THREE.Vector3(0, 1, 0), 180);
+        ogc3DTile2.scale.set(4.0,4.0,4.0)
+            ogc3DTile2.updateMatrix();
+            ogc3DTile2.updateMatrixWorld(true);
+    
+    
     if(_isMobileDevice()){
         document.getElementById('multiplierValue').textContent = 0.1;
         document.getElementById('lodMultiplier').value = 0.1;
@@ -271,8 +286,9 @@ function initTileset(scene, tileLoader) {
     document.getElementById('lodMultiplier').addEventListener('input', function () {
         document.getElementById('multiplierValue').textContent = this.value;
         ogc3DTile.setGeometricErrorMultiplier(this.value);
+        ogc3DTile2.setGeometricErrorMultiplier(this.value);
     });
-    return ogc3DTile;
+    return [ogc3DTile, ogc3DTile2];
 }
 
 
@@ -396,10 +412,13 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-    t++;
-    /* if(t%5 == 0) {
-        ogc3DTiles.update(camera);
-    } */
+    /* t++;
+     if(t%5 == 0) {
+        ogc3DTiles[0].update(camera);
+    } 
+    if(t%5 == 2) {
+        ogc3DTiles[1].update(camera);
+    }  */
     tileLoader.update();
     //dirLight.position.addVectors(controller.target, cameraToLight);
     //dirLight.lookAt(dirLight.position.x+lightVector.x, dirLight.position.y+lightVector.y, dirLight.position.z+lightVector.z);

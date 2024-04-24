@@ -89,18 +89,6 @@ export class B3DMDecoder {
 			await this.checkLoaderInitialized();
 			this.gltfLoader.parse(gltfBuffer, null, model => {
 
-				////TODO
-
-				//model.batchTable = b3dm.batchTable;
-				//model.featureTable = b3dm.featureTable;
-
-				//model.scene.batchTable = b3dm.batchTable;
-				//model.scene.featureTable = b3dm.featureTable;
-
-				//const scene = mergeColoredObject(model.scene);
-
-				//model.scene.applyMatrix4(ytozUpMatrix);
-
 				const rtcCenter = featureTable.getData('RTC_CENTER');
 				if (rtcCenter) {
 					this.tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2])

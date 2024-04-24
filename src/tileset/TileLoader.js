@@ -21,15 +21,24 @@ zUpToYUpMatrix.set(1, 0, 0, 0,
  * The actual number of cached items might grow beyond max if all items are in use.
  * 
  * The load order is designed for optimal perceived loading speed (nearby tiles are refined first).
- *
- * @param {Object} [options] - Optional configuration object.
- * @param {number} [options.maxCachedItems=100] - the cache size.
- * @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
- * @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
- * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
- * @param {sring} [options.proxy] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
+ * @class
  */
 class TileLoader {
+    /**
+     * Creates a tile loader with a maximum number of cached items and callbacks.
+     * The only required property is a renderer that will be used to visualize the tiles.
+     * The maxCachedItems property is the size of the cache in number of objects, mesh tile and tileset.json files.
+     * The mesh and point callbacks will be called for every incoming mesh or points.
+     * 
+     *
+     * 
+     * @param {Object} [options] - Optional configuration object.
+     * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
+     * @param {number} [options.maxCachedItems=100] - the cache size.
+     * @param {function} [options.meshCallback = undefined] - A callback to call on newly decoded meshes.
+     * @param {function} [options.pointsCallback = undefined] - A callback to call on newly decoded points.
+     * @param {sring} [options.proxy = undefined] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
+     */
     constructor(options) {
         this.maxCachedItems = 100;
         this.proxy = options.proxy;
@@ -56,32 +65,36 @@ class TileLoader {
 
         this.cache = new LinkedHashMap();
         this.register = {};
-        
+
 
         this.ready = [];
         this.downloads = [];
         this.nextReady = [];
         this.nextDownloads = [];
-        
+
     }
 
 
+    /**
+     * To be called in the render loop or at regular intervals.
+     * launches tile downloading and loading in an orderly fashion.
+     */
     update() {
         const self = this;
         if (concurrentDownloads < 8) {
-            self.download();
+            self._download();
         }
-        self.loadBatch();
+        self._loadBatch();
     }
-    
 
-    scheduleDownload(f) {
+
+    _scheduleDownload(f) {
         this.downloads.unshift(f);
     }
-    download() {
+    _download() {
 
         if (this.nextDownloads.length == 0) {
-            this.getNextDownloads();
+            this._getNextDownloads();
             if (this.nextDownloads.length == 0) return;
         }
         while (this.nextDownloads.length > 0) {
@@ -92,12 +105,12 @@ class TileLoader {
         }
         return;
     }
-    meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
+    _meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
         this.ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
     }
-    loadBatch() {
+    _loadBatch() {
         if (this.nextReady.length == 0) {
-            this.getNextReady();
+            this._getNextReady();
             if (this.nextReady.length == 0) return 0;
         }
         const data = this.nextReady.shift();
@@ -119,7 +132,7 @@ class TileLoader {
         return 1;
     }
 
-    getNextDownloads() {
+    _getNextDownloads() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
@@ -151,7 +164,7 @@ class TileLoader {
         }
     }
 
-    getNextReady() {
+    _getNextReady() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
@@ -181,9 +194,23 @@ class TileLoader {
     }
 
 
+    /**
+     * Schedules a tile content to be downloaded
+     * 
+     * @param {AbortController} abortController 
+     * @param {string|Number} tileIdentifier 
+     * @param {string} path 
+     * @param {Function} callback 
+     * @param {Function} distanceFunction 
+     * @param {Function} getSiblings 
+     * @param {Number} level 
+     * @param {Boolean} sceneZupToYup 
+     * @param {Boolean} meshZupToYup 
+     * @param {Number} geometricError 
+     */
     get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError) {
         const self = this;
-        const key = simplifyPath(path);
+        const key = _simplifyPath(path);
 
         const realAbortController = new AbortController();
         abortController.signal.addEventListener("abort", () => {
@@ -206,7 +233,7 @@ class TileLoader {
 
         const cachedObject = self.cache.get(key);
         if (!!cachedObject) {
-            this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+            this._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
         } else if (Object.keys(self.register[key]).length == 1) {
             let downloadFunction;
             if (path.includes(".b3dm")) {
@@ -239,8 +266,8 @@ class TileLoader {
                         return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, sceneZupToYup, meshZupToYup);
                     }).then(mesh => {
                         self.cache.put(key, mesh);
-                        self.checkSize();
-                        this.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                        self._checkSize();
+                        this._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                     }).catch((e) => {
                         console.error(e)
                     }).finally(() => {
@@ -273,7 +300,7 @@ class TileLoader {
                         }
                         return result.arrayBuffer();
                     }).then(async arrayBuffer => {
-                        await checkLoaderInitialized(this.gltfLoader);
+                        await _checkLoaderInitialized(this.gltfLoader);
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
                             gltf.scene.asset = gltf.asset;
                             if (sceneZupToYup) {
@@ -298,8 +325,8 @@ class TileLoader {
                             });
 
                             self.cache.put(key, gltf.scene);
-                            self.checkSize();
-                            self.meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                            self._checkSize();
+                            self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
                     }).catch((e) => {
                         console.error(e)
@@ -339,8 +366,8 @@ class TileLoader {
                         return resolveImplicite(json, path)
                     }).then(json => {
                         self.cache.put(key, json);
-                        self.checkSize();
-                        self.meshReceived(self.cache, self.register, key);
+                        self._checkSize();
+                        self._meshReceived(self.cache, self.register, key);
                     }).catch((e) => {
                         console.error(e)
                     }).finally(() => {
@@ -348,7 +375,7 @@ class TileLoader {
                     });
                 }
             }
-            this.scheduleDownload({
+            this._scheduleDownload({
                 "shouldDoDownload": () => {
                     return !abortController.signal.aborted && !!self.register[key] && Object.keys(self.register[key]).length > 0;
                 },
@@ -363,14 +390,19 @@ class TileLoader {
 
 
 
+    /**
+     *  unregisters a tile content for a specific tile, removing it from the cache if no other tile is using the same content.
+     * @param {string} path the content path/url
+     * @param {string|Number} tileIdentifier the tile ID
+     */
     invalidate(path, tileIdentifier) {
-        const key = simplifyPath(path);
+        const key = _simplifyPath(path);
         if (!!this.register[key]) {
             delete this.register[key][tileIdentifier];
         }
     }
 
-    checkSize() {
+    _checkSize() {
         const self = this;
 
         let i = 0;
@@ -412,29 +444,9 @@ class TileLoader {
     }
 }
 
-function setIntervalAsync(fn, delay) {
-    let timeout;
 
-    const run = async () => {
-        const startTime = Date.now();
-        try {
-            await fn();
-        } catch (err) {
-            console.error(err);
-        } finally {
-            const endTime = Date.now();
-            const elapsedTime = endTime - startTime;
-            const nextDelay = elapsedTime >= delay ? 0 : delay - elapsedTime;
-            timeout = setTimeout(run, nextDelay);
-        }
-    };
 
-    timeout = setTimeout(run, delay);
-
-    return { clearInterval: () => clearTimeout(timeout) };
-}
-
-async function checkLoaderInitialized(loader) {
+async function _checkLoaderInitialized(loader) {
     return new Promise((resolve) => {
         const interval = setInterval(() => {
             if (loader.dracoLoader && loader.ktx2Loader) {
@@ -445,7 +457,7 @@ async function checkLoaderInitialized(loader) {
     });
 };
 
-function simplifyPath(main_path) {
+function _simplifyPath(main_path) {
 
     var parts = main_path.split('/'),
         new_path = [],

@@ -18,7 +18,11 @@ const rendererSize = new THREE.Vector2(1000, 1000);
 const tempQuaternion = new THREE.Quaternion();
 const copyright = {};
 
-
+/**
+ * class representing a tiled and multileveled mesh or point-cloud according to the OGC3DTiles 1.1 spec
+ * @class
+ * @extends THREE.Object3D
+ */
 class OGC3DTile extends THREE.Object3D {
 
     /**
@@ -119,7 +123,7 @@ class OGC3DTile extends THREE.Object3D {
 
         if (!!properties.json) { // If this tile is created as a child of another tile, properties.json is not null
 
-            self.setup(properties);
+            self._setup(properties);
             
 
         } else if (properties.url) { // If only the url to the tileset.json is provided
@@ -160,14 +164,14 @@ class OGC3DTile extends THREE.Object3D {
                     throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }
                 result.json().then(json=>{return resolveImplicite(json, url)}).then(json => {
-                    self.setup({ rootPath: path.dirname(properties.url), json: json, onLoadCallback: properties.onLoadCallback });
+                    self._setup({ rootPath: path.dirname(properties.url), json: json, onLoadCallback: properties.onLoadCallback });
                     
                 });
-            }).catch(e => { if (self.displayErrors) showError(e) });
+            }).catch(e => { if (self.displayErrors) _showError(e) });
         }
     }
 
-    async setup(properties) {
+    async _setup(properties) {
         const self = this;
         if (!!properties.json.root) {
             self.json = properties.json.root;
@@ -215,8 +219,8 @@ class OGC3DTile extends THREE.Object3D {
                 self.boundingVolume = new OBB(self.json.boundingVolume.box);
             } else if (!!self.json.boundingVolume.region) {
                 const region = self.json.boundingVolume.region;
-                self.transformWGS84ToCartesian(region[0], region[1], region[4], tempVec1);
-                self.transformWGS84ToCartesian(region[2], region[3], region[5], tempVec2);
+                self._transformWGS84ToCartesian(region[0], region[1], region[4], tempVec1);
+                self._transformWGS84ToCartesian(region[2], region[3], region[5], tempVec2);
                 tempVec1.lerp(tempVec2, 0.5);
                 self.boundingVolume = new THREE.Sphere(new THREE.Vector3(tempVec1.x, tempVec1.y, tempVec1.z), tempVec1.distanceTo(tempVec2));
             } else if (!!self.json.boundingVolume.sphere) {
@@ -231,7 +235,7 @@ class OGC3DTile extends THREE.Object3D {
 
 
 
-        function checkContent(e) {
+        function _checkContent(e) {
             if (!!e.uri && e.uri.includes("json")) {
                 self.hasUnloadedJSONContent++;
             } else if (!!e.url && e.url.includes("json")) {
@@ -241,13 +245,13 @@ class OGC3DTile extends THREE.Object3D {
             }
         }
         if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
-            checkContent(self.json.content);
+            _checkContent(self.json.content);
 
-            self.load();
+            self._load();
         } else if (!!self.json.contents) { //if there is a content, json or otherwise, schedule it to be loaded 
-            self.json.contents.forEach(e => checkContent(e))
+            self.json.contents.forEach(e => _checkContent(e))
 
-            self.load();
+            self._load();
             //scheduleLoadTile(this);
         }
 
@@ -264,7 +268,7 @@ class OGC3DTile extends THREE.Object3D {
 
             //tempSphere.applyMatrix4(self.matrixWorld);
             if (!!this.json.boundingVolume.region) {
-                this.transformWGS84ToCartesian(
+                this._transformWGS84ToCartesian(
                     (this.json.boundingVolume.region[0] + this.json.boundingVolume.region[2]) * 0.5,
                     (this.json.boundingVolume.region[1] + this.json.boundingVolume.region[3]) * 0.5,
                     (this.json.boundingVolume.region[4] + this.json.boundingVolume.region[5]) * 0.5,
@@ -282,7 +286,7 @@ class OGC3DTile extends THREE.Object3D {
         if (properties.onLoadCallback) properties.onLoadCallback(self);
         self.isSetup = true;
     }
-    assembleURL(root, relative) {
+    _assembleURL(root, relative) {
         // Append a slash to the root URL if it doesn't already have one
         if (!root.endsWith('/')) {
             root += '/';
@@ -313,7 +317,7 @@ class OGC3DTile extends THREE.Object3D {
         return `${rootUrl.protocol}//${rootUrl.host}/${[...rootParts, ...relativeParts].join('/')}`;
     }
 
-    extractQueryParams(url, params) {
+    _extractQueryParams(url, params) {
         const urlObj = new URL(url);
 
         // Iterate over all the search parameters
@@ -325,7 +329,7 @@ class OGC3DTile extends THREE.Object3D {
         urlObj.search = '';
         return urlObj.toString();
     }
-    async load() {
+    async _load() {
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
@@ -349,14 +353,14 @@ class OGC3DTile extends THREE.Object3D {
             if (urlRegex.test(self.rootPath)) { // url
 
                 if (!urlRegex.test(url)) {
-                    url = self.assembleURL(self.rootPath, url);
+                    url = self._assembleURL(self.rootPath, url);
                 }
             } else { //path
                 if (path.isAbsolute(self.rootPath)) {
                     url = self.rootPath + path.sep + url;
                 }
             }
-            url = self.extractQueryParams(url, self.queryParams);
+            url = self._extractQueryParams(url, self.queryParams);
             if (self.queryParams) {
                 var props = "";
                 for (let key in self.queryParams) {
@@ -388,7 +392,7 @@ class OGC3DTile extends THREE.Object3D {
                                     }
                                 });
                                 if (self.displayCopyright) {
-                                    updateCopyrightLabel();
+                                    _updateCopyrightLabel();
                                 }
                             }
                             mesh.traverse((o) => {
@@ -433,15 +437,15 @@ class OGC3DTile extends THREE.Object3D {
                             // mesh.layers.disable(0);
                             self.meshContent.push(mesh);
                         }, !self.cameraOnLoad ? () => 0 : () => {
-                            return self.calculateDistanceToCamera(self.cameraOnLoad);
-                        }, () => self.getSiblings(),
+                            return self._calculateDistanceToCamera(self.cameraOnLoad);
+                        }, () => self._getSiblings(),
                             self.level,
                             !!self.json.boundingVolume.region ? false : true,
                             !!self.json.boundingVolume.region,
                             self.geometricError
                         );
                     } catch (e) {
-                        if (self.displayErrors) showError(e)
+                        if (self.displayErrors) _showError(e)
                     }
 
                 } else if (url.includes(".json")) {
@@ -465,6 +469,9 @@ class OGC3DTile extends THREE.Object3D {
         }
     }
 
+    /**
+     * Disposes of all the resources used by the tileset.
+     */
     dispose() {
 
         const self = this;
@@ -476,7 +483,7 @@ class OGC3DTile extends THREE.Object3D {
                     }
                 });
                 if (self.displayCopyright) {
-                    updateCopyrightLabel();
+                    _updateCopyrightLabel();
                 }
             }
         })
@@ -498,7 +505,7 @@ class OGC3DTile extends THREE.Object3D {
         this.parentTile = null;
         this.dispatchEvent({ type: 'removed' });
     }
-    disposeChildren() {
+    _disposeChildren() {
         var self = this;
 
         self.childrenTiles.forEach(tile => tile.dispose());
@@ -511,7 +518,10 @@ class OGC3DTile extends THREE.Object3D {
         }
     }
 
-
+    /**
+     * To be called in the render loop.
+     * @param {Three.Camera} camera a camera that the tileset will be rendered with.
+     */
     update(camera) {
     
         const frustum = new THREE.Frustum();
@@ -523,19 +533,19 @@ class OGC3DTile extends THREE.Object3D {
         if(!self.isSetup) return;
         // let dist = self.boundingVolume.distanceToPoint(new THREE.Vector3(3980, 4980.416656099139, 3.2851604304346775));
         // if (dist< 1) {
-        //     self.changeContentVisibility(false);
+        //     self._changeContentVisibility(false);
         //     console.log(dist+" "+self.level)
         // }
         const visibilityBeforeUpdate = self.materialVisibility;
 
         if (!!self.boundingVolume && !!self.geometricError) {
-            self.metric = self.calculateUpdateMetric(camera, frustum);
+            self.metric = self._calculateUpdateMetric(camera, frustum);
         }
         self.childrenTiles.forEach(child => child._update(camera, frustum));
 
-        updateNodeVisibility(self.metric);
+        _updateNodeVisibility(self.metric);
         updateTree(self.metric);
-        trimTree(self.metric, visibilityBeforeUpdate);
+        _trimTree(self.metric, visibilityBeforeUpdate);
 
 
         function updateTree(metric) {
@@ -546,13 +556,13 @@ class OGC3DTile extends THREE.Object3D {
             }
             if (!self.hasMeshContent || (metric < self.geometricErrorMultiplier * self.geometricError && self.meshContent.length > 0)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
-                    loadJsonChildren();
+                    _loadJsonChildren();
                     return;
                 }
             }
         }
 
-        function updateNodeVisibility(metric) {
+        function _updateNodeVisibility(metric) {
 
             //doesn't have a mesh content
             if (!self.hasMeshContent) return;
@@ -565,7 +575,7 @@ class OGC3DTile extends THREE.Object3D {
             // outside frustum
             if (metric < 0) {
                 self.inFrustum = false;
-                self.changeContentVisibility(!!self.loadOutsideView);
+                self._changeContentVisibility(!!self.loadOutsideView);
                 return;
             } else {
                 self.inFrustum = true;
@@ -573,28 +583,28 @@ class OGC3DTile extends THREE.Object3D {
 
             // has no children
             if (self.childrenTiles.length == 0) {
-                self.changeContentVisibility(true);
+                self._changeContentVisibility(true);
                 return;
             }
 
             // has children
             if (metric >= self.geometricErrorMultiplier * self.geometricError) { // Ideal LOD or before ideal lod
 
-                self.changeContentVisibility(true);
+                self._changeContentVisibility(true);
             } else if (metric < self.geometricErrorMultiplier * self.geometricError) { // Ideal LOD is past this one
                 // if children are visible and have been displayed, can be hidden
                 if (self.refine == "REPLACE") {
                     let allChildrenReady = true;
                     self.childrenTiles.every(child => {
 
-                        if (!child.isReady()) {
+                        if (!child._isReady()) {
                             allChildrenReady = false;
                             return false;
                         }
                         return true;
                     });
                     if (allChildrenReady) {
-                        self.changeContentVisibility(false);
+                        self._changeContentVisibility(false);
                     }
                 }
 
@@ -602,11 +612,11 @@ class OGC3DTile extends THREE.Object3D {
             }
         }
 
-        function trimTree(metric, visibilityBeforeUpdate) {
+        function _trimTree(metric, visibilityBeforeUpdate) {
             if (!self.hasMeshContent) return;
             if (!self.inFrustum) { // outside frustum
-                self.disposeChildren();
-                updateNodeVisibility(metric);
+                self._disposeChildren();
+                _updateNodeVisibility(metric);
                 return;
             }
             if (self.occlusionCullingService &&
@@ -614,21 +624,21 @@ class OGC3DTile extends THREE.Object3D {
                 self.hasMeshContent &&
                 self.meshContent.length > 0 &&
                 self.meshDisplayed &&
-                self.areAllChildrenLoadedAndHidden()) {
+                self._areAllChildrenLoadedAndHidden()) {
 
-                self.disposeChildren();
-                updateNodeVisibility(metric);
+                self._disposeChildren();
+                _updateNodeVisibility(metric);
                 return;
             }
             if (metric >= self.geometricErrorMultiplier * self.geometricError) {
-                self.disposeChildren();
-                updateNodeVisibility(metric);
+                self._disposeChildren();
+                _updateNodeVisibility(metric);
                 return;
             }
 
         }
 
-        function loadJsonChildren() {
+        function _loadJsonChildren() {
             for (let i = self.json.children.length - 1; i >= 0; i--) {
                 if (!self.json.children[i].root && !self.json.children[i].children && !self.json.children[i].getChildren && !self.json.children[i].content && !self.json.children[i].contents) {
                     self.json.children.splice(i, 1);
@@ -663,7 +673,7 @@ class OGC3DTile extends THREE.Object3D {
 
     }
 
-    areAllChildrenLoadedAndHidden() {
+    _areAllChildrenLoadedAndHidden() {
         let allLoadedAndHidden = true;
         const self = this;
         this.childrenTiles.every(child => {
@@ -683,7 +693,7 @@ class OGC3DTile extends THREE.Object3D {
                     return false;
                 }
             } else {
-                if (!child.areAllChildrenLoadedAndHidden()) {
+                if (!child._areAllChildrenLoadedAndHidden()) {
                     allLoadedAndHidden = false;
                     return false;
                 }
@@ -697,7 +707,7 @@ class OGC3DTile extends THREE.Object3D {
      * Node is ready if it is outside frustum, if it was drawn at least once or if all it's children are ready
      * @returns true if ready
      */
-    isReady() {
+    _isReady() {
         // if outside frustum
         if (!this.inFrustum) {
             return true;
@@ -711,7 +721,7 @@ class OGC3DTile extends THREE.Object3D {
             if (this.children.length > 0) {
                 var allChildrenReady = true;
                 this.childrenTiles.every(child => {
-                    if (!child.isReady()) {
+                    if (!child._isReady()) {
                         allChildrenReady = false;
                         return false;
                     }
@@ -750,7 +760,7 @@ class OGC3DTile extends THREE.Object3D {
 
 
 
-    changeContentVisibility(visibility) {
+    _changeContentVisibility(visibility) {
         const self = this;
         if (self.hasMeshContent && self.meshContent.length > 0) {
             if (visibility) {
@@ -784,7 +794,7 @@ class OGC3DTile extends THREE.Object3D {
 
 
     }
-    calculateUpdateMetric(camera, frustum) {
+    _calculateUpdateMetric(camera, frustum) {
         ////// return -1 if not in frustum
         if (this.boundingVolume instanceof OBB) {
             // box
@@ -824,7 +834,7 @@ class OGC3DTile extends THREE.Object3D {
         return (window.devicePixelRatio * 16 * lambda) / (s * scale);
     }
 
-    getSiblings() {
+    _getSiblings() {
         const self = this;
         const tiles = [];
         if (!self.parentTile) return tiles;
@@ -842,7 +852,7 @@ class OGC3DTile extends THREE.Object3D {
         });
         return tiles;
     }
-    calculateDistanceToCamera(camera) {
+    _calculateDistanceToCamera(camera) {
         if (this.boundingVolume instanceof OBB) {
             // box
             tempSphere.copy(this.boundingVolume.sphere);
@@ -859,12 +869,21 @@ class OGC3DTile extends THREE.Object3D {
         }
         return Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
     }
+
+    /**
+     * Set the Geometric Error Multiplier for the tileset.
+     * the {@param geometricErrorMultiplier} can be a number between 1 and infinity.
+     * A {@param geometricErrorMultiplier} of 1 (default) corresponds to a max ScreenSpace error (MSE) of 16.  
+     * A lower {@param geometricErrorMultiplier} loads less detail (higher MSE) and a higher {@param geometricErrorMultiplier} loads more detail (lower MSE)
+     * 
+     * @param {Number} geometricErrorMultiplier set the LOD multiplier for the entire tileset
+     */
     setGeometricErrorMultiplier(geometricErrorMultiplier) {
         this.geometricErrorMultiplier = geometricErrorMultiplier;
         this.childrenTiles.forEach(child => child.setGeometricErrorMultiplier(geometricErrorMultiplier));
     }
 
-    transformWGS84ToCartesian(lon, lat, h, sfct) {
+    _transformWGS84ToCartesian(lon, lat, h, sfct) {
         const a = 6378137.0;
         const e = 0.006694384442042;
         const N = a / (Math.sqrt(1.0 - (e * Math.pow(Math.sin(lat), 2))));
@@ -882,7 +901,7 @@ class OGC3DTile extends THREE.Object3D {
 }
 export { OGC3DTile };
 
-function showError(error) {
+function _showError(error) {
     // Create a new div element
     var errorDiv = document.createElement("div");
 
@@ -908,7 +927,7 @@ function showError(error) {
     }, 8000);
 }
 
-function updateCopyrightLabel() {
+function _updateCopyrightLabel() {
     // Create a new div
     if (!copyrightDiv) {
         copyrightDiv = document.createElement('div');

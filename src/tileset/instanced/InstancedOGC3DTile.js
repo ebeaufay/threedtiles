@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import {InstancedTile} from "./InstancedTile.js"
 
+/**
+ * Similarly to {@link OGC3DTile}, this class that extends THREE.Object3D loads a tiled and multileveled OGC3DTiles 1.0 or 1.1 dataset.
+ * The difference is that tiles are instanced. This is useful when one wants to load the same tileset hundreds or even thousands of times.
+ * Imagine rendering hundreds of very high detail cars driving in a city.
+ * Each tile content is instanced but each {@link InstancedOGC3DTile} object also has it's own LOD tree making this scenario very efficient.
+ * @class
+ */
 class InstancedOGC3DTile extends THREE.Object3D {
 
     /**
@@ -38,6 +45,10 @@ class InstancedOGC3DTile extends THREE.Object3D {
         this.tileLoader = properties.tileLoader;
     }
 
+    /**
+     * To be called in the render loop.
+     * @param {Three.Camera} camera a camera that the tileset will be rendered with.
+     */
     update(camera, frustum){
         if(!!frustum){
             this.tileset._update(camera, frustum);
@@ -48,10 +59,15 @@ class InstancedOGC3DTile extends THREE.Object3D {
         }
         
     }
-    updateWithFrustum(camera, frustum){
-        this.tileset._update(camera, frustum);
-    }
-
+    
+    /** 
+     * Set the Geometric Error Multiplier for the tileset.
+     * the {@param geometricErrorMultiplier} can be a number between 1 and infinity.
+     * A {@param geometricErrorMultiplier} of 1 (default) corresponds to a max ScreenSpace error (MSE) of 16.  
+     * A lower {@param geometricErrorMultiplier} loads less detail (higher MSE) and a higher {@param geometricErrorMultiplier} loads more detail (lower MSE)
+     * 
+     * @param {Number} geometricErrorMultiplier set the LOD multiplier for the entire tileset
+     */
     setGeometricErrorMultiplier(geometricErrorMultiplier) {
         this.geometricErrorMultiplier = geometricErrorMultiplier?geometricErrorMultiplier:1.0;
     }

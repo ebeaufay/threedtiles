@@ -1,7 +1,7 @@
-/**
- * This class is taken straight from NASA-AMMOS library.
- * https://github.com/NASA-AMMOS/3DTilesRendererJS/blob/master/src/utilities/FeatureTable.js
- */
+//
+// This class is taken straight from NASA-AMMOS library.
+// https://github.com/NASA-AMMOS/3DTilesRendererJS/blob/master/src/utilities/FeatureTable.js
+//
 
 const utf8decoder = new TextDecoder();
 export class FeatureTable {

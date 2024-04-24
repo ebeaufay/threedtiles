@@ -2,44 +2,37 @@ import * as THREE from 'three';
 import { clamp } from "three/src/math/MathUtils";
 
 
-
+/**
+ * An occlusion culling service that helps to only refine tiles that are visible.
+ * This occlusion culling has a cost but allows downloading much less data.
+ * For models that have a lot of geometry that is often hidden from the camera by walls, this can greatly improve the frame-rate.
+ * @class
+ */
 class OcclusionCullingService {
 
     /**
-     * 
-     * @param {
-     *   json: optional,
-     *   url: optional,
-     *   rootPath: optional,
-     *   parentGeometricError: optional,
-     *   parentBoundingVolume: optional,
-     *   parentRefinement: optional,
-     *   geometricErrorMultiplier: Double,
-     *   loadOutsideView: Boolean,
-     *   tileLoader : TileLoader,
-     *   meshCallback: function,
-     *   cameraOnLoad: camera,
-     *   parentTile: OGC3DTile,
-     *   onLoadCallback: function,
-     *   occlusionCullingService: OcclusionCullingService
-     * } properties 
+     * Creates an Occlusion Culling service to be passed to {@link OGC3DTile} Tilesets
      */
     constructor() {
         this.cullMap = [];
         this.cullMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
         this.cullMaterial.side = THREE.FrontSide;
-        this.cullTarget = this.createCullTarget();
+        this.cullTarget = this._createCullTarget();
         this.cullPixels = new Uint8Array(4 * this.cullTarget.width * this.cullTarget.height);
     }
 
+    /**
+     * 
+     * @param {Integer} side use THREE.FrontSide, THREE.BackSide or THREE.DoubleSide (FrontSide default)
+     */
     setSide(side){
         this.cullMaterial.side = side;
     }
 
-    createCullTarget() {
+    _createCullTarget() {
         const target = new THREE.WebGLRenderTarget(Math.floor(window.innerWidth * 0.05), Math.floor(window.innerHeight * 0.05));
         target.texture.format = THREE.RGBAFormat;
-        target.texture.colorSpace = THREE.LinearEncoding;
+        target.texture.colorSpace = THREE.LinearSRGBColorSpace;
         target.texture.minFilter = THREE.NearestFilter;
         target.texture.magFilter = THREE.NearestFilter;
         target.texture.generateMipmaps = false;
@@ -51,6 +44,12 @@ class OcclusionCullingService {
         return target;
     }
 
+    /**
+     * Update function to be called on every frame in the render loop.
+     * @param {THREE.scene} scene 
+     * @param {THREE.Renderer} renderer 
+     * @param {THREE.camera} camera 
+     */
     update(scene, renderer, camera) {
         let tempRenderTarget = renderer.getRenderTarget();
         let tempOverrideMaterial = scene.overrideMaterial;
@@ -72,6 +71,11 @@ class OcclusionCullingService {
 
     }
 
+    /**
+     * check if the given tile ID was visible in the last rendered frame.
+     * @param {string|Number} id 
+     * @returns true if tile is visible
+     */
     hasID(id) {
         return this.cullMap[id];
     }

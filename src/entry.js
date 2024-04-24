@@ -5,6 +5,6 @@ export { TileLoader } from "./tileset/TileLoader";
 
 export { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 export { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
-export { B3DMDecoder } from "./decoder/B3DMDecoder.js"
+//export { B3DMDecoder } from "./decoder/B3DMDecoder.js"
 
-export { OBB } from "./geometry/obb.js"
+//export { OBB } from "./geometry/obb.js"

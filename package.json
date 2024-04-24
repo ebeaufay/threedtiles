@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "10.0.0",
+    "version": "10.0.1",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "files": [
@@ -9,10 +9,12 @@
         "LICENSE"
     ],
     "scripts": {
-        "build": "webpack --config webpack.prod.config.js",
+        "build:types": "tsc --declaration --emitDeclarationOnly --allowJs --outDir dist",
+        "build": "webpack --config webpack.prod.config.js && npm run build:types",
         "build-dev": "webpack --config webpack.dev.config.js",
         "watch": "webpack --watch --config webpack.dev.config.js",
-        "dev": "webpack-dev-server --config webpack.dev.config.js"
+        "dev": "webpack-dev-server --config webpack.dev.config.js",
+        "generate-docs": "jsdoc --configure jsdoc.json --verbose"
     },
     "repository": {
         "type": "git",
@@ -54,6 +56,7 @@
         "webpack-dev-server": "^4.13.2",
         "webpack-glsl-loader": "^1.0.1",
         "webpack-node-externals": "^3.0.0",
-        "whatwg-fetch": "^3.5.0"
+        "whatwg-fetch": "^3.5.0",
+        "typescript": "^5.2.2"
     }
 }

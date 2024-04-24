@@ -1,0 +1,36 @@
+{
+    "source": {
+        "include": [
+            "./src"
+        ],
+        "includePattern": ".+\\.js(doc|x)?$",
+        "excludePattern": "(^|\\/|\\\\)_"
+    },
+    "opts": {
+        "template": "C:/Users/emeri/AppData/Roaming/npm/node_modules/clean-jsdoc-theme",
+        "encoding": "utf8",
+        "destination": "dist/docs/",
+        "recurse": true,
+        "verbose": true,
+        "readme": "./README.md"
+    },
+    "templates": {
+        "applicationName": "T H R E E D T I L E S"
+    },
+    "markdown": {
+        "hardwrap": false,
+        "idInHeadings": true
+    },
+    "theme_opts": {
+        "base_url": "https://github.com/ebeaufay/threedtiles",
+        "homepageTitle": "T H R E E D T I L E S",
+        "title": "T H R E E D T I L E S",
+        "includeFilesListInHomepage": true,
+        "menu": [
+            {
+                "title": "Website",
+                "link": "https://www.jdultra.com"
+            }
+        ]
+    }
+}

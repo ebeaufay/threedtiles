@@ -7,6 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 import { resolveImplicite } from '../implicit/ImplicitTileResolver.js';
+import { InstancedOGC3DTile } from './InstancedOGC3DTile';
 
 let concurrentDownloads = 0;
 const zUpToYUpMatrix = new THREE.Matrix4();
@@ -16,22 +17,29 @@ zUpToYUpMatrix.set(1, 0, 0, 0,
     0, 0, 0, 1);
 
 /**
-* A Tile loader that manages caching and load order for instanced tiles.
-* The cache is an LRU cache and is defined by the number of items it can hold.
-* The actual number of cached items might grow beyond max if all items are in use.
-* 
-* The load order is designed for optimal perceived loading speed (nearby tiles are refined first).
-*
-* @param {scene} [scene] - a threejs scene.
-* @param {Object} [options] - Optional configuration object.
-* @param {number} [options.maxCachedItems=100] - the cache size.
-* @param {number} [options.maxInstances=1] - the cache size.
-* @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
-* @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
-* @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
-* @param {sring} [options.proxy] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
-*/
+ * A Tile loader that manages caching and load order for instanced tiles.
+ * The cache is an LRU cache and is defined by the number of items it can hold.
+ * The actual number of cached items might grow beyond max if all items are in use.
+ * 
+ * The load order is designed for optimal perceived loading speed (nearby tiles are refined first).
+ *
+ */
 class InstancedTileLoader {
+    /**
+     * Creates a tile loader with a maximum number of cached items and callbacks.
+     * The only required property is a renderer that will be used to visualize the tiles.
+     * The maxCachedItems property is the size of the cache in number of objects, mesh tile and tileset.json files.
+     * The mesh and point callbacks will be called for every incoming mesh or points.
+     *
+     * @param {scene} [scene] - a threejs scene.
+     * @param {Object} [options] - Optional configuration object.
+     * @param {number} [options.maxCachedItems=100] - the cache size.
+     * @param {number} [options.maxInstances=1] - the cache size.
+     * @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
+     * @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
+     * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
+     * @param {sring} [options.proxy] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
+     */
     constructor(scene, options) {
         this.maxCachedItems = 100;
         this.maxInstances = 1;
@@ -66,29 +74,30 @@ class InstancedTileLoader {
         this.nextReady = [];
         this.nextDownloads = [];
 
-
-        //this.init();
     }
 
-
+    /**
+     * To be called in the render loop or at regular intervals.
+     * launches tile downloading and loading in an orderly fashion.
+     */
     update() {
         const self = this;
-        self.checkSize();
+        self._checkSize();
         self.cache._data.forEach(v => {
             v.update();
         })
 
-        if(concurrentDownloads<8) {
-            self.download();
+        if (concurrentDownloads < 8) {
+            self._download();
         }
-        self.loadBatch();
+        self._loadBatch();
     }
-    
 
-    download() {
+
+    _download() {
         const self = this;
         if (self.nextDownloads.length == 0) {
-            self.getNextDownloads();
+            self._getNextDownloads();
             if (self.nextDownloads.length == 0) return;
         }
         while (self.nextDownloads.length > 0) {
@@ -127,9 +136,9 @@ class InstancedTileLoader {
                         self.ready.unshift(nextDownload);
 
                     }).catch(e => console.error(e))
-                    .finally(()=>{
-                        concurrentDownloads--;
-                    });
+                        .finally(() => {
+                            concurrentDownloads--;
+                        });
                 } if (nextDownload.path.includes(".glb") || (nextDownload.path.includes(".gltf"))) {
                     var fetchFunction;
                     if (!self.proxy) {
@@ -153,7 +162,7 @@ class InstancedTileLoader {
                         }
                         return result.arrayBuffer();
                     }).then(async arrayBuffer => {
-                        await checkLoaderInitialized(this.gltfLoader);
+                        await _checkLoaderInitialized(this.gltfLoader);
                         this.gltfLoader.parse(arrayBuffer, null, gltf => {
                             gltf.scene.asset = gltf.asset;
 
@@ -197,7 +206,7 @@ class InstancedTileLoader {
                         });
                     }, e => {
                         console.error("could not load tile : " + nextDownload.path)
-                    }).finally(()=>{
+                    }).finally(() => {
                         concurrentDownloads--;
                     });
 
@@ -233,7 +242,7 @@ class InstancedTileLoader {
                         nextDownload.tile.setObject(json, nextDownload.path);
                         self.ready.unshift(nextDownload);
                     })
-                        .catch(e => console.error(e)).finally(()=>{
+                        .catch(e => console.error(e)).finally(() => {
                             concurrentDownloads--;
                         });
                 }
@@ -242,9 +251,9 @@ class InstancedTileLoader {
         return;
     }
 
-    loadBatch() {
+    _loadBatch() {
         if (this.nextReady.length == 0) {
-            this.getNextReady();
+            this._getNextReady();
             if (this.nextReady.length == 0) return 0;
         }
         const download = this.nextReady.shift();
@@ -254,7 +263,7 @@ class InstancedTileLoader {
         return 1;
     }
 
-    getNextReady() {
+    _getNextReady() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
@@ -283,9 +292,23 @@ class InstancedTileLoader {
         }
     }
 
+    /**
+     * Schedules a tile content to be downloaded
+     * 
+     * @param {AbortController} abortController 
+     * @param {string} path path or url to tile content 
+     * @param {string|Number} uuid tile id
+     * @param {InstancedOGC3DTile} instancedOGC3DTile 
+     * @param {Function} distanceFunction 
+     * @param {Function} getSiblings 
+     * @param {Number} level 
+     * @param {Boolean} sceneZupToYup 
+     * @param {Boolean} meshZupToYup 
+     * @param {Number} geometricError 
+     */
     get(abortController, path, uuid, instancedOGC3DTile, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError) {
         const self = this;
-        const key = simplifyPath(path);
+        const key = _simplifyPath(path);
 
         if (!path.includes(".b3dm") && !path.includes(".json") && !path.includes(".glb") && !path.includes(".gltf")) {
             console.error("the 3DTiles cache can only be used to load B3DM, gltf and json data");
@@ -303,7 +326,7 @@ class InstancedTileLoader {
                 tile.addInstance(instancedOGC3DTile);
 
                 self.cache.put(key, tile);
-                //self.checkSize();
+                //self._checkSize();
                 const realAbortController = new AbortController();
                 abortController.signal.addEventListener("abort", () => {
                     if (tile.getCount() == 0) {
@@ -330,7 +353,7 @@ class InstancedTileLoader {
                 const tile = new JsonTile();
                 tile.addInstance(instancedOGC3DTile);
                 self.cache.put(key, tile);
-                //self.checkSize();
+                //self._checkSize();
                 const realAbortController = new AbortController();
                 abortController.signal.addEventListener("abort", () => {
                     if (tile.getCount() == 0) {
@@ -356,7 +379,7 @@ class InstancedTileLoader {
 
 
 
-    getNextDownloads() {
+    _getNextDownloads() {
         let smallestDistance = Number.MAX_VALUE;
         let closest = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
@@ -390,7 +413,7 @@ class InstancedTileLoader {
         }
     }
 
-    checkSize() {
+    _checkSize() {
         const self = this;
 
         let i = 0;
@@ -409,7 +432,7 @@ class InstancedTileLoader {
     }
 }
 
-async function checkLoaderInitialized(loader) {
+async function _checkLoaderInitialized(loader) {
     return new Promise((resolve) => {
         const interval = setInterval(() => {
             if (loader.dracoLoader && loader.ktx2Loader) {
@@ -419,28 +442,8 @@ async function checkLoaderInitialized(loader) {
         }, 10); // check every 100ms
     });
 };
-function setIntervalAsync(fn, delay) {
-    let timeout;
 
-    const run = async () => {
-        const startTime = Date.now();
-        try {
-            await fn();
-        } catch (err) {
-            console.error(err);
-        } finally {
-            const endTime = Date.now();
-            const elapsedTime = endTime - startTime;
-            const nextDelay = elapsedTime >= delay ? 0 : delay - elapsedTime;
-            timeout = setTimeout(run, nextDelay);
-        }
-    };
-
-    timeout = setTimeout(run, delay);
-
-    return { clearInterval: () => clearTimeout(timeout) };
-}
-function simplifyPath(main_path) {
+function _simplifyPath(main_path) {
 
     var parts = main_path.split('/'),
         new_path = [],
