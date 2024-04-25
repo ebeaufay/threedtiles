@@ -18,7 +18,6 @@ const localDracoPath = 'draco-decoders/';
 const localKTX2Path = 'ktx2-decoders/';
 export class B3DMDecoder {
 	constructor(aGltfLoader) {
-		console.log(aGltfLoader)
 		this.gltfLoader = aGltfLoader;
 		this.tempMatrix = new THREE.Matrix4();
 		
