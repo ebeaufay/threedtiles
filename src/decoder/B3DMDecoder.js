@@ -17,40 +17,10 @@ const onlineKTX2Path = 'https://storage.googleapis.com/ogc-3d-tiles/basis/';
 const localDracoPath = 'draco-decoders/';
 const localKTX2Path = 'ktx2-decoders/';
 export class B3DMDecoder {
-	constructor(renderer) {
-		
-		this.gltfLoader = new GLTFLoader();
+	constructor(aGltfLoader) {
+		console.log(aGltfLoader)
+		this.gltfLoader = aGltfLoader;
 		this.tempMatrix = new THREE.Matrix4();
-
-		const dracoLoader = new DRACOLoader();
-		const ktx2Loader = new KTX2Loader();
-		checkResource(localDracoPath+"draco_decoder.wasm").then(result=>{
-			if(result){
-				dracoLoader.setDecoderPath(localDracoPath);
-			}else{
-				console.log("no local draco decoder found in "+localDracoPath+", fetching online at "+onlineDracoPath);
-				dracoLoader.setDecoderPath(onlineDracoPath);
-			}
-			return checkResource(localKTX2Path+"basis_transcoder.wasm");
-		}).then(result=>{
-			if(result){
-				ktx2Loader.setTranscoderPath(localKTX2Path).detectSupport(renderer);
-			}else{
-				console.log("no local ktx2 decoder found in "+localKTX2Path+", fetching online at "+onlineKTX2Path);
-				ktx2Loader.setTranscoderPath(onlineKTX2Path).detectSupport(renderer);
-			}
-		}).then(()=>{
-			this.gltfLoader.setDRACOLoader(dracoLoader);
-			this.gltfLoader.setKTX2Loader(ktx2Loader);
-		});
-
-		async function checkResource(url) {
-			return fetch(url, { method: 'HEAD' }).then(response=>{
-				return response.ok;
-			}).catch(e=>{
-				return false;
-			});
-		}
 		
 	}
 
@@ -124,7 +94,7 @@ export class B3DMDecoder {
 	checkLoaderInitialized = async () => {
 		return new Promise((resolve) => {
 		  const interval = setInterval(() => {
-			if (this.gltfLoader.dracoLoader && this.gltfLoader.ktx2Loader) {
+			if ((!this.gltfLoader.hasDracoLoader ||this.gltfLoader.dracoLoader) && (!this.gltfLoader.hasKTX2Loader ||this.gltfLoader.ktx2Loader)) {
 			  clearInterval(interval);
 			  resolve();
 			}

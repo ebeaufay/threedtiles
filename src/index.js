@@ -12,8 +12,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { Sky } from "three/examples/jsm/objects/Sky";
-import { ShadowMapViewer } from 'three/addons/utils/ShadowMapViewer.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 
 let t = 0;
 let lightShadowMapViewer;
@@ -36,16 +36,19 @@ const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-//const tileLoader = initTileLoader();
-//const ogc3DTiles = initTilesets(scene, tileLoader);
+const tileLoader = initTileLoader();
+const ogc3DTiles = initTilesets(scene, tileLoader);
 
-const tileLoader = createInstancedTileLoader(scene);
-initInstancedTilesets(tileLoader);
+//const tileLoader = createInstancedTileLoader(scene);
+//initInstancedTilesets(tileLoader);
 
 
 function initTileLoader(){
+    const ktx2Loader = new KTX2Loader();
+    ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
     const tileLoader = new TileLoader({
-        renderer: renderer,
+        //renderer: renderer,
+        //ktx2Loader:ktx2Loader,
         maxCachedItems: 1000,
         meshCallback: (mesh, geometricError) => {
             mesh.material.wireframe = false;
@@ -232,7 +235,7 @@ function initTilesets(scene, tileLoader) {
     
     
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/Cales/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
         //url: "http://localhost:8081/tileset.json",
         
         geometricErrorMultiplier: _isMobileDevice()?0.1:1.0,
@@ -240,7 +243,7 @@ function initTilesets(scene, tileLoader) {
         tileLoader: tileLoader,
         static: true,
         centerModel: true,
-        renderer: renderer,
+        //renderer: renderer,
         onLoadCallback:(e)=>{
             console.log(e)
         }
@@ -253,30 +256,7 @@ function initTilesets(scene, tileLoader) {
         ogc3DTile.updateMatrix();
         ogc3DTile.updateMatrixWorld(true);
 
-        const ogc3DTile2 = new OGC3DTile({
-            url: "http://localhost:8082/4/7a905742-d0e9-40f6-99d8-93d65c8cb25c.json",
-            //url: "http://localhost:8081/tileset.json",
-            
-            geometricErrorMultiplier: _isMobileDevice()?0.1:1.0,
-            loadOutsideView: false,
-            tileLoader: tileLoader,
-            static: true,
-            centerModel: true,
-            renderer: renderer,
-            onLoadCallback:(e)=>{
-                console.log(e)
-            }
-    
-        });
         
-        scene.add(ogc3DTile2);
-        
-        ogc3DTile2.rotateOnAxis(new THREE.Vector3(0, 0.2, 1), Math.PI * -0.5);
-        ogc3DTile2.translateOnAxis(new THREE.Vector3(1, 0, 0), 12);
-        ogc3DTile2.translateOnAxis(new THREE.Vector3(0, 1, 0), 180);
-        ogc3DTile2.scale.set(4.0,4.0,4.0)
-            ogc3DTile2.updateMatrix();
-            ogc3DTile2.updateMatrixWorld(true);
     
     
     if(_isMobileDevice()){
@@ -286,9 +266,8 @@ function initTilesets(scene, tileLoader) {
     document.getElementById('lodMultiplier').addEventListener('input', function () {
         document.getElementById('multiplierValue').textContent = this.value;
         ogc3DTile.setGeometricErrorMultiplier(this.value);
-        ogc3DTile2.setGeometricErrorMultiplier(this.value);
     });
-    return [ogc3DTile, ogc3DTile2];
+    return [ogc3DTile];
 }
 
 
@@ -412,13 +391,10 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-    /* t++;
+     t++;
      if(t%5 == 0) {
         ogc3DTiles[0].update(camera);
-    } 
-    if(t%5 == 2) {
-        ogc3DTiles[1].update(camera);
-    }  */
+    }
     tileLoader.update();
     //dirLight.position.addVectors(controller.target, cameraToLight);
     //dirLight.lookAt(dirLight.position.x+lightVector.x, dirLight.position.y+lightVector.y, dirLight.position.z+lightVector.z);

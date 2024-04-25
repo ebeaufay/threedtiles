@@ -37,8 +37,11 @@ class InstancedTileLoader {
      * @param {number} [options.maxInstances=1] - the cache size.
      * @param {function} [options.meshCallback] - A callback to call on newly decoded meshes.
      * @param {function} [options.pointsCallback] - A callback to call on newly decoded points.
-     * @param {renderer} [options.renderer] - The renderer, this is required for KTX2 support.
      * @param {sring} [options.proxy] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
+     * @param {KTX2Loader} [options.ktx2Loader = undefined] - A KTX2Loader (three/addons)
+     * @param {DRACOLoader} [options.dracoLoader = undefined] - A DRACOLoader (three/addons)
+     * @param {renderer} [options.renderer = undefined] - optional the renderer, this is required only for on the fly ktx2 support. not needed if you pass a ktx2Loader manually
+     
      */
     constructor(scene, options) {
         this.maxCachedItems = 100;
@@ -51,20 +54,30 @@ class InstancedTileLoader {
             if (options.maxInstances) this.maxInstances = options.maxInstances;
 
         }
-        this.gltfLoader = new GLTFLoader();
-        const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
-        this.gltfLoader.setDRACOLoader(dracoLoader);
 
-        if (!!options && !!options.renderer) {
+
+        this.gltfLoader = new GLTFLoader();
+        if(!!options && !!options.dracoLoader){
+            this.gltfLoader.setDRACOLoader(options.dracoLoader);
+            this.hasDracoLoader = true;
+        }else{
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
+            this.gltfLoader.setDRACOLoader(dracoLoader);
+            this.gltfLoader.hasDracoLoader = true;
+        }
+        
+        if(!!options && !!options.ktx2Loader){
+            this.gltfLoader.setKTX2Loader(options.ktx2Loader);
+            this.hasKTX2Loader = true;
+        }else if(!!options && !!options.renderer){
             const ktx2Loader = new KTX2Loader();
             ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
             this.gltfLoader.setKTX2Loader(ktx2Loader);
-
-            this.b3dmDecoder = new B3DMDecoder(options.renderer);
-        } else {
-            this.b3dmDecoder = new B3DMDecoder(null);
+            this.gltfLoader.hasKTX2Loader = true;
         }
+        this.b3dmDecoder = new B3DMDecoder(this.gltfLoader);
+
 
         this.cache = new LinkedHashMap();
         this.scene = scene;
@@ -433,9 +446,11 @@ class InstancedTileLoader {
 }
 
 async function _checkLoaderInitialized(loader) {
+
+    const self = this;
     return new Promise((resolve) => {
         const interval = setInterval(() => {
-            if (loader.dracoLoader && loader.ktx2Loader) {
+            if ((!loader.hasDracoLoader || loader.dracoLoader) && (!loader.hasKTX2Loader || loader.ktx2Loader)) {
                 clearInterval(interval);
                 resolve();
             }

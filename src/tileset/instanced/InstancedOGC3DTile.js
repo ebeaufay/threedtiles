@@ -13,7 +13,6 @@ class InstancedOGC3DTile extends THREE.Object3D {
     /**
      * 
      * @param {Object} [properties] - the properties for this tileset
-     * @param {Object} [properties.renderer] - the renderer used to display the tileset
      * @param {Object} [properties.url] - the url to the parent tileset.json
      * @param {Object} [properties.pathParams] - optional, path params to add to individual tile urls (starts with "?").
      * @param {Object} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
@@ -32,11 +31,21 @@ class InstancedOGC3DTile extends THREE.Object3D {
      * @param {Object} [properties.parentRefinement] - optional refinement strategy of the parent of the parent
      * @param {Object} [properties.cameraOnLoad] - optional the camera used when loading this particular sub-tile
      * @param {Object} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
+     * @param {Number} [properties.domWidth = 1000] - optional the canvas width (used to calculate geometric error). If a renderer is provided, it'll be used instead, else a default value is used.  
+     * @param {Number} [properties.domHeight = 1000] - optional the canvas height (used to calculate geometric error). If a renderer is provided, it'll be used instead, else a default value is used.  
+     * @param {Object} [properties.renderer = undefined] - optional the renderer is used to infer the canvas size and compute tiles geometric error.
      */
     constructor(properties) {
         super();
         properties.master = this;
+        
+        if(!!properties.domWidth && !!properties.domHeight){
+            this.rendererSize = new THREE.Vector2(properties.domWidth, properties.domHeight);
+        }else{
+            this.rendererSize = new THREE.Vector2(1000, 1000);
+        }
         this.renderer = properties.renderer;
+
         this.geometricErrorMultiplier = properties.geometricErrorMultiplier? properties.geometricErrorMultiplier:1.0;
         this.tileset = new InstancedTile(properties);
         if (properties.static) {
@@ -45,6 +54,25 @@ class InstancedOGC3DTile extends THREE.Object3D {
         this.tileLoader = properties.tileLoader;
     }
 
+    _renderSize(size){
+        if(!!this.renderer){
+            this.renderer.getDrawingBufferSize(size);
+        }else{
+            size.copy(this.rendererSize);
+        }
+        
+    }
+
+    /**
+     * Call this to specify the canvas width/height when it changes (used to compute tiles geometric error that controls tile refinement).
+     * It's unnecessary to call this when the {@link OGC3DTile} is instantiated with the renderer.
+     * 
+     * @param {Number} width 
+     * @param {Number} height 
+     */
+     setCanvasSize(width, height){
+        this.rendererSize.set(width, height);
+    }
     /**
      * To be called in the render loop.
      * @param {Three.Camera} camera a camera that the tileset will be rendered with.

@@ -4,7 +4,6 @@ import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { clamp } from "three/src/math/MathUtils";
-import { Octree } from 'three/addons/math/Octree.js';
 import {resolveImplicite} from './implicit/ImplicitTileResolver.js';
 //import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 var averageTime = 0;
@@ -14,7 +13,7 @@ const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
-const rendererSize = new THREE.Vector2(1000, 1000);
+
 const tempQuaternion = new THREE.Quaternion();
 const copyright = {};
 
@@ -27,7 +26,6 @@ class OGC3DTile extends THREE.Object3D {
 
     /**
      * @param {Object} [properties] - the properties for this tileset
-     * @param {THREE.Renderer} [properties.renderer] - the renderer used to display the tileset
      * @param {String} [properties.url] - the url to the parent tileset.json
      * @param {String} [properties.queryParams] - optional, path params to add to individual tile urls (starts with "?").
      * @param {Number} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
@@ -48,11 +46,21 @@ class OGC3DTile extends THREE.Object3D {
      * @param {OGC3DTile} [properties.parentTile] - optional the OGC3DTile object that loaded this tile as a child
      * @param {String} [properties.proxy] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
      * @param {Boolean} [properties.displayErrors] - optional value indicating that errors should be shown on screen.
+     * @param {THREE.Renderer} [properties.renderer] - optional the renderer used to display the tileset. Used to infer render resolution at runtime and to instantiate a ktx2loader on the fly if not provided. 
+     * @param {Number} [properties.domWidth] - optional the canvas width (used to calculate geometric error). If a renderer is provided, it'll be used instead, else a default value is used.  
+     * @param {Number} [properties.domHeight] - optional the canvas height (used to calculate geometric error). If a renderer is provided, it'll be used instead, else a default value is used.  
+     * @param {DracoLoader} [properties.dracoLoader] - optional a draco loader (three/addons).
+     * @param {KTX2Loader} [properties.ktx2Loader] - optional a ktx2 loader (three/addons).
      */
     constructor(properties) {
         super();
         const self = this;
 
+        if(!!properties.domWidth && !!properties.domHeight){
+            this.rendererSize = new THREE.Vector2(properties.domWidth, properties.domHeight);
+        }else{
+            this.rendererSize = new THREE.Vector2(1000, 1000);
+        }
         this.proxy = properties.proxy;
         this.displayErrors = properties.displayErrors;
         this.displayCopyright = properties.displayCopyright;
@@ -74,6 +82,8 @@ class OGC3DTile extends THREE.Object3D {
             } : properties.pointsCallback;
             tileLoaderOptions.proxy = this.proxy;
             tileLoaderOptions.renderer = properties.renderer;
+            tileLoaderOptions.dracoLoader = properties.dracoLoader;
+            tileLoaderOptions.ktx2Loader = properties.ktx2Loader;
             this.tileLoader = new TileLoader(tileLoaderOptions);
             this.update = (camera)=>{
                 this.update(camera);
@@ -169,6 +179,17 @@ class OGC3DTile extends THREE.Object3D {
                 });
             }).catch(e => { if (self.displayErrors) _showError(e) });
         }
+    }
+
+    /**
+     * Call this to specify the canvas width/height when it changes (used to compute tiles geometric error that controls tile refinement).
+     * It's unnecessary to call this when the {@link OGC3DTile} is instantiated with the renderer.
+     * 
+     * @param {Number} width 
+     * @param {Number} height 
+     */
+    setCanvasSize(width, height){
+        this.rendererSize.set(width, height);
     }
 
     async _setup(properties) {
@@ -820,13 +841,13 @@ class OGC3DTile extends THREE.Object3D {
         }
         const scale = this.matrixWorld.getMaxScaleOnAxis();
         if (!!this.renderer) {
-            this.renderer.getDrawingBufferSize(rendererSize);
+            this.renderer.getDrawingBufferSize(this.rendererSize);
         }
-        let s = rendererSize.y;
+        let s = this.rendererSize.y;
         let fov = camera.fov;
         if (camera.aspect < 1) {
             fov *= camera.aspect;
-            s = rendererSize.x;
+            s = this.rendererSize.x;
         }
 
         let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
