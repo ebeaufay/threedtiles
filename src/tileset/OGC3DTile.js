@@ -228,7 +228,7 @@ class OGC3DTile extends THREE.Object3D {
 
 
         // decode transform
-        if (!!self.json.transform && !self.centerModel) {
+        if (!!self.json.transform) {
             let mat = new THREE.Matrix4();
             mat.elements = self.json.transform;
             self.applyMatrix4(mat);
@@ -298,10 +298,10 @@ class OGC3DTile extends THREE.Object3D {
                 tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
                 self.applyQuaternion(tempQuaternion);
             }
-
-            self.translateX(-tempSphere.center.x * self.scale.x);
-            self.translateY(-tempSphere.center.y * self.scale.y);
-            self.translateZ(-tempSphere.center.z * self.scale.z);
+            tempSphere.center.applyMatrix4(self.matrix);
+            self.translateX(-tempSphere.center.x);
+            self.translateY(-tempSphere.center.y);
+            self.translateZ(-tempSphere.center.z);
 
         }
         if (properties.onLoadCallback) properties.onLoadCallback(self);

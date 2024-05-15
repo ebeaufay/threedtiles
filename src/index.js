@@ -199,7 +199,7 @@ function initRenderer(camera, dom) {
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.LinearToneMapping;
-    renderer.toneMappingExposure = 2.5;
+    renderer.toneMappingExposure = 1.0;
 
     renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -235,13 +235,13 @@ function initTilesets(scene, tileLoader) {
     
     
     const ogc3DTile = new OGC3DTile({
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
-        //url: "http://localhost:8081/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         
-        geometricErrorMultiplier: _isMobileDevice()?0.1:1.0,
+        geometricErrorMultiplier: _isMobileDevice()?0.1:5.0,
         loadOutsideView: false,
         tileLoader: tileLoader,
-        static: true,
+        static: false,
         centerModel: true,
         //renderer: renderer,
         onLoadCallback:(e)=>{
@@ -251,23 +251,11 @@ function initTilesets(scene, tileLoader) {
     });
     
     scene.add(ogc3DTile);
-    
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0.0, -0.05), Math.PI * -0.49);
-        ogc3DTile.updateMatrix();
-        ogc3DTile.updateMatrixWorld(true);
 
-        
+    const axesHelper = new THREE.AxesHelper( 5000 );
+    scene.add( axesHelper );
     
-    
-    if(_isMobileDevice()){
-        document.getElementById('multiplierValue').textContent = 0.1;
-        document.getElementById('lodMultiplier').value = 0.1;
-    }
-    document.getElementById('lodMultiplier').addEventListener('input', function () {
-        document.getElementById('multiplierValue').textContent = this.value;
-        ogc3DTile.setGeometricErrorMultiplier(this.value);
-    });
-    return [ogc3DTile];
+    return ogc3DTile;
 }
 
 
@@ -391,11 +379,8 @@ function initController(camera, dom) {
 
 function animate() {
     requestAnimationFrame(animate);
-     t++;
-     if(t%5 == 0) {
-        ogc3DTiles[0].update(camera);
-    }
     tileLoader.update();
+    ogc3DTiles.update(camera);
     //dirLight.position.addVectors(controller.target, cameraToLight);
     //dirLight.lookAt(dirLight.position.x+lightVector.x, dirLight.position.y+lightVector.y, dirLight.position.z+lightVector.z);
     //console.log(controller);
