@@ -66,8 +66,9 @@ class MeshTile{
                 if(self.instancedTiles[i].materialVisibility){
                     self.instancedMesh.count++;
                     self.reuseableMatrix.set(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-                    self.reuseableMatrix.multiply(self.instancedTiles[i].master.matrixWorld);
+                    self.reuseableMatrix.multiply(self.instancedTiles[i].matrixWorld);
                     self.reuseableMatrix.multiply(self.instancedMesh.baseMatrix);
+                    //self.reuseableMatrix.premultiply(self.instancedTiles[i].master.matrixWorld);
                     self.instancedMesh.setMatrixAt(self.instancedMesh.count-1, self.reuseableMatrix );
                     //self.instancedMesh.getMatrixAt(0, t);
                     //console.log(self.instancedMesh.baseMatrix)

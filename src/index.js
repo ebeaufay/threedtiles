@@ -26,6 +26,7 @@ const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
 
+
 /* const m = new THREE.Mesh(new THREE.TorusGeometry(), new THREE.MeshPhongMaterial());
 m.castShadow = true;
 m.receiveShadow = true;
@@ -48,15 +49,16 @@ function initTileLoader(){
     ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
     const tileLoader = new TileLoader({
         //renderer: renderer,
-        //ktx2Loader:ktx2Loader,
+        ktx2Loader:ktx2Loader,
         maxCachedItems: 1000,
         meshCallback: (mesh, geometricError) => {
-            mesh.material.wireframe = false;
-            mesh.material.side = THREE.DoubleSide;
+            //mesh.material.wireframe = false;
+            //mesh.material.side = THREE.DoubleSide;
         },
         pointsCallback: (points, geometricError) => {
             points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
+            //points.add(new THREE.BoxHelper( points, 0xffff00 ))
             
         }
     });
@@ -95,7 +97,7 @@ const gltfLoader = new GLTFLoader();
 const controller = initController(camera, domContainer);
 
 const composer = initComposer(scene, camera, renderer);
-
+let previousFrame = Date.now();
 animate();
 
 let sky, sun;
@@ -194,7 +196,7 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: false, powerPreference: "high-performance", precision: 'lowp' });
     renderer.setPixelRatio(1);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -236,12 +238,13 @@ function initTilesets(scene, tileLoader) {
     
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/rocks2/tileset.json",
+        url: "http://192.168.0.171:8080/tileset.json",
         
-        geometricErrorMultiplier: _isMobileDevice()?0.1:5.0,
+        geometricErrorMultiplier: 0.5,
         loadOutsideView: false,
         tileLoader: tileLoader,
-        static: false,
+        static: true,
         centerModel: true,
         //renderer: renderer,
         onLoadCallback:(e)=>{
@@ -250,10 +253,12 @@ function initTilesets(scene, tileLoader) {
 
     });
     
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5)
+    scene.matrixAutoUpdate = false;
     scene.add(ogc3DTile);
 
-    const axesHelper = new THREE.AxesHelper( 5000 );
-    scene.add( axesHelper );
+    //const axesHelper = new THREE.AxesHelper( 5000 );
+    //scene.add( axesHelper );
     
     return ogc3DTile;
 }
@@ -266,9 +271,9 @@ function createInstancedTileLoader(scene) {
         maxInstances: 100,
         meshCallback: mesh => {
             //// Insert code to be called on every newly decoded mesh e.g.:
-            mesh.material.wireframe = false;
+            //mesh.material.wireframe = true;
             //mesh.material.alphaMap = mesh.material.map;
-            mesh.material.side = THREE.DoubleSide;
+            //mesh.material.side = THREE.DoubleSide;
             //mesh.geometry.computeVertexNormals();
             //console.log(mesh.material.type)
             //mesh.material.shadowSide = THREE.BackSide;
@@ -291,6 +296,8 @@ function createInstancedTileLoader(scene) {
         pointsCallback: points => {
             points.material.size = Math.min(1.0, 0.5 * Math.sqrt(points.geometricError));
             points.material.sizeAttenuation = true;
+            
+            
         }
     });
 }
@@ -299,25 +306,24 @@ function initInstancedTilesets(instancedTileLoader) {
     const instancedTilesets = [];
 
 
-    for (let x = 0; x < 10; x++) {
-        for (let y = 0; y < 10; y++) {
+    for (let x = 0; x < 1; x++) {
+        for (let y = 0; y < 1; y++) {
             const tileset = new InstancedOGC3DTile({
-                //url: "http://localhost:8080/tileset.json",
-                url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
+                url: "http://localhost:8080/tileset.json",
+                //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 1,
                 loadOutsideView: false,
                 tileLoader: instancedTileLoader,
                 static: true,
                 renderer: renderer,
-                centerModel: true
+                centerModel: false
             });
-            setTimeout(()=>{
-                tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 100000 * x);
-                tileset.translateOnAxis(new THREE.Vector3(0,0, 1),100000 * y);
+            tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 10000 * x);
+                tileset.translateOnAxis(new THREE.Vector3(0,0, 1),10000 * y);
                 tileset.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
                 tileset.updateMatrix();
                 tileset.updateMatrixWorld(true);
-            },1000);
+                tileset.updateWorldMatrix(true, true);
             
             //tileset.scale.set(0.1,0.1,0.1)
             instancedTilesets.push(tileset);
@@ -377,22 +383,51 @@ function initController(camera, dom) {
 }
 
 
-function animate() {
-    requestAnimationFrame(animate);
+function animate1() {
+    setTimeout( function() {
+
+        requestAnimationFrame( animate );
+
+    }, 1000 / 30 );
     tileLoader.update();
     ogc3DTiles.update(camera);
-    //dirLight.position.addVectors(controller.target, cameraToLight);
-    //dirLight.lookAt(dirLight.position.x+lightVector.x, dirLight.position.y+lightVector.y, dirLight.position.z+lightVector.z);
-    //console.log(controller);
-    //lightTarget.position.addVectors(dirLight.position, lightVector);
-    //dirLight.needsUpdate = true;
     
     composer.render();
+        stats.update();
     //occlusionCullingService.update(scene, renderer, camera)
-    stats.update();
     //lightShadowMapViewer.render(renderer);
 }
 
+function animate() {
+    requestAnimationFrame( animate );
+    tileLoader.update();
+    
+    const now = Date.now();
+    if( now - previousFrame > 1000 / 60){
+        ogc3DTiles.update(camera);
+        previousFrame = now;
+        composer.render();
+        stats.update();
+    }
+}
+
+function animate3(){
+    let previousTime = Date.now();
+    
+    function render(){
+        tileLoader.update();
+        ogc3DTiles.update(camera);
+        composer.render();
+        stats.update();
+
+        const now = Date.now();
+        const nextFrame = Math.max(0,1000/30 - (now-previousTime));
+        console.log(now-previousTime + "  "+nextFrame);
+        previousTime = now;
+        setTimeout(render,nextFrame);
+    }
+    render();
+}
 
 
 function _isMobileDevice() {

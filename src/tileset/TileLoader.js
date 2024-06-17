@@ -272,7 +272,7 @@ class TileLoader {
                         return result.arrayBuffer();
 
                     }).then(resultArrayBuffer => {
-                        return this.b3dmDecoder.parseB3DM(resultArrayBuffer, self.meshCallback, sceneZupToYup, meshZupToYup);
+                        return this.b3dmDecoder.parseB3DM(resultArrayBuffer, (mesh)=>{self.meshCallback(mesh, geometricError)}, sceneZupToYup, meshZupToYup);
                     }).then(mesh => {
                         self.cache.put(key, mesh);
                         self._checkSize();

@@ -142,7 +142,7 @@ class InstancedTileLoader {
                         return result.arrayBuffer();
 
                     }).then(resultArrayBuffer => {
-                        return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, self.meshCallback, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
+                        return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, (mesh)=>{self.meshCallback(mesh, nextDownload.geometricError)}, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
                     }).then(mesh => {
                         mesh.frustumCulled = false;
                         nextDownload.tile.setObject(mesh);

@@ -10,6 +10,7 @@ var averageTime = 0;
 var numTiles = 0;
 var copyrightDiv;
 const tempSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1);
+const tempBox3 = new THREE.Box3();
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
@@ -175,7 +176,6 @@ class OGC3DTile extends THREE.Object3D {
                 }
                 result.json().then(json=>{return resolveImplicite(json, url)}).then(json => {
                     self._setup({ rootPath: path.dirname(properties.url), json: json, onLoadCallback: properties.onLoadCallback });
-                    
                 });
             }).catch(e => { if (self.displayErrors) _showError(e) });
         }
@@ -232,6 +232,7 @@ class OGC3DTile extends THREE.Object3D {
             let mat = new THREE.Matrix4();
             mat.elements = self.json.transform;
             self.applyMatrix4(mat);
+            
         }
 
         // decode volume
@@ -419,12 +420,11 @@ class OGC3DTile extends THREE.Object3D {
                             mesh.traverse((o) => {
                                 if (o.isMesh || o.isPoints) {
                                     o.layers.disable(0);
-                                    if (self.static) {
-                                        o.matrixAutoUpdate = false;
-                                    }
+                                    
                                     //if(o.material.transparent) o.layers.enable(31);
                                 }
                                 if (o.isMesh) {
+                                    
                                     if (self.occlusionCullingService) {
                                         const position = o.geometry.attributes.position;
                                         const colors = [];
@@ -437,7 +437,7 @@ class OGC3DTile extends THREE.Object3D {
                                     //o.material.visible = false;
                                 }
                             });
-                            let s = Date.now();
+                            
                             //self.octree.fromGraphNode( mesh );
                             /*averageTime*=numTiles;
                             averageTime+=Date.now()-s;
@@ -445,11 +445,13 @@ class OGC3DTile extends THREE.Object3D {
                             averageTime/=numTiles;
                             console.log(averageTime);*/
                             self.add(mesh);
+                            mesh.matrixWorldNeedsUpdate = true;
                             if(self.static){
                                 self.matrixWorldNeedsUpdate = true;
-                                self.updateMatrix();
+                                //self.updateMatrix();
                                 if(self.parentTile){
                                     self.parentTile.updateMatrixWorld(true);
+                                    //self.parentTile.updateWorldMatrix(true, true);
                                 }
                             }
                             
@@ -817,16 +819,24 @@ class OGC3DTile extends THREE.Object3D {
     }
     _calculateUpdateMetric(camera, frustum) {
         ////// return -1 if not in frustum
+        let distance = 0;
         if (this.boundingVolume instanceof OBB) {
             // box
-            tempSphere.copy(this.boundingVolume.sphere);
+            tempBox3.copy(this.boundingVolume.aabb);
+            tempBox3.applyMatrix4(this.matrixWorld);
+            if (!frustum.intersectsBox(tempBox3)) return -1;
+            distance = Math.max(0, tempBox3.distanceToPoint(camera.position));
+
+            /* tempSphere.copy(this.boundingVolume.sphere);
             tempSphere.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
+            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius); */
         } else if (this.boundingVolume instanceof THREE.Sphere) {
             //sphere
             tempSphere.copy(this.boundingVolume);
             tempSphere.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
+            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
         } else {
             console.error("unsupported shape");
             return -1
@@ -835,7 +845,7 @@ class OGC3DTile extends THREE.Object3D {
 
         /////// return metric based on geometric error and distance
 
-        const distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
+        
         if (distance == 0) {
             return 0;
         }

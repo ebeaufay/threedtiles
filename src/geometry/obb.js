@@ -1,4 +1,4 @@
-import { Matrix3, Sphere, Vector3 } from "three";
+import { Matrix3, Sphere, Vector3, Box3 } from "three";
 
 class OBB {
     constructor(values) {
@@ -10,6 +10,23 @@ class OBB {
         this.halfWidth = e1.length();
         this.halfHeight = e2.length();
         this.halfDepth = e3.length();
+
+        this.aabb = new Box3();
+
+        const corner = new Vector3();
+        const signs = [-1, 1];
+
+        for (let x of signs) {
+            for (let y of signs) {
+                for (let z of signs) {
+                    corner.copy(this.center)
+                        .addScaledVector(e1, x)
+                        .addScaledVector(e2, y)
+                        .addScaledVector(e3, z);
+                    this.aabb.expandByPoint(corner);
+                }
+            }
+        }
 
         e1.normalize();
         e2.normalize();

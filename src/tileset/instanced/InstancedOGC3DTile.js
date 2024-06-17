@@ -18,7 +18,6 @@ class InstancedOGC3DTile extends THREE.Object3D {
      * @param {Object} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
      * @param {Object} [properties.loadOutsideView] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
      * @param {Object} [properties.tileLoader] - A tile loader that can be shared among tilesets in order to share a common cache.
-     * @param {Object} [properties.meshCallback] - A callback function that will be called on every mesh
      * @param {Object} [properties.pointsCallback] - A callback function that will be called on every points
      * @param {Object} [properties.onLoadCallback] - A callback function that will be called when the root tile has been loaded
      * @param {Object} [properties.occlusionCullingService] - A service that handles occlusion culling
