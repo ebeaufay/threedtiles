@@ -17,14 +17,16 @@ import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 
 let t = 0;
 let lightShadowMapViewer;
-const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
-dirLight.position.set(1,1,1);
+//const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
+//dirLight.position.set(1,1,1);
 let cameraToLight = new THREE.Vector3(-1000, 1000, -1000);
 let lightVector = new THREE.Vector3(1000, -1000, 1000);
 let lightTarget = new THREE.Object3D();
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
+
+
 
 
 /* const m = new THREE.Mesh(new THREE.TorusGeometry(), new THREE.MeshPhongMaterial());
@@ -39,10 +41,26 @@ const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
 const ogc3DTiles = initTilesets(scene, tileLoader);
-
+initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
+let targetFrameRate = 30;
+function initSliders(){
+    const lodSlider = document.getElementById("lodMultiplier");
+    const lodSliderValue = document.getElementById("multiplierValue");
+    const fpsSlider = document.getElementById("targetFPS");
+    const fpsSliderValue = document.getElementById("targetFPSValue");
 
+    lodSlider.addEventListener("input", e=>{
+        lodSliderValue.innerText = lodSlider.value;
+        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
+    })
+
+    fpsSlider.addEventListener("input", e=>{
+        fpsSliderValue.innerText = fpsSlider.value;
+        targetFrameRate = fpsSlider.value
+    })
+}
 
 function initTileLoader(){
     const ktx2Loader = new KTX2Loader();
@@ -159,7 +177,7 @@ function initScene() {
     //scene.add(helper);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
 
-    scene.add(dirLight)
+    //scene.add(dirLight)
 
     /* lightShadowMapViewer = new ShadowMapViewer(dirLight);
     lightShadowMapViewer.position.x = 10;
@@ -196,12 +214,13 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: false, powerPreference: "high-performance", precision: 'lowp' });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: false, powerPreference: "high-performance"});
     renderer.setPixelRatio(1);
+    renderer.maxSamples = 2;
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.LinearToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMapping = THREE.NeutralToneMapping ;
+    renderer.toneMappingExposure = 2.2;
 
     renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -239,7 +258,8 @@ function initTilesets(scene, tileLoader) {
     const ogc3DTile = new OGC3DTile({
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/rocks2/tileset.json",
-        url: "http://192.168.0.171:8080/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGardenMeshOptMedianFilterGZ/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         
         geometricErrorMultiplier: 0.5,
         loadOutsideView: false,
@@ -388,12 +408,12 @@ function animate1() {
 
         requestAnimationFrame( animate );
 
-    }, 1000 / 30 );
+    }, 1000 / 60 );
     tileLoader.update();
     ogc3DTiles.update(camera);
     
     composer.render();
-        stats.update();
+    stats.update();
     //occlusionCullingService.update(scene, renderer, camera)
     //lightShadowMapViewer.render(renderer);
 }
@@ -403,7 +423,7 @@ function animate() {
     tileLoader.update();
     
     const now = Date.now();
-    if( now - previousFrame > 1000 / 60){
+    if( now - previousFrame > 1000 / targetFrameRate){
         ogc3DTiles.update(camera);
         previousFrame = now;
         composer.render();
