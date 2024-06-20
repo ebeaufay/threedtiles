@@ -6,6 +6,10 @@
 
 A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support
 
+## sample getting started projects
+[Getting started vanilla js](https://drive.google.com/file/d/14lipb5eUqfad-n7EUgXuXul-drPdLifV/view?usp=sharing)
+[Getting started react-three-fiber](https://drive.google.com/file/d/1C102qriCsnra9EUbb8WzO4jZStp-eEah/view?usp=sharing)
+
 ## Demos
 
 [Google Tiles overlay](https://www.jdultra.com/overlay/index.html)
@@ -72,13 +76,6 @@ function animate() {
 It is discouraged to call the update functions outside the render loop in a setInterval for example.
 While that may work fine on desktop, mobile browsers tend to block an entire frame when a timeout triggers in it.
 
-Here is a simple project : [Getting started](https://drive.google.com/file/d/14lipb5eUqfad-n7EUgXuXul-drPdLifV/view?usp=sharing)
-
-Unzip and run :
-
-> npm install
-
-> npm run dev
 
 ## Mesh to 3DTiles Converter
 
