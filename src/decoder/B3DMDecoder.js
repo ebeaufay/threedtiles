@@ -1,29 +1,26 @@
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 import * as THREE from 'three';
 import { FeatureTable, BatchTable } from './FeatureTable';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
-const zUpToYUpMatrix = new THREE.Matrix4();
-zUpToYUpMatrix.set(
-	1, 0, 0, 0,
-	0, 0, -1, 0,
-	0, 1, 0, 0,
-	0, 0, 0, 1);
 
-const onlineDracoPath = 'https://www.gstatic.com/draco/versioned/decoders/1.4.3/';
-const onlineKTX2Path = 'https://storage.googleapis.com/ogc-3d-tiles/basis/';
-const localDracoPath = 'draco-decoders/';
-const localKTX2Path = 'ktx2-decoders/';
-export class B3DMDecoder {
+
+
+class B3DMDecoder {
 	constructor(aGltfLoader) {
 		this.gltfLoader = aGltfLoader;
 		this.tempMatrix = new THREE.Matrix4();
-		
+
+		this.zUpToYUpMatrix = new THREE.Matrix4();
+		this.zUpToYUpMatrix.set(
+			1, 0, 0, 0,
+			0, 0, -1, 0,
+			0, 1, 0, 0,
+			0, 0, 0, 1);
+
 	}
 
 	parseB3DM(arrayBuffer, meshCallback, sceneZupToYUp, meshZUpToYUp) {
+		const self = this;
 		const dataView = new DataView(arrayBuffer);
 
 		const magic =
@@ -68,14 +65,14 @@ export class B3DMDecoder {
 				}
 
 				if (sceneZupToYUp) {
-					model.scene.applyMatrix4(zUpToYUpMatrix);
-				} 
+					model.scene.applyMatrix4(self.zUpToYUpMatrix);
+				}
 				model.scene.asset = model.asset;
 				model.scene.traverse((o) => {
 
 					if (o.isMesh) {
 						if (meshZUpToYUp) {
-							o.applyMatrix4(zUpToYUpMatrix);
+							o.applyMatrix4(self.zUpToYUpMatrix);
 						}
 						if (!!meshCallback) {
 							meshCallback(o);
@@ -92,14 +89,14 @@ export class B3DMDecoder {
 
 	checkLoaderInitialized = async () => {
 		return new Promise((resolve) => {
-		  const interval = setInterval(() => {
-			if ((!this.gltfLoader.hasDracoLoader ||this.gltfLoader.dracoLoader) && (!this.gltfLoader.hasKTX2Loader ||this.gltfLoader.ktx2Loader)) {
-			  clearInterval(interval);
-			  resolve();
-			}
-		  }, 10); // check every 100ms
+			const interval = setInterval(() => {
+				if ((!this.gltfLoader.hasDracoLoader || this.gltfLoader.dracoLoader) && (!this.gltfLoader.hasKTX2Loader || this.gltfLoader.ktx2Loader)) {
+					clearInterval(interval);
+					resolve();
+				}
+			}, 10); // check every 100ms
 		});
-	  };
+	};
 	parseB3DMInstanced(arrayBuffer, meshCallback, maxCount, sceneZupToYUp, meshZupToYup) { // expects GLTF with one node level
 
 		return this.parseB3DM(arrayBuffer, meshCallback, sceneZupToYUp, meshZupToYup).then(mesh => {
@@ -113,7 +110,7 @@ export class B3DMDecoder {
 					child.geometry.applyMatrix4(child.matrixWorld);
 					geometries.push(child.geometry);
 					materials.push(child.material);
-					
+
 				}
 			});
 			let mergedGeometry = normalizeAndMergeGeometries(geometries);
@@ -124,43 +121,44 @@ export class B3DMDecoder {
 
 	}
 }
+export { B3DMDecoder }
 
 function normalizeAndMergeGeometries(geometries) {
 	// Identify all unique attributes across all geometries.
 	let allAttributes = new Set();
 	geometries.forEach(geometry => {
-	  for (let attribute in geometry.attributes) {
-		allAttributes.add(attribute);
-	  }
+		for (let attribute in geometry.attributes) {
+			allAttributes.add(attribute);
+		}
 	});
-  
+
 	// Ensure every geometry has every attribute, adding default filled ones if necessary.
 	geometries.forEach(geometry => {
-	  allAttributes.forEach(attribute => {
-		if (!geometry.attributes[attribute]) {
-		  const attributeSize = getAttributeSize(attribute);
-		  const buffer = new Float32Array(attributeSize * geometry.getAttribute('position').count).fill(0);
-		  geometry.setAttribute(attribute, new THREE.BufferAttribute(buffer, attributeSize));
-		}
-	  });
+		allAttributes.forEach(attribute => {
+			if (!geometry.attributes[attribute]) {
+				const attributeSize = getAttributeSize(attribute);
+				const buffer = new Float32Array(attributeSize * geometry.getAttribute('position').count).fill(0);
+				geometry.setAttribute(attribute, new THREE.BufferAttribute(buffer, attributeSize));
+			}
+		});
 	});
-  
+
 	// Now merge the geometries.
 	let mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, true);
 	return mergedGeometry;
-  }
+}
 
-  function getAttributeSize(attribute) {
+function getAttributeSize(attribute) {
 	switch (attribute) {
-	  case 'position':
-	  case 'normal':
-	  case 'color':
-		return 3;
-	  case 'uv':
-	  case 'uv2':
-		return 2;
-	  // Add other attribute cases as needed.
-	  default:
-		throw new Error(`Unknown attribute ${attribute}`);
+		case 'position':
+		case 'normal':
+		case 'color':
+			return 3;
+		case 'uv':
+		case 'uv2':
+			return 2;
+		// Add other attribute cases as needed.
+		default:
+			throw new Error(`Unknown attribute ${attribute}`);
 	}
-  }
+}

@@ -1,6 +1,6 @@
+import * as THREE from 'three';
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../../decoder/B3DMDecoder";
-import * as THREE from 'three';
 import { MeshTile } from './MeshTile';
 import { JsonTile } from './JsonTile';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -10,11 +10,7 @@ import { resolveImplicite } from '../implicit/ImplicitTileResolver.js';
 import { InstancedOGC3DTile } from './InstancedOGC3DTile';
 
 let concurrentDownloads = 0;
-const zUpToYUpMatrix = new THREE.Matrix4();
-zUpToYUpMatrix.set(1, 0, 0, 0,
-    0, 0, -1, 0,
-    0, 1, 0, 0,
-    0, 0, 0, 1);
+
 
 /**
  * A Tile loader that manages caching and load order for instanced tiles.
@@ -44,6 +40,11 @@ class InstancedTileLoader {
      
      */
     constructor(scene, options) {
+        this.zUpToYUpMatrix = new THREE.Matrix4();
+        this.zUpToYUpMatrix.set(1, 0, 0, 0,
+            0, 0, -1, 0,
+            0, 1, 0, 0,
+            0, 0, 0, 1);
         this.maxCachedItems = 100;
         this.maxInstances = 1;
         this.proxy = options.proxy;
@@ -57,20 +58,20 @@ class InstancedTileLoader {
 
 
         this.gltfLoader = new GLTFLoader();
-        if(!!options && !!options.dracoLoader){
+        if (!!options && !!options.dracoLoader) {
             this.gltfLoader.setDRACOLoader(options.dracoLoader);
             this.hasDracoLoader = true;
-        }else{
+        } else {
             const dracoLoader = new DRACOLoader();
             dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.3/');
             this.gltfLoader.setDRACOLoader(dracoLoader);
             this.gltfLoader.hasDracoLoader = true;
         }
-        
-        if(!!options && !!options.ktx2Loader){
+
+        if (!!options && !!options.ktx2Loader) {
             this.gltfLoader.setKTX2Loader(options.ktx2Loader);
             this.hasKTX2Loader = true;
-        }else if(!!options && !!options.renderer){
+        } else if (!!options && !!options.renderer) {
             const ktx2Loader = new KTX2Loader();
             ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
             this.gltfLoader.setKTX2Loader(ktx2Loader);
@@ -142,7 +143,7 @@ class InstancedTileLoader {
                         return result.arrayBuffer();
 
                     }).then(resultArrayBuffer => {
-                        return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, (mesh)=>{self.meshCallback(mesh, nextDownload.geometricError)}, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
+                        return this.b3dmDecoder.parseB3DMInstanced(resultArrayBuffer, (mesh) => { self.meshCallback(mesh, nextDownload.geometricError) }, self.maxInstances, nextDownload.sceneZupToYup, nextDownload.meshZupToYup);
                     }).then(mesh => {
                         mesh.frustumCulled = false;
                         nextDownload.tile.setObject(mesh);
@@ -180,13 +181,13 @@ class InstancedTileLoader {
                             gltf.scene.asset = gltf.asset;
 
                             if (nextDownload.sceneZupToYup) {
-                                gltf.scene.applyMatrix4(zUpToYUpMatrix);
+                                gltf.scene.applyMatrix4(this.zUpToYUpMatrix);
                             }
                             gltf.scene.traverse((o) => {
                                 o.geometricError = nextDownload.geometricError;
                                 if (o.isMesh) {
                                     if (nextDownload.meshZupToYup) {
-                                        o.applyMatrix4(zUpToYUpMatrix);
+                                        o.applyMatrix4(this.zUpToYUpMatrix);
                                     }
                                     if (!!self.meshCallback) {
                                         self.meshCallback(o, o.geometricError);

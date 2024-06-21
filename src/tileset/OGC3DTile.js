@@ -21,7 +21,7 @@ const copyright = {};
 /**
  * class representing a tiled and multileveled mesh or point-cloud according to the OGC3DTiles 1.1 spec
  * @class
- * @extends THREE.Object3D
+ * @extends {THREE.Object3D}
  */
 class OGC3DTile extends THREE.Object3D {
 

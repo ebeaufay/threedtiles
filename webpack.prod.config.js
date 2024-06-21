@@ -16,6 +16,8 @@ module.exports = {
     filename: "threedtiles.min.js",
     path: path.resolve(__dirname, 'dist'),
     globalObject: 'this',
+    libraryTarget: 'umd',
+    umdNamedDefine: true,
     library: {
       name: 'threedtiles',
       type: 'umd',
@@ -28,6 +30,9 @@ module.exports = {
       amd: "three",
       root: "THREE",
     },
+  },
+  resolve: {
+    extensions: ['.js'],
   },
   plugins: [
     new webpack.ProgressPlugin(),
@@ -44,6 +49,7 @@ module.exports = {
         { from: "node_modules/three/examples/jsm/libs/basis", to: "ktx2-decoders" }
       ],
     }),
+    
   ],
 
   devtool: "source-map",
@@ -101,6 +107,9 @@ module.exports = {
         exclude: /node_modules/,
         use: {
           loader: "babel-loader",
+          options: {
+            presets: ['@babel/preset-env'],
+          },
         },
       },
 
@@ -125,8 +134,8 @@ module.exports = {
         toplevel: false,
         nameCache: null,
         ie8: false,
-        keep_classnames: undefined,
-        keep_fnames: false,
+        keep_classnames: true,
+        keep_fnames: true,
         safari10: false,
       },
       exclude: []
