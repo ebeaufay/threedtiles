@@ -5,9 +5,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 import { resolveImplicite } from './implicit/ImplicitTileResolver.js';
+import { MeshoptDecoder } from 'meshoptimizer';
 
 let concurrentDownloads = 0;
-
 
 
 /**
@@ -70,6 +70,10 @@ class TileLoader {
             this.gltfLoader.setKTX2Loader(ktx2Loader);
             this.gltfLoader.hasKTX2Loader = true;
         }
+        
+        this.gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+        this.hasMeshOptDecoder = true;
+        
         this.b3dmDecoder = new B3DMDecoder(this.gltfLoader);
 
         this.cache = new LinkedHashMap();
@@ -89,11 +93,14 @@ class TileLoader {
      * launches tile downloading and loading in an orderly fashion.
      */
     update() {
+        
         const self = this;
         if (concurrentDownloads < 8) {
             self._download();
         }
+        
         self._loadBatch();
+        
     }
 
 
@@ -117,6 +124,7 @@ class TileLoader {
     _meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
         this.ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
     }
+    
     _loadBatch() {
         if (this.nextReady.length == 0) {
             this._getNextReady();
@@ -138,7 +146,7 @@ class TileLoader {
                 }
             });
         }
-        return 1;
+        return;
     }
 
     _getNextDownloads() {
@@ -247,6 +255,8 @@ class TileLoader {
             let downloadFunction;
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
+                    
+        
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
@@ -272,6 +282,7 @@ class TileLoader {
                         return result.arrayBuffer();
 
                     }).then(resultArrayBuffer => {
+                        
                         return this.b3dmDecoder.parseB3DM(resultArrayBuffer, (mesh) => { self.meshCallback(mesh, geometricError) }, sceneZupToYup, meshZupToYup);
                     }).then(mesh => {
                         self.cache.put(key, mesh);
@@ -282,6 +293,7 @@ class TileLoader {
                     }).finally(() => {
                         concurrentDownloads--;
                     });
+                    
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {

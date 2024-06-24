@@ -1,6 +1,6 @@
 {
     "name": "@jdultra/threedtiles",
-    "version": "10.1.8",
+    "version": "10.1.9",
     "description": "An OGC 3DTiles viewer for Three.js",
     "main": "dist/threedtiles.min.js",
     "types": "dist/entry.d.ts",
@@ -33,13 +33,15 @@
     "license": "MIT",
     "peerDependencies": {
         "three": "0.165.0"
+        
     },
     "dependencies": {
         "js-utils-z": "^1.2.1",
         "path-browserify": "^1.0.1",
         "proj4": "^2.10.0",
         "regenerator-runtime": "^0.13.11",
-        "uuid": "^8.3.2"
+        "uuid": "^8.3.2",
+        "meshoptimizer": "^0.20.0"
     },
     "devDependencies": {
         "@babel/core": "^7.21.4",

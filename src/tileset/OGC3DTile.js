@@ -400,9 +400,9 @@ class OGC3DTile extends THREE.Object3D {
             if (!!url) {
                 if (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf")) {
                     self.contentURL = url;
-
                     try {
                         self.tileLoader.get(self.abortController, self.uuid, url, mesh => {
+                            
                             if (!!self.deleted) return;
 
                             if (mesh.asset && mesh.asset.copyright) {
@@ -417,6 +417,7 @@ class OGC3DTile extends THREE.Object3D {
                                     _updateCopyrightLabel();
                                 }
                             }
+                            
                             mesh.traverse((o) => {
                                 if (o.isMesh || o.isPoints) {
                                     o.layers.disable(0);
@@ -459,6 +460,7 @@ class OGC3DTile extends THREE.Object3D {
                             
                             // mesh.layers.disable(0);
                             self.meshContent.push(mesh);
+                            
                         }, !self.cameraOnLoad ? () => 0 : () => {
                             return self._calculateDistanceToCamera(self.cameraOnLoad);
                         }, () => self._getSiblings(),
@@ -470,6 +472,7 @@ class OGC3DTile extends THREE.Object3D {
                     } catch (e) {
                         if (self.displayErrors) _showError(e)
                     }
+                    
 
                 } else if (url.includes(".json")) {
                     self.tileLoader.get(self.abortController, self.uuid, url, async json => {

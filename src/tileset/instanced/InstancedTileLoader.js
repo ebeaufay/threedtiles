@@ -8,6 +8,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 import { resolveImplicite } from '../implicit/ImplicitTileResolver.js';
 import { InstancedOGC3DTile } from './InstancedOGC3DTile';
+import { MeshoptDecoder } from 'meshoptimizer';
 
 let concurrentDownloads = 0;
 
@@ -77,6 +78,10 @@ class InstancedTileLoader {
             this.gltfLoader.setKTX2Loader(ktx2Loader);
             this.gltfLoader.hasKTX2Loader = true;
         }
+
+        this.gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+        this.hasMeshOptDecoder = true;
+
         this.b3dmDecoder = new B3DMDecoder(this.gltfLoader);
 
 

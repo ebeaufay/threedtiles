@@ -54,7 +54,6 @@ class B3DMDecoder {
 		return new Promise(async (resolve, reject) => {
 			await this.checkLoaderInitialized();
 			this.gltfLoader.parse(gltfBuffer, null, model => {
-
 				const rtcCenter = featureTable.getData('RTC_CENTER');
 				if (rtcCenter) {
 					this.tempMatrix.makeTranslation(rtcCenter[0], rtcCenter[1], rtcCenter[2])
@@ -77,6 +76,7 @@ class B3DMDecoder {
 						if (!!meshCallback) {
 							meshCallback(o);
 						}
+						
 
 					}
 				});
@@ -162,3 +162,4 @@ function getAttributeSize(attribute) {
 			throw new Error(`Unknown attribute ${attribute}`);
 	}
 }
+

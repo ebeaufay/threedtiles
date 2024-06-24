@@ -44,7 +44,7 @@ const ogc3DTiles = initTilesets(scene, tileLoader);
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
-let targetFrameRate = 30;
+let targetFrameRate = 200;
 function initSliders(){
     const lodSlider = document.getElementById("lodMultiplier");
     const lodSliderValue = document.getElementById("multiplierValue");
@@ -261,7 +261,7 @@ function initTilesets(scene, tileLoader) {
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGardenMeshOptMedianFilterGZ/tileset.json",
         url: "http://localhost:8080/tileset.json",
         
-        geometricErrorMultiplier: 0.5,
+        geometricErrorMultiplier: 1.0,
         loadOutsideView: false,
         tileLoader: tileLoader,
         static: true,
