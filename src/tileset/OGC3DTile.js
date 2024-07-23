@@ -28,7 +28,7 @@ class OGC3DTile extends THREE.Object3D {
     /**
      * @param {Object} [properties] - the properties for this tileset
      * @param {String} [properties.url] - the url to the parent tileset.json
-     * @param {String} [properties.queryParams] - optional, path params to add to individual tile urls (starts with "?").
+     * @param {Object} [properties.queryParams] - optional, path params to add to individual tile urls
      * @param {Number} [properties.geometricErrorMultiplier] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
      * @param {Boolean} [properties.loadOutsideView] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
      * @param {TileLoader} [properties.tileLoader] - A tile loader that can be shared among tilesets in order to share a common cache.

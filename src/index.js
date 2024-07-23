@@ -26,6 +26,8 @@ const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
 
+const clock = new THREE.Clock();
+
 
 
 
@@ -44,7 +46,7 @@ const ogc3DTiles = initTilesets(scene, tileLoader);
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
-let targetFrameRate = 200;
+let targetFrameRate = 30;
 function initSliders(){
     const lodSlider = document.getElementById("lodMultiplier");
     const lodSliderValue = document.getElementById("multiplierValue");
@@ -70,7 +72,7 @@ function initTileLoader(){
         ktx2Loader:ktx2Loader,
         maxCachedItems: 1000,
         meshCallback: (mesh, geometricError) => {
-            //mesh.material.wireframe = false;
+            mesh.material.wireframe = false;
             //mesh.material.side = THREE.DoubleSide;
         },
         pointsCallback: (points, geometricError) => {
@@ -219,8 +221,8 @@ function initRenderer(camera, dom) {
     renderer.maxSamples = 2;
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.NeutralToneMapping ;
-    renderer.toneMappingExposure = 2.2;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping ;
+    renderer.toneMappingExposure = 2.0;
 
     renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -259,7 +261,9 @@ function initTilesets(scene, tileLoader) {
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/rocks2/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGardenMeshOptMedianFilterGZ/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGarden/tileset.json",
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
+        url: "http://localhost:8083/tileset.json",
         
         geometricErrorMultiplier: 1.0,
         loadOutsideView: false,
@@ -329,7 +333,7 @@ function initInstancedTilesets(instancedTileLoader) {
     for (let x = 0; x < 1; x++) {
         for (let y = 0; y < 1; y++) {
             const tileset = new InstancedOGC3DTile({
-                url: "http://localhost:8080/tileset.json",
+                url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 1,
                 loadOutsideView: false,
@@ -375,8 +379,8 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 1, 400000);
-    camera.position.set(200,10,10);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000);
+    camera.position.set(-50,20,0);
     camera.lookAt(0, 0, 0);
 
     camera.matrixAutoUpdate = true;
@@ -398,6 +402,11 @@ function initController(camera, dom) {
 
     controller.minDistance = 1;
     controller.maxDistance = 30000;
+    controller.autoRotate = false;
+    const checkbox = document.getElementById("autorotate");
+    checkbox.addEventListener("click", ()=>{
+        controller.autoRotate = checkbox.checked;
+    })
     controller.update();
     return controller;
 }
@@ -421,10 +430,11 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
     tileLoader.update();
-    
+    ogc3DTiles.update(camera);
     const now = Date.now();
+    controller.update(clock.getDelta());
     if( now - previousFrame > 1000 / targetFrameRate){
-        ogc3DTiles.update(camera);
+        
         previousFrame = now;
         composer.render();
         stats.update();
