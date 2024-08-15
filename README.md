@@ -100,6 +100,8 @@ Contact: emeric.beaufays@jdultra.com
 - Center tileset and re-orient geolocated data
 - draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
+- loading strategy options ("incremental" or "immediate)
+
 
 OGC3DTiles 1.1 are supported.
 There is no plan to support .pnts, .i3dm or .cmpt  tiles as these formats are deprecated in favor of glb/gltf tiles.
@@ -126,6 +128,56 @@ Many viewers use the maxScreenSpaceError instead of a geometric error multiplier
 A geometricErrorMultiplier of 1 corresponds to a maxScreenSpaceError of 16.
 A geometricErrorMultiplier of 0.5 corresponds to a maxScreenSpaceError of 32.
 
+#### distance bias
+The distance bias allows loading more or less detail close to the camera relative to further away.
+The distance bias simply applies an exponent on tile distance to the camera so you have to balance it out manually with the geometricErrorMultiplier.
+
+For example, if you want to load more detail close to the camera, you might do something like this:
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    geometricErrorMultiplier: 10.0,
+    distanceBias: 1.5
+});
+```
+In this case the higher distance bias will cause less detail to be loaded overall since all calculated distances get raised to the power 1.5.
+To compensate, the geometricErrorMultiplier is set at a higher value.
+
+These values need to be adjusted manually based on what is considered relatively close or far from the camera and truly depends on your scene and the relative distance of the camera to the tiles during normal navigation. In other words, it's impossible to have magic bullet values the LOD switch distance can be fine-tuned through those parameters.
+
+You can change the distance bias for a tileset at any time:
+
+```
+tileset.setDistanceBias(1.5);
+```
+### loading strategy
+
+#### Incremental
+Incremental loading is the default and loads all intermediate levels incrementally and keeps them in memory. While this gives a direct feedback on loading progress, the CPU memory footprint is large and overall loading speed is slower than with "immediate" mode.
+
+To explicitely set the incremental loading strategy:
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    loadingStrategy: "INTERMEDIATE"
+});
+```
+
+#### Immediate
+
+Immediate loading skips intermediate LODs and immediately loads the ideal LOD. Less data is downloaded (faster load time) and less data is kept in CPU memory but holes will appear until the tiles are loaded.
+
+To set the immediate loading strategy:
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    loadingStrategy: "IMMEDIATE"
+});
+```
+
 ### load tiles outside of view
 By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles and the user might see some holes in the model.
 Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles outside the view so that there are no gaps in the mesh when the camera moves. This also allows displaying shadows from parts of the scene that are not in the view.
@@ -135,6 +187,16 @@ const ogc3DTile = new OGC3DTile({
     url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
     renderer: renderer,
     loadOutsideView: true
+});
+```
+### draw bounding volume
+
+Draw bounding volumes around visible tiles
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    drawBoundingVolume: true
 });
 ```
 
@@ -151,6 +213,29 @@ const ogc3DTile = new OGC3DTile({
     loadOutsideView: true
 });
 ```
+
+#### Copyright info
+
+This is mostly specific to google tiles but may be used by other vendors.
+
+Google requires that, copyright info for producers of the 3D data be displayed.
+A global function #getOGC3DTilesCopyrightInfo returns the list of vendors that need to be displayed.
+
+```
+import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "./tileset/OGC3DTile";
+
+...
+
+animate(){
+    requestAnimationFrame( animate );
+    googleTiles.update(camera);
+    tileLoader.update();
+    ...
+    console.log(getOGC3DTilesCopyrightInfo());
+}
+
+```
+
 ### Callback
 
 #### onLoadCallback
@@ -181,6 +266,36 @@ const ogc3DTile = new OGC3DTile({
         }
 });
 ```
+
+#### Update
+
+Calling OGC3DTile#update gives a direct feedback on the state of the tileset:
+```
+function animate() {
+    requestAnimationFrame(animate);
+    
+    ogc3DTile.update(camera); // computes what tiles need to be refined and what tiles can be disposed.
+    const state = ogc3DTile.tileLoader.update(); // downloads, loads and caches tiles in optimal order.
+}
+```
+
+In the example above, the "state" object may look like this:
+
+```
+{
+    numTilesLoaded: 82, 
+    numTilesRendered: 82, 
+    maxLOD: 9, 
+    percentageLoaded: 1
+}
+```
+
+- "numTilesLoaded" gives the number of tiles in the tileset that are loaded and should be visible (including intermediate LODs for the "incremental" loading strategy).
+- "numTilesRendered gives the number of tiles currently rendered.
+- "maxLOD" highest LOD currently rendered
+- "percentageLoaded" property gives an indication of the loading progress. Note that the loading progress may go back and forth a bit while the tree is being expanded but a value of 1 means the tileset is loaded.
+
+
 
 #### Points callback
 Add a callback on loaded point tiles in order to set a material or do some logic on the points.
