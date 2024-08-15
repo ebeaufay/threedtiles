@@ -1,7 +1,7 @@
 import "regenerator-runtime/runtime.js";
 import * as THREE from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { OGC3DTile } from "./tileset/OGC3DTile";
+import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
@@ -17,6 +17,7 @@ import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 
 let t = 0;
 let lightShadowMapViewer;
+let paused = false;
 //const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
 //dirLight.position.set(1,1,1);
 let cameraToLight = new THREE.Vector3(-1000, 1000, -1000);
@@ -42,20 +43,29 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
-const ogc3DTiles = initTilesets(scene, tileLoader);
+//const ogc3DTiles = initTilesets(scene, tileLoader);
+const google = initGoogleTileset(tileLoader);
+scene.add(google);
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
-let targetFrameRate = 30;
+let targetFrameRate = 200;
 function initSliders(){
     const lodSlider = document.getElementById("lodMultiplier");
     const lodSliderValue = document.getElementById("multiplierValue");
+    const distanceBiasSlider = document.getElementById("distanceBias");
+    const distanceBiasSliderValue = document.getElementById("distanceBiasValue");
     const fpsSlider = document.getElementById("targetFPS");
     const fpsSliderValue = document.getElementById("targetFPSValue");
 
     lodSlider.addEventListener("input", e=>{
         lodSliderValue.innerText = lodSlider.value;
         ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
+    })
+
+    distanceBiasSlider.addEventListener("input", e=>{
+        distanceBiasSliderValue.innerText = distanceBiasSlider.value;
+        ogc3DTiles.setDistanceBias(distanceBiasSlider.value)
     })
 
     fpsSlider.addEventListener("input", e=>{
@@ -70,9 +80,11 @@ function initTileLoader(){
     const tileLoader = new TileLoader({
         //renderer: renderer,
         ktx2Loader:ktx2Loader,
-        maxCachedItems: 1000,
+        maxCachedItems: 0,
         meshCallback: (mesh, geometricError) => {
             mesh.material.wireframe = false;
+            
+            //mesh.material.roughness = 0.5;
             //mesh.material.side = THREE.DoubleSide;
         },
         pointsCallback: (points, geometricError) => {
@@ -263,13 +275,16 @@ function initTilesets(scene, tileLoader) {
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGardenMeshOptMedianFilterGZ/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGarden/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
-        url: "http://localhost:8083/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         
-        geometricErrorMultiplier: 1.0,
-        loadOutsideView: false,
+        geometricErrorMultiplier: 0.5,
+        distanceBias: 1,
+        //loadOutsideView: true,
         tileLoader: tileLoader,
-        static: true,
+        //static: true,
         centerModel: true,
+        loadingStrategy: "IMMEDIATE",
+        //drawBoundingVolume: true,
         //renderer: renderer,
         onLoadCallback:(e)=>{
             console.log(e)
@@ -277,8 +292,10 @@ function initTilesets(scene, tileLoader) {
 
     });
     
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5)
-    scene.matrixAutoUpdate = false;
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
+    ogc3DTile.updateMatrix();
+        ogc3DTile.updateMatrixWorld(true);
+    //scene.matrixAutoUpdate = false;
     scene.add(ogc3DTile);
 
     //const axesHelper = new THREE.AxesHelper( 5000 );
@@ -325,6 +342,58 @@ function createInstancedTileLoader(scene) {
         }
     });
 }
+
+function initGoogleTileset(tileLoader) {
+    const googleTiles = new OGC3DTile({
+        url: "https://tile.googleapis.com/v1/3dtiles/root.json",
+        queryParams: { key: "AIzaSyAWn9BQPyrhNzkxLc5OzBS7H5t61NZ5x_w" },
+        geometricErrorMultiplier: 0.5, // controls the level of detail
+        //loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
+        tileLoader: tileLoader,
+        loadingStrategy: "IMMEDIATE",
+        //drawBoundingVolume: true,
+        displayCopyright: true,
+        static: true,
+        renderer: renderer
+
+    });
+
+    earthAntiGeoreferencing(googleTiles, -76.613170, 39.274965, -16);
+    return googleTiles;
+}
+
+
+function earthAntiGeoreferencing(googleTiles, longitude, latitude, height) {
+
+
+    const cartesianLocation = llhToCartesianFast(longitude, latitude, height);
+
+    const quaternionToEarthNormalOrientation = new THREE.Quaternion();
+    quaternionToEarthNormalOrientation.setFromUnitVectors(cartesianLocation.clone().normalize(), new THREE.Vector3(0, 1, 0));
+
+    const rotation = new THREE.Matrix4();
+    const translation = new THREE.Matrix4();
+    translation.makeTranslation(-cartesianLocation.x, -cartesianLocation.y, -cartesianLocation.z);
+    rotation.makeRotationFromQuaternion(quaternionToEarthNormalOrientation);
+
+    googleTiles.matrix.multiplyMatrices(rotation, translation);
+    googleTiles.matrix.decompose(googleTiles.position, googleTiles.quaternion, googleTiles.scale);
+}
+
+
+
+function llhToCartesianFast(longitude, latitude, height, radians = false) {
+    const lon = radians ? longitude : 0.017453292519 * longitude;
+    const lat = radians ? latitude : 0.017453292519 * latitude;
+    const N = 6378137.0 / (Math.sqrt(1.0 - (0.006694379990141316 * Math.pow(Math.sin(lat), 2.0))));
+    const cosLat = Math.cos(lat);
+    const cosLon = Math.cos(lon);
+    const sinLat = Math.sin(lat);
+    const sinLon = Math.sin(lon);
+    const nPh = (N + height);
+
+    return new THREE.Vector3(nPh * cosLat * cosLon, nPh * cosLat * sinLon, (0.993305620009858684 * N + height) * sinLat);
+}
 function initInstancedTilesets(instancedTileLoader) {
 
     const instancedTilesets = [];
@@ -335,7 +404,7 @@ function initInstancedTilesets(instancedTileLoader) {
             const tileset = new InstancedOGC3DTile({
                 url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
-                geometricErrorMultiplier: 1,
+                geometricErrorMultiplier: 0.01,
                 loadOutsideView: false,
                 tileLoader: instancedTileLoader,
                 static: true,
@@ -430,7 +499,18 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
     tileLoader.update();
-    ogc3DTiles.update(camera);
+    console.log(google.update(camera));
+    /* let c = 0;
+    google.traverse(e=>{
+        if(!!e.geometry){
+            c++;
+        }
+    })
+    console.log("jhgkjgh " + c)
+    if(!paused){
+        console.log(google.update(camera));
+    }
+    console.log(getOGC3DTilesCopyrightInfo()) */
     const now = Date.now();
     controller.update(clock.getDelta());
     if( now - previousFrame > 1000 / targetFrameRate){
@@ -441,23 +521,7 @@ function animate() {
     }
 }
 
-function animate3(){
-    let previousTime = Date.now();
-    
-    function render(){
-        tileLoader.update();
-        ogc3DTiles.update(camera);
-        composer.render();
-        stats.update();
 
-        const now = Date.now();
-        const nextFrame = Math.max(0,1000/30 - (now-previousTime));
-        console.log(now-previousTime + "  "+nextFrame);
-        previousTime = now;
-        setTimeout(render,nextFrame);
-    }
-    render();
-}
 
 
 function _isMobileDevice() {

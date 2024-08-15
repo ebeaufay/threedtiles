@@ -70,10 +70,10 @@ class TileLoader {
             this.gltfLoader.setKTX2Loader(ktx2Loader);
             this.gltfLoader.hasKTX2Loader = true;
         }
-        
+
         this.gltfLoader.setMeshoptDecoder(MeshoptDecoder);
         this.hasMeshOptDecoder = true;
-        
+
         this.b3dmDecoder = new B3DMDecoder(this.gltfLoader);
 
         this.cache = new LinkedHashMap();
@@ -128,35 +128,60 @@ class TileLoader {
     _loadBatch() {
         if (this.nextReady.length == 0) {
             this._getNextReady();
-            if (this.nextReady.length == 0) return 0;
         }
-        const data = this.nextReady.shift();
-        if (!data) return 0;
-        const cache = data[0];
-        const register = data[1];
-        const key = data[2];
-        const mesh = cache.get(key);
-
-        if (!!mesh && !!register[key]) {
-            Object.keys(register[key]).forEach(tile => {
-                const callback = register[key][tile];
-                if (!!callback) {
-                    callback(mesh);
-                    register[key][tile] = null;
-                }
-            });
+        while(this.nextReady.length > 0){
+            const data = this.nextReady.shift();
+            if (!data) return;
+            const cache = data[0];
+            const register = data[1];
+            const key = data[2];
+            const mesh = cache.get(key);
+    
+            if (!!mesh && !!register[key]) {
+                Object.keys(register[key]).forEach(tile => {
+                    const callback = register[key][tile];
+                    if (!!callback) {
+                        callback(mesh);
+                        register[key][tile] = null;
+                    }
+                });
+            }
+            if (this.nextReady.length == 0) {
+                this._getNextReady();
+            }
         }
+        
         return;
+
+        /* while (this.ready.length > 0) {
+            const data = this.ready.shift();
+            if (!data) return 0;
+            const cache = data[0];
+            const register = data[1];
+            const key = data[2];
+            const mesh = cache.get(key);
+
+            if (!!mesh && !!register[key]) {
+                Object.keys(register[key]).forEach(tile => {
+                    const callback = register[key][tile];
+                    if (!!callback) {
+                        callback(mesh);
+                        register[key][tile] = null;
+                    }
+                });
+            }
+            return;
+        } */
     }
 
     _getNextDownloads() {
-        let smallestDistance = Number.MAX_VALUE;
+        let smallestDistance = Number.POSITIVE_INFINITY;
         let closest = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
-            if (!this.downloads[i].shouldDoDownload()) {
+            /* if (!this.downloads[i].shouldDoDownload()) {
                 this.downloads.splice(i, 1);
                 continue;
-            }
+            } */
             if (!this.downloads[i].distanceFunction) { // if no distance function, must be a json, give absolute priority!
                 this.nextDownloads.push(this.downloads.splice(i, 1)[0]);
             }
@@ -164,7 +189,7 @@ class TileLoader {
         if (this.nextDownloads.length > 0) return;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
             const dist = this.downloads[i].distanceFunction() * this.downloads[i].level;
-            if (dist < smallestDistance) {
+            if (dist <= smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
             }
@@ -182,7 +207,7 @@ class TileLoader {
     }
 
     _getNextReady() {
-        let smallestDistance = Number.MAX_VALUE;
+        let smallestDistance = Number.POSITIVE_INFINITY;
         let closest = -1;
         for (let i = this.ready.length - 1; i >= 0; i--) {
 
@@ -193,7 +218,7 @@ class TileLoader {
         if (this.nextReady.length > 0) return;
         for (let i = this.ready.length - 1; i >= 0; i--) {
             const dist = this.ready[i][3]() * this.ready[i][5];
-            if (dist < smallestDistance) {
+            if (dist <= smallestDistance) {
                 smallestDistance = dist;
                 closest = i
             }
@@ -282,7 +307,7 @@ class TileLoader {
                         return result.arrayBuffer();
 
                     }).then(resultArrayBuffer => {
-                        
+
                         return this.b3dmDecoder.parseB3DM(resultArrayBuffer, (mesh) => { self.meshCallback(mesh, geometricError) }, sceneZupToYup, meshZupToYup);
                     }).then(mesh => {
                         self.cache.put(key, mesh);
@@ -293,7 +318,7 @@ class TileLoader {
                     }).finally(() => {
                         concurrentDownloads--;
                     });
-                    
+
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
                 downloadFunction = () => {
@@ -420,6 +445,9 @@ class TileLoader {
         const key = _simplifyPath(path);
         if (!!this.register[key]) {
             delete this.register[key][tileIdentifier];
+
+            //this.register[key][tileIdentifier] = undefined;
+            //this._checkSize();
         }
     }
 
@@ -439,6 +467,7 @@ class TileLoader {
                 } else {
                     self.cache.remove(entry.key);
                     delete self.register[entry.key];
+                    //self.register[entry.key] = undefined;
                     entry.value.traverse((o) => {
 
                         if (o.material) {

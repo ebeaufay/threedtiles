@@ -33,6 +33,7 @@ class InstancedOGC3DTile extends THREE.Object3D {
      * @param {Number} [properties.domWidth = 1000] - optional the canvas width (used to calculate geometric error). If a renderer is provided, it'll be used instead, else a default value is used.  
      * @param {Number} [properties.domHeight = 1000] - optional the canvas height (used to calculate geometric error). If a renderer is provided, it'll be used instead, else a default value is used.  
      * @param {Object} [properties.renderer = undefined] - optional the renderer is used to infer the canvas size and compute tiles geometric error.
+     * @param {Number} [properties.distanceBias] - optional a bias that allows loading more or less detail closer to the camera relative to far away. The value should be a positive number. A value below 1 loads less detail near the camera and a value above 1 loads more detail near the camera. This needs to be compensated by the geometricErrorMultiplier in order to load a reasonable number of tiles.
      */
     constructor(properties) {
         super();
@@ -44,6 +45,7 @@ class InstancedOGC3DTile extends THREE.Object3D {
             this.rendererSize = new THREE.Vector2(1000, 1000);
         }
         this.renderer = properties.renderer;
+        this.distanceBias = Math.max(0.0001,properties.distanceBias? properties.distanceBias:1);
 
         this.geometricErrorMultiplier = properties.geometricErrorMultiplier? properties.geometricErrorMultiplier:1.0;
         this.tileset = new InstancedTile(properties);

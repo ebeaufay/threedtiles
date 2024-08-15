@@ -28,7 +28,8 @@ class InstancedTile extends THREE.Object3D {
      *   parentTile: OGC3DTile,
      *   onLoadCallback: function,
      *   centerModel: Boolean,
-     *   queryParams: String
+     *   queryParams: String,
+     *   distanceBias: distanceBias
      * } properties 
      */
     constructor(properties) {
@@ -48,6 +49,7 @@ class InstancedTile extends THREE.Object3D {
         this.loadOutsideView = properties.loadOutsideView;
         this.cameraOnLoad = properties.cameraOnLoad;
         this.parentTile = properties.parentTile;
+        this.distanceBias = Math.max(0.0001,properties.distanceBias? properties.distanceBias:1);
 
         // declare properties specific to the tile for clarity
         this.childrenTiles = [];
@@ -346,6 +348,8 @@ class InstancedTile extends THREE.Object3D {
                     self.tileLoader.get(self.abortController, url, self.uuid, self);
                 }
             }
+
+            
         }
 
     }
@@ -613,6 +617,10 @@ class InstancedTile extends THREE.Object3D {
         /////// return metric based on geometric error and distance
 
         const distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
+
+        /////// Apply the bias factor to the distance
+        distance = Math.pow(distance,this.distanceBias);
+
         if (distance == 0) {
             return 0;
         }
