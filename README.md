@@ -100,7 +100,7 @@ Contact: emeric.beaufays@jdultra.com
 - Center tileset and re-orient geolocated data
 - draco and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
-- loading strategy options ("incremental" or "immediate)
+- loading strategy options ("incremental" or "immediate")
 
 
 OGC3DTiles 1.1 are supported.
