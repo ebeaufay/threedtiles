@@ -188,7 +188,7 @@ class TileLoader {
         }
         if (this.nextDownloads.length > 0) return;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
-            const dist = this.downloads[i].distanceFunction() * this.downloads[i].level;
+            const dist = this.downloads[i].distanceFunction();
             if (dist <= smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
@@ -435,6 +435,15 @@ class TileLoader {
     }
 
 
+    /**
+     * Invalidates all the unused cached tiles.
+     */
+    clear(){
+        const temp = this.maxCachedItems;
+        this.maxCachedItems = 0;
+        this._checkSize();
+        this.maxCachedItems = temp;
+    }
 
     /**
      *  unregisters a tile content for a specific tile, removing it from the cache if no other tile is using the same content.

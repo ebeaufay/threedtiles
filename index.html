@@ -48,22 +48,37 @@
 
 <body>
   <div id="screen"></div>
-  <div style="position: absolute; top: 1%; z-index: 1000; right:1%; ">
-    <input type="range" min="0.01" max="50.0" value="0.5", step="0.01" class="slider" id="lodMultiplier" >
-    <p style="color: #0439aa;">detail multiplier: <span id="multiplierValue">0.5</span></p>
+  <div style="position: absolute; z-index: 999;right:0%; top:0%; width:12%; height:100%; background-color: #acacacd2; display: flex; flex-direction: column; flex-wrap: wrap;">
+    <div style="z-index: 1000;margin: 10%;">
+      <input type="range" min="0.01" max="50.0" value="1.0", step="0.01" class="slider" id="lodMultiplier" >
+      <p style="color: #0439aa;">detail multiplier: <span id="multiplierValue">1.0</span></p>
+    </div>
+    <div style="z-index: 1000;margin: 10%;">
+      <input type="range" min="0.5" max="1.5" value="1.0", step="0.01" class="slider" id="distanceBias" >
+      <p style="color: #0439aa;">distance bias: <span id="distanceBiasValue">1.0</span></p>
+    </div>
+    <div style="z-index: 1000;margin: 10%;">
+      <input type="range" min="10" max="200" value="200", step="1" class="slider" id="targetFPS" >
+      <p style="color: #0439aa;">target fps: <span id="targetFPSValue">200</span></p>
+    </div>
+    <div style="z-index: 1000;margin: 10%;" id="loadingStrategyWrapper">
+      <input type="range" min="0" max="1" value="1", step="1" class="slider" style="width:25%; float:right; pointer-events: none;" id="loadingStrategy">
+      <p style="color: #0439aa;">Strategy: <span id="loadingStrategyValue">IMMEDIATE</span></p>
+    </div>
+    <div style="z-index: 1000;margin: 10%;">
+      <input type="checkbox" id="autorotate" >
+      <span style="color: #0439aa;">Auto Rotate </span>
+    </div>
+    <div style="z-index: 1000;margin: 10%;">
+      <div>Tiles To Load <span style="color: #0439aa;" id="tilesToLoadValue">0</span></div>
+      <div>Tiles Rendered <span style="color: #0439aa;" id="tilesRenderedValue">0</span></div>
+      <div>max LOD <span style="color: #0439aa;" id="maxLODValue">0</span></div>
+      <div>percentage loaded <span style="color: #0439aa;" id="percentageValue">0</span></div>
+      
+    </div>
   </div>
-  <div style="position: absolute; top: 9%; z-index: 1000; right:1%; ">
-    <input type="range" min="0.5" max="1.5" value="1.0", step="0.01" class="slider" id="distanceBias" >
-    <p style="color: #0439aa;">distance bias: <span id="distanceBiasValue">1.0</span></p>
-  </div>
-  <div style="position: absolute; top: 17%; z-index: 1000; right:1%; ">
-    <input type="range" min="10" max="200" value="200", step="1" class="slider" id="targetFPS" >
-    <p style="color: #0439aa;">target fps: <span id="targetFPSValue">200</span></p>
-  </div>
-  <div style="position: absolute; top: 26%; z-index: 1000; right:1%; ">
-    <input type="checkbox" id="autorotate" >
-    <span style="color: #0439aa;">Auto Rotate </span>
-  </div>
+  
+  
 </body>
 
 </html>

@@ -29,7 +29,10 @@ const scene = initScene();
 
 const clock = new THREE.Clock();
 
-
+const infoTilesToLoad = document.getElementById("tilesToLoadValue");
+const infoTilesRendered = document.getElementById("tilesRenderedValue");
+const infoMaxLOD = document.getElementById("maxLODValue");
+const infoPercentage = document.getElementById("percentageValue");
 
 
 /* const m = new THREE.Mesh(new THREE.TorusGeometry(), new THREE.MeshPhongMaterial());
@@ -43,9 +46,9 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
-//const ogc3DTiles = initTilesets(scene, tileLoader);
-const google = initGoogleTileset(tileLoader);
-scene.add(google);
+let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
+//const google = initGoogleTileset(tileLoader);
+//scene.add(google);
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
@@ -57,6 +60,9 @@ function initSliders(){
     const distanceBiasSliderValue = document.getElementById("distanceBiasValue");
     const fpsSlider = document.getElementById("targetFPS");
     const fpsSliderValue = document.getElementById("targetFPSValue");
+    const loadingStrategy = document.getElementById("loadingStrategy");
+    const loadingStrategyValue = document.getElementById("loadingStrategyValue");
+    const loadingStrategyWrapper = document.getElementById("loadingStrategyWrapper");
 
     lodSlider.addEventListener("input", e=>{
         lodSliderValue.innerText = lodSlider.value;
@@ -72,6 +78,27 @@ function initSliders(){
         fpsSliderValue.innerText = fpsSlider.value;
         targetFrameRate = fpsSlider.value
     })
+
+    
+    loadingStrategyWrapper.addEventListener("click", e=>{
+        
+        if(loadingStrategy.value == 0){
+            loadingStrategy.setAttribute("value", "1")
+            loadingStrategyValue.innerText = "IMMEDIATE";
+            reloadTileset("IMMEDIATE", lodSlider.value, distanceBiasSlider.value);
+        }else{
+            loadingStrategy.setAttribute("value", "0")
+            loadingStrategyValue.innerText = "INCREMENTAL";
+            reloadTileset("INCREMENTAL", lodSlider.value, distanceBiasSlider.value);
+        }
+    })
+}
+
+function reloadTileset(loadingStrategy, geometricErrorMultiplier, distanceBias){
+    scene.remove(ogc3DTiles);
+    ogc3DTiles.dispose();
+    tileLoader.clear();
+    ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
 }
 
 function initTileLoader(){
@@ -265,7 +292,7 @@ function initStats(dom) {
 
 
 
-function initTilesets(scene, tileLoader) {
+function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias) {
 
     
     
@@ -275,15 +302,16 @@ function initTilesets(scene, tileLoader) {
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGardenMeshOptMedianFilterGZ/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGarden/tileset.json",
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        url: "https://storage.googleapis.com/ogc-3d-tiles/playaGarden/tileset.json",
         
-        geometricErrorMultiplier: 0.5,
+        geometricErrorMultiplier: geometricErrorMultiplier,
         distanceBias: 1,
         //loadOutsideView: true,
         tileLoader: tileLoader,
         //static: true,
         centerModel: true,
-        loadingStrategy: "IMMEDIATE",
+        loadingStrategy: loadingStrategy,
+        distanceBias: distanceBias,
         //drawBoundingVolume: true,
         //renderer: renderer,
         onLoadCallback:(e)=>{
@@ -499,7 +527,11 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
     tileLoader.update();
-    console.log(google.update(camera));
+    const info = ogc3DTiles.update(camera);
+    infoTilesToLoad.innerText = info.numTilesLoaded
+    infoTilesRendered.innerText = info.numTilesRendered
+    infoMaxLOD.innerText = info.maxLOD
+    infoPercentage.innerText = (info.percentageLoaded * 100).toFixed(1);
     /* let c = 0;
     google.traverse(e=>{
         if(!!e.geometry){
