@@ -98,7 +98,7 @@ Contact: emeric.beaufays@jdultra.com
 - Occlusion culling
 - Instanced tilesets
 - Center tileset and re-orient geolocated data
-- draco and ktx2 compression support
+- quantization, draco, mshopt and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 - loading strategy options ("incremental" or "immediate")
 
@@ -541,8 +541,9 @@ const ogc3DTile = new InstancedOGC3DTile({
         ogc3DTile.updateMatrix();
     },1000)
 ```
-### Draco and Ktx2
-Compressed meshes via Draco and compressed textures in Ktx2 format are supported automatically using the threejs plugins.
+### Meshopt, Draco and Ktx2
+Compressed meshes via Draco and compressed textures in Ktx2 format are supported automatically using the threejs plugins by passing the renderer at initialization.
+The ktx and draco loader can also be passed manually (see jsdoc)
 KTX uses an external wasm loaded at runtime so if you have trouble packaging your app correctly, check out the 
 [Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link) project for a sample webpack configuration.
 
