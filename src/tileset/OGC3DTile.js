@@ -778,6 +778,9 @@ class OGC3DTile extends THREE.Object3D {
             if (!self.loadOutsideView && self.metric < 0) {
                 self._changeContentVisibility(false);
                 if (self.meshContent.length > 0) self._disposeMeshContent();
+                self.childrenTiles.forEach(child => {
+                    child._updateNodeVisibilityImmediate(true);
+                })
                 return;
             }
 

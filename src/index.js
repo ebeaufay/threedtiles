@@ -297,18 +297,15 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     
     
     const ogc3DTile = new OGC3DTile({
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tiled2/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/rocks2/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGardenMeshOptMedianFilterGZ/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaGarden/tileset.json",
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/playaGarden/tileset.json",
+        
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         
         geometricErrorMultiplier: geometricErrorMultiplier,
         distanceBias: 1,
         //loadOutsideView: true,
         tileLoader: tileLoader,
-        //static: true,
+        static: false,
         centerModel: true,
         loadingStrategy: loadingStrategy,
         distanceBias: distanceBias,
@@ -323,7 +320,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
     ogc3DTile.updateMatrix();
         ogc3DTile.updateMatrixWorld(true);
-    //scene.matrixAutoUpdate = false;
+    scene.matrixAutoUpdate = true;
     scene.add(ogc3DTile);
 
     //const axesHelper = new THREE.AxesHelper( 5000 );
@@ -374,7 +371,7 @@ function createInstancedTileLoader(scene) {
 function initGoogleTileset(tileLoader) {
     const googleTiles = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyAWn9BQPyrhNzkxLc5OzBS7H5t61NZ5x_w" },
+        queryParams: { key: "" },
         geometricErrorMultiplier: 0.5, // controls the level of detail
         //loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
