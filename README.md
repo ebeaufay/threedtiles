@@ -563,3 +563,27 @@ animate();
 
 However, if you have several OGC3DTiles loaded or when you use instancedTilesets, you may have hundreds or even thousands of LOD trees that need to be updated individually. In order to preserve frame-rate,
 you'll want to avoid updating every single tileset on every frame.
+
+### Memory
+This is especially important for iOS that limits the memory per tab quite harshly and doesn't allow growing the memory allocated to a tab.
+
+Once a mesh is loaded, the mesh and texture data stays in CPU memory which isn't necessary unless one intends to modify it.
+A nice trick is to allow this data to be garbage collected. You might do something like this in the mesh callback:
+
+```
+const tileLoader = new TileLoader({
+        ...
+        meshCallback: (mesh, geometricError) => {
+            mesh.onAfterRender = ()=>{
+                if(mesh.geometry.attributes.position) mesh.geometry.attributes.position.data.array = null
+                if(mesh.geometry.attributes.uv) mesh.geometry.attributes.position.data.array = null
+                if(mesh.geometry.attributes.normal) mesh.geometry.attributes.position.data.array = null
+                if(mesh.material.map) mesh.material.map.mipmaps = null;
+            }
+        }
+    });
+```
+
+Be sure to call this in the mesh onAfterRender callback to make sure the data is on the GPU.
+
+Depending on the mesh and texture type, different properties might hold data to be nullified so it can be garbage collected. It's up to the user to debug and see what geometry or material properties hold references to large data.
