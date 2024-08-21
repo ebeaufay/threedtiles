@@ -3,9 +3,7 @@ import { OBB } from "../geometry/obb";
 import { TileLoader } from "./TileLoader";
 import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
-import { clamp } from "three/src/math/MathUtils";
 import { resolveImplicite } from './implicit/ImplicitTileResolver.js';
-//import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 var averageTime = 0;
 
 var copyrightDiv;
@@ -128,7 +126,7 @@ class OGC3DTile extends THREE.Object3D {
         if (this.occlusionCullingService) {
             this.color = new THREE.Color();
             this.color.setHex(Math.random() * 0xffffff);
-            this.colorID = clamp(self.color.r * 255, 0, 255) << 16 ^ clamp(self.color.g * 255, 0, 255) << 8 ^ clamp(self.color.b * 255, 0, 255) << 0;
+            this.colorID = THREE.MathUtils.clamp(self.color.r * 255, 0, 255) << 16 ^ THREE.MathUtils.clamp(self.color.g * 255, 0, 255) << 8 ^ THREE.MathUtils.clamp(self.color.b * 255, 0, 255) << 0;
         }
         if (this.static) {
             this.matrixAutoUpdate = false;

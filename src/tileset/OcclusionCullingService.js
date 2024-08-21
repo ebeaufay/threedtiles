@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { clamp } from "three/src/math/MathUtils";
 
 
 /**
@@ -65,7 +64,7 @@ class OcclusionCullingService {
         this.cullMap = [];
         
         for (let i = 0; i < this.cullPixels.length; i += 4) {
-            const c = clamp(this.cullPixels[i], 0, 255) << 16 ^ clamp(this.cullPixels[i + 1], 0, 255) << 8 ^ clamp(this.cullPixels[i + 2], 0, 255) << 0;
+            const c = THREE.MathUtils.clamp(this.cullPixels[i], 0, 255) << 16 ^ THREE.MathUtils.clamp(this.cullPixels[i + 1], 0, 255) << 8 ^ THREE.MathUtils.clamp(this.cullPixels[i + 2], 0, 255) << 0;
             this.cullMap[c] = true;
         }
 

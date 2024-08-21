@@ -1,19 +1,20 @@
 import "regenerator-runtime/runtime.js";
 import * as THREE from 'three';
-import Stats from 'three/examples/jsm/libs/stats.module.js';
+import Stats from 'three/addons/libs/stats.module.js';
 import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
-import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { MapControls, OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass';
 
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
-import { Sky } from "three/examples/jsm/objects/Sky";
+import { Sky } from "three/addons/objects/Sky";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
+
 
 let t = 0;
 let lightShadowMapViewer;
@@ -105,17 +106,24 @@ function initTileLoader(){
     const ktx2Loader = new KTX2Loader();
     ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
     const tileLoader = new TileLoader({
-        //renderer: renderer,
-        ktx2Loader:ktx2Loader,
+        renderer: renderer,
+        //ktx2Loader:ktx2Loader,
         maxCachedItems: 0,
         meshCallback: (mesh, geometricError) => {
             mesh.material.wireframe = false;
+            mesh.onAfterRender = ()=>{
+                if(mesh.geometry.attributes.position) mesh.geometry.attributes.position.data.array = null
+                if(mesh.geometry.attributes.uv) mesh.geometry.attributes.position.data.array = null
+                if(mesh.geometry.attributes.normal) mesh.geometry.attributes.position.data.array = null
+                if(mesh.material.map) mesh.material.map.mipmaps = null;
+            }
+
             
             //mesh.material.roughness = 0.5;
             //mesh.material.side = THREE.DoubleSide;
         },
         pointsCallback: (points, geometricError) => {
-            points.material.size = Math.min(1.0, 0.5 * Math.sqrt(geometricError));
+            points.material.size = Math.min(1.0, 0.1 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
             //points.add(new THREE.BoxHelper( points, 0xffff00 ))
             

@@ -130,7 +130,11 @@ module.exports = {
     port: DEFAULT_WEBPACK_PORT
   },
   resolve: {
-    
+    alias: {
+      /* 'three/addons': path.resolve(__dirname, 'node_modules/three/examples/jsm'),
+      'three': path.resolve(__dirname, 'node_modules/three/build/three.webgpu.js'),
+      'three/tsl': path.resolve(__dirname, 'node_modules/three/build/three.webgpu.js') */
+    },
     extensions: [".js", ".jsx", ".json", ".ts", ".tsx"],// other stuff
     fallback: {
       "fs": false,
