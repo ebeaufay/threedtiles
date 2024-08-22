@@ -152,7 +152,7 @@ async function resolveImplicite(rootTile, url) {
                                 .replace("{y}", childGlobalAddress.y);
                         }
                         if (!isQuad) {
-                            let rootZ = Math.floor(z / factor);
+                            //let rootZ = Math.floor(z / factor);
                             uri = contentURI
                                 .replace("{level}", childGlobalAddress.level)
                                 .replace("{x}", childGlobalAddress.x)

@@ -106,16 +106,16 @@ function initTileLoader(){
     const ktx2Loader = new KTX2Loader();
     ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
     const tileLoader = new TileLoader({
-        renderer: renderer,
+        //renderer: renderer,
         //ktx2Loader:ktx2Loader,
         maxCachedItems: 0,
         meshCallback: (mesh, geometricError) => {
             mesh.material.wireframe = false;
             mesh.onAfterRender = ()=>{
-                if(mesh.geometry.attributes.position) mesh.geometry.attributes.position.data.array = null
+                /* if(mesh.geometry.attributes.position) mesh.geometry.attributes.position.data.array = null
                 if(mesh.geometry.attributes.uv) mesh.geometry.attributes.position.data.array = null
                 if(mesh.geometry.attributes.normal) mesh.geometry.attributes.position.data.array = null
-                if(mesh.material.map) mesh.material.map.mipmaps = null;
+                if(mesh.material.map) mesh.material.map.mipmaps = null; */
             }
 
             
@@ -307,14 +307,15 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     const ogc3DTile = new OGC3DTile({
         
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
-        url: "http://localhost:8080/tileset.json",
+        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
+        url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
         
-        geometricErrorMultiplier: geometricErrorMultiplier,
+        geometricErrorMultiplier: 0.17,
         distanceBias: 1,
         //loadOutsideView: true,
         tileLoader: tileLoader,
         static: false,
-        centerModel: true,
+        centerModel: false,
         loadingStrategy: loadingStrategy,
         distanceBias: distanceBias,
         //drawBoundingVolume: true,
@@ -325,7 +326,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     });
     
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
+    ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
     ogc3DTile.updateMatrix();
         ogc3DTile.updateMatrixWorld(true);
     scene.matrixAutoUpdate = true;

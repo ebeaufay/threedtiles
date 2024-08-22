@@ -56,7 +56,7 @@ class TileLoader {
             this.hasDracoLoader = true;
         } else {
             const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath('draco-decoders/');
+            dracoLoader.setDecoderPath('https://storage.googleapis.com/ogc-3d-tiles/draco/');
             this.gltfLoader.setDRACOLoader(dracoLoader);
             this.gltfLoader.hasDracoLoader = true;
         }
@@ -66,7 +66,7 @@ class TileLoader {
             this.hasKTX2Loader = true;
         } else if (!!options && !!options.renderer) {
             const ktx2Loader = new KTX2Loader();
-            ktx2Loader.setTranscoderPath('ktx2-decoders/').detectSupport(options.renderer);
+            ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
             this.gltfLoader.setKTX2Loader(ktx2Loader);
             this.gltfLoader.hasKTX2Loader = true;
         }
