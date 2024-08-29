@@ -543,9 +543,74 @@ const ogc3DTile = new InstancedOGC3DTile({
 ```
 ### Meshopt, Draco and Ktx2
 Compressed meshes via Draco and compressed textures in Ktx2 format are supported automatically using the threejs plugins by passing the renderer at initialization.
-The ktx and draco loader can also be passed manually (see jsdoc)
-KTX uses an external wasm loaded at runtime so if you have trouble packaging your app correctly, check out the 
-[Getting started](https://drive.google.com/file/d/1kJ-yfYmy8ShOMMPPXgqW2gMgGkLOIidf/view?usp=share_link) project for a sample webpack configuration.
+The ktx and draco loader can also be passed manually.
+
+The Meshopt decoder doesn't need to be specified, it'll be loaded automatically.
+
+#### when using a tileLoader (recommended):
+
+```
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('node_modules/three/examples/jsm/libs/draco/');
+
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('node_modules/three/examples/jsm/libs/basis/').detectSupport(renderer);
+
+const tileLoader = new TileLoader({
+        ktx2Loader: ktx2Loader,
+        dracoLoader: dracoLoader,
+        maxCachedItems: 100,
+        ...
+    });
+const ogc3DTile = new OGC3DTile({
+        url: "...",
+        tileLoader: tileLoader,
+        ...
+    });
+```
+
+#### when using a tileLoader fallback to web wasms loaded through http:
+
+```
+
+const tileLoader = new TileLoader({
+        renderer: renderer
+        maxCachedItems: 100,
+        ...
+    });
+const ogc3DTile = new OGC3DTile({
+        url: "...",
+        tileLoader: tileLoader,
+        ...
+    });
+```
+
+#### when not using a TileLoader:
+
+```
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('node_modules/three/examples/jsm/libs/draco/');
+
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('node_modules/three/examples/jsm/libs/basis/').detectSupport(renderer);
+
+const ogc3DTile = new OGC3DTile({
+        url: "...",
+        ktx2Loader: ktx2Loader,
+        dracoLoader: dracoLoader,
+        ...
+    });
+```
+
+#### when not using a TileLoader and using fallback wasms loaded from web:
+
+```
+const ogc3DTile = new OGC3DTile({
+        url: "...",
+        renderer: renderer,
+        ...
+    });
+```
 
 ### tileset update loop
 Updating a single tileset via OGC3DTile#update or InstancedOGC3DTile#update is quite fast, even when the tree is deep.
