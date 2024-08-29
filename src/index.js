@@ -383,7 +383,7 @@ function createInstancedTileLoader(scene) {
 function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias) {
     const google = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "" },
+        queryParams: { key: "AIzaSyBp1cFQawvAdwPlWlYtMZkDA5AXVmOcfk0" },
         geometricErrorMultiplier: geometricErrorMultiplier, // controls the level of detail
         //loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
@@ -396,7 +396,7 @@ function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMul
 
     });
 
-    earthAntiGeoreferencing(google, 2.2185074, 41.41062517, 200);
+    earthAntiGeoreferencing(google, 2.71266274, 39.53647313, 200);
     scene.add(google);
     return google;
 }

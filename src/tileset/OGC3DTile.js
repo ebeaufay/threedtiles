@@ -649,8 +649,8 @@ class OGC3DTile extends THREE.Object3D {
 
     /**
      * To be called in the render loop.
-     * @param {Three.Camera} camera a camera that the tileset will be rendered with.
-    * @returns {{numTiles: number, maxLOD: number, percentageLoaded: percentageLoaded}} An object containing describing the current state of the loaded tileset.
+     * @param {THREE.Camera} camera a camera that the tileset will be rendered with.
+     * @returns {{numTilesLoaded: number, numTilesRendered: number, maxLOD: number, percentageLoaded: number}} An object containing describing the current state of the loaded tileset.
      */
     update(camera) {
 
@@ -687,20 +687,8 @@ class OGC3DTile extends THREE.Object3D {
         this._loadMeshImmediate();
 
 
-        //this.check();
-
     }
 
-    check() {
-        if (!this.materialVisibility) {
-            if (this.childrenTiles.length == 0) {
-                console.log("eeehhhh")
-            } else {
-                this.childrenTiles.forEach(c => c.check())
-            }
-
-        }
-    }
 
     _statsImmediate(maxLOD, numTiles, percentageLoaded, numTilesRendered) {
         maxLOD[0] = Math.max(maxLOD[0], this.level);
@@ -971,7 +959,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.occlusionCullingService && self.hasMeshContent && !self.occlusionCullingService.hasID(self.colorID)) {
                 return;
             }
-            if (!self.hasMeshContent || (metric < self.geometricErrorMultiplier * self.geometricError && self.meshContent.length > 0)) {
+            if (!self.hasMeshContent || (metric <= self.geometricErrorMultiplier * self.geometricError && self.meshContent.length > 0)) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     self._loadJsonChildren(camera);
                     return;
