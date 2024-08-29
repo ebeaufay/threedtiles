@@ -47,9 +47,9 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
-let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
-//const google = initGoogleTileset(tileLoader);
-//scene.add(google);
+//let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
+let google = initGoogleTileset(scene, tileLoader, "IMMEDIATE", 0.5, 1.0);
+
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
@@ -67,12 +67,12 @@ function initSliders(){
 
     lodSlider.addEventListener("input", e=>{
         lodSliderValue.innerText = lodSlider.value;
-        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
+        google.setGeometricErrorMultiplier(lodSlider.value)
     })
 
     distanceBiasSlider.addEventListener("input", e=>{
         distanceBiasSliderValue.innerText = distanceBiasSlider.value;
-        ogc3DTiles.setDistanceBias(distanceBiasSlider.value)
+        google.setDistanceBias(distanceBiasSlider.value)
     })
 
     fpsSlider.addEventListener("input", e=>{
@@ -96,17 +96,17 @@ function initSliders(){
 }
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier, distanceBias){
-    scene.remove(ogc3DTiles);
-    ogc3DTiles.dispose();
+    scene.remove(google);
+    google.dispose();
     tileLoader.clear();
-    ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
+    google = initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
 }
 
 function initTileLoader(){
     const ktx2Loader = new KTX2Loader();
     ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
     const tileLoader = new TileLoader({
-        //renderer: renderer,
+        renderer: renderer,
         //ktx2Loader:ktx2Loader,
         maxCachedItems: 0,
         meshCallback: (mesh, geometricError) => {
@@ -224,7 +224,9 @@ function initScene() {
     //scene.add(lightTarget)
     //const helper = new THREE.DirectionalLightHelper(dirLight, 50);
     //scene.add(helper);
-    scene.add(new THREE.AmbientLight(0xFFFFFF, 1.0));
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
+    //const directionalLight = new THREE.DirectionalLight( 0xffffff, 2.0 );
+    //scene.add( directionalLight );
 
     //scene.add(dirLight)
 
@@ -308,17 +310,18 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
-        url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
+        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
+        url: "http://localhost:8080/tileset.json", //UM
         
-        geometricErrorMultiplier: 0.17,
+        geometricErrorMultiplier: 1,
         distanceBias: 1,
         //loadOutsideView: true,
         tileLoader: tileLoader,
         static: false,
-        centerModel: false,
+        centerModel: true,
         loadingStrategy: loadingStrategy,
         distanceBias: distanceBias,
-        //drawBoundingVolume: true,
+        drawBoundingVolume: true,
         //renderer: renderer,
         onLoadCallback:(e)=>{
             console.log(e)
@@ -326,7 +329,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     });
     
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
+    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
     ogc3DTile.updateMatrix();
         ogc3DTile.updateMatrixWorld(true);
     scene.matrixAutoUpdate = true;
@@ -377,23 +380,25 @@ function createInstancedTileLoader(scene) {
     });
 }
 
-function initGoogleTileset(tileLoader) {
-    const googleTiles = new OGC3DTile({
+function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias) {
+    const google = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
         queryParams: { key: "" },
-        geometricErrorMultiplier: 0.5, // controls the level of detail
+        geometricErrorMultiplier: geometricErrorMultiplier, // controls the level of detail
         //loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
-        loadingStrategy: "IMMEDIATE",
+        loadingStrategy: loadingStrategy,
+        distanceBias: distanceBias,
         //drawBoundingVolume: true,
         displayCopyright: true,
-        static: true,
+        static: false,
         renderer: renderer
 
     });
 
-    earthAntiGeoreferencing(googleTiles, -76.613170, 39.274965, -16);
-    return googleTiles;
+    earthAntiGeoreferencing(google, 2.2185074, 41.41062517, 200);
+    scene.add(google);
+    return google;
 }
 
 
@@ -483,8 +488,8 @@ function initInstancedTilesets(instancedTileLoader) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000);
-    camera.position.set(-50,20,0);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(-20,50,100);
+    camera.lookAt(0, -25, 0);
 
     camera.matrixAutoUpdate = true;
 
@@ -500,7 +505,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(100,0,50);
+    controller.target.set(0,0,0);
 
 
     controller.minDistance = 1;
@@ -533,7 +538,7 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
     tileLoader.update();
-    const info = ogc3DTiles.update(camera);
+    const info = google.update(camera);
     infoTilesToLoad.innerText = info.numTilesLoaded
     infoTilesRendered.innerText = info.numTilesRendered
     infoMaxLOD.innerText = info.maxLOD
