@@ -615,7 +615,7 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         if (!!self.abortController) { // abort tile request
-            self.abortController.abort();
+            self.abortController.abort("tile not needed");
         }
         this.parent = null;
         this.parentTile = null;
@@ -626,7 +626,7 @@ class OGC3DTile extends THREE.Object3D {
         if(!!self.deleted) return;
         self.deleted = true;
         if (!!self.abortController) { // abort tile request
-            self.abortController.abort();
+            self.abortController.abort("tile not needed");
             self.abortController = new AbortController();
         }
         for (let i = self.meshContent.length - 1; i >= 0; i--) {
