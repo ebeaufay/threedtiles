@@ -47,8 +47,8 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
-//let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
-let google = initGoogleTileset(scene, tileLoader, "IMMEDIATE", 0.5, 1.0);
+let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
+//let google = initGoogleTileset(scene, tileLoader, "IMMEDIATE", 0.5, 1.0);
 
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
@@ -67,12 +67,12 @@ function initSliders(){
 
     lodSlider.addEventListener("input", e=>{
         lodSliderValue.innerText = lodSlider.value;
-        google.setGeometricErrorMultiplier(lodSlider.value)
+        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
     })
 
     distanceBiasSlider.addEventListener("input", e=>{
         distanceBiasSliderValue.innerText = distanceBiasSlider.value;
-        google.setDistanceBias(distanceBiasSlider.value)
+        ogc3DTiles.setDistanceBias(distanceBiasSlider.value)
     })
 
     fpsSlider.addEventListener("input", e=>{
@@ -96,10 +96,10 @@ function initSliders(){
 }
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier, distanceBias){
-    scene.remove(google);
-    google.dispose();
+    scene.remove(ogc3DTiles);
+    ogc3DTiles.dispose();
     tileLoader.clear();
-    google = initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
+    ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
 }
 
 function initTileLoader(){
@@ -311,13 +311,13 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
-        url: "http://localhost:8080/tileset.json", //UM
+        url: "http://localhost:8082/georef_tileset.json", //UM
         
         geometricErrorMultiplier: 1,
         distanceBias: 1,
-        //loadOutsideView: true,
+        loadOutsideView: false,
         tileLoader: tileLoader,
-        static: false,
+        static: true,
         centerModel: true,
         loadingStrategy: loadingStrategy,
         distanceBias: distanceBias,
@@ -329,11 +329,21 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     });
     
-    //ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
-    ogc3DTile.updateMatrix();
-        ogc3DTile.updateMatrixWorld(true);
-    scene.matrixAutoUpdate = true;
+    ogc3DTile.updateMatrices();
+    setTimeout(()=>{
+        ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
+        ogc3DTile.updateMatrices();
+    },1000)
+    
+    /* o.traverse(c=>{
+        c.matrixNedUpdate = true;
+        c.matrixWorldNeedsUpdate = true;
+        c.updateMatrix();
+        c.updateWorldMatrix(true, true);
+    }) */
+    scene.matrixAutoUpdate == false;
     scene.add(ogc3DTile);
+    //
 
     //const axesHelper = new THREE.AxesHelper( 5000 );
     //scene.add( axesHelper );
@@ -538,7 +548,7 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
     tileLoader.update();
-    const info = google.update(camera);
+    const info = ogc3DTiles.update(camera);
     infoTilesToLoad.innerText = info.numTilesLoaded
     infoTilesRendered.innerText = info.numTilesRendered
     infoMaxLOD.innerText = info.maxLOD

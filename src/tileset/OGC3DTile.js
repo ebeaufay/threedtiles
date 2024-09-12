@@ -148,6 +148,8 @@ class OGC3DTile extends THREE.Object3D {
         this.hasUnloadedJSONContent = 0; // true when the provided json has a content field pointing to a JSON file that is not yet loaded
         this.centerModel = properties.centerModel;
         this.abortController = new AbortController();
+
+        this.onLoadCallback = properties.onLoadCallback;
         //this.layers.disable(0);
         //this.octree = new Octree();
 
@@ -194,12 +196,30 @@ class OGC3DTile extends THREE.Object3D {
                     throw new Error(`couldn't load "${properties.url}". Request failed with status ${result.status} : ${result.statusText}`);
                 }
                 result.json().then(json => { return resolveImplicite(json, url) }).then(json => {
-                    self._setup({ rootPath: path.dirname(properties.url), json: json, onLoadCallback: properties.onLoadCallback });
+                    self._setup({ rootPath: path.dirname(properties.url), json: json });
                 });
             }).catch(e => { if (self.displayErrors) _showError(e) });
         }
     }
 
+    /**
+     * Manually updates all the matrices of the tileset. 
+     * To be called after transforming a {@link OGC3DTile tileset} instantiated with the "static" option
+     */
+    updateMatrices(){
+        this.updateMatrix();
+        if(this.static){
+            this.traverse(o=>{
+                if(o.isObject3D) o.matrixWorldAutoUpdate = true;
+            });
+        }
+        this.updateMatrixWorld(true);
+        if(this.static){
+            this.traverse(o=>{
+                if(o.isObject3D) o.matrixWorldAutoUpdate = false;
+            });
+        }
+    }
     /**
      * Call this to specify the canvas width/height when it changes (used to compute tiles geometric error that controls tile refinement).
      * It's unnecessary to call this when the {@link OGC3DTile} is instantiated with the renderer.
@@ -254,12 +274,12 @@ class OGC3DTile extends THREE.Object3D {
 
         }
 
-        self.matrixWorldNeedsUpdate = true;
+        /* self.matrixWorldNeedsUpdate = true;
         //self.updateMatrix();
         if (self.parentTile) {
             self.parentTile.updateMatrixWorld(true);
             //self.parentTile.updateWorldMatrix(true, true);
-        }
+        } */
 
         // decode volume
         if (!!self.json.boundingVolume) {
@@ -335,13 +355,12 @@ class OGC3DTile extends THREE.Object3D {
                 self.applyQuaternion(tempQuaternion);
             }
             tempSphere.center.applyMatrix4(self.matrix);
-            self.translateX(-tempSphere.center.x);
-            self.translateY(-tempSphere.center.y);
-            self.translateZ(-tempSphere.center.z);
-
-
+            self.position.sub(tempSphere.center);
+            
+            self.updateMatrices();
+            //self.updateMatrixWorld(true);
         }
-        if (properties.onLoadCallback) properties.onLoadCallback(self);
+        if (properties.onLoadCallback) self.onLoadCallback(self);
         self.isSetup = true;
 
 
@@ -349,11 +368,13 @@ class OGC3DTile extends THREE.Object3D {
             if (self.bbox) {
                 console.log("double setup")
             }
-            let box = this.boundingVolume.aabb.clone();
-            box.applyMatrix4(this.matrixWorld);
-            self.bbox = new THREE.Box3Helper(box, 0xffff00);
-            self.add(self.bbox);
-            self.bbox.material.visible = false;
+            if(this.boundingVolume.aabb){
+                let box = this.boundingVolume.aabb.clone();
+                box.applyMatrix4(this.matrixWorld);
+                self.bbox = new THREE.Box3Helper(box, 0xffff00);
+                self.add(self.bbox);
+                self.bbox.material.visible = false;
+            }
         }
 
     }
@@ -497,13 +518,13 @@ class OGC3DTile extends THREE.Object3D {
                             averageTime/=numTiles;
                             console.log(averageTime);*/
                             self.add(mesh);
-                            mesh.matrixWorldNeedsUpdate = true;
+                            /* mesh.matrixWorldNeedsUpdate = true;
                             self.matrixWorldNeedsUpdate = true;
                             //self.updateMatrix();
                             if (self.parentTile) {
                                 self.parentTile.updateMatrixWorld(true);
                                 //self.parentTile.updateWorldMatrix(true, true);
-                            }
+                            } */
 
 
 
@@ -1089,7 +1110,7 @@ class OGC3DTile extends THREE.Object3D {
             self.childrenTiles.push(childTile);
             self.add(childTile);
         });
-        self.updateMatrixWorld(true);
+        self.updateMatrices(true);
     }
 
     _areAllChildrenLoadedAndHidden() {

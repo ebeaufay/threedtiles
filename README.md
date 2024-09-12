@@ -471,7 +471,7 @@ for (let i = 0; i < 100; i++) {
     });
     
     tileset.translateOnAxis(new THREE.Vector3(1, 0, 0), 50 * i);
-    tileset.updateMatrix(); // important when static property is true
+    tileset.updateMatrices(); // important when static property is true (different from the Object3D#updateMatrix API)
     scene.add(tileset);
     instancedTilesets.push(tileset);
 }
@@ -524,12 +524,11 @@ const ogc3DTile = new OGC3DTile({
     setTimeout(()=>{
 
         ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
-        ogc3DTile.updateMatrix();
-        ogc3DTile.updateMatrixWorld(true);
+        ogc3DTile.updateMatrices(); // different from the Object3D#updateMatrix API
     },1000)
 ```
 
-For InstancedOGC3DTile objects, You only need to call instancedOgc3DTile#updateMatrix() and the gains will be much less significant.
+For InstancedOGC3DTile objects, You need to call instancedOgc3DTile#updateMatrix() and the gains will be much less significant.
 
 ```
 const ogc3DTile = new InstancedOGC3DTile({
