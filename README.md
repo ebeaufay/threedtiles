@@ -632,22 +632,47 @@ you'll want to avoid updating every single tileset on every frame.
 This is especially important for iOS that limits the memory per tab quite harshly and doesn't allow growing the memory allocated to a tab.
 
 Once a mesh is loaded, the mesh and texture data stays in CPU memory which isn't necessary unless one intends to modify it.
-A nice trick is to allow this data to be garbage collected. You might do something like this in the mesh callback:
+A nice trick is to allow this data to be garbage collected. However, three.js doesn't have API for this and the internal references are hard to find but this code
+seems to free a limited amount of memory:
 
 ```
 const tileLoader = new TileLoader({
         ...
-        meshCallback: (mesh, geometricError) => {
-            mesh.onAfterRender = ()=>{
-                if(mesh.geometry.attributes.position) mesh.geometry.attributes.position.data.array = null
-                if(mesh.geometry.attributes.uv) mesh.geometry.attributes.position.data.array = null
-                if(mesh.geometry.attributes.normal) mesh.geometry.attributes.position.data.array = null
-                if(mesh.material.map) mesh.material.map.mipmaps = null;
+        const previousOnAfterRender = mesh.onAfterRender; 
+        mesh.onAfterRender = () => {
+            if(previousOnAfterRender) previousOnAfterRender();
+            if(mesh.geometry && mesh.geometry.attributes){
+                if (mesh.geometry.attributes.position) {
+                    mesh.geometry.attributes.position.array = undefined;
+                    if (mesh.geometry.attributes.position.data) {
+                        mesh.geometry.attributes.position.data.array = undefined;
+                    }
+                }
+                if (mesh.geometry.attributes.uv){
+                    mesh.geometry.attributes.uv.array = undefined;  
+                    if (mesh.geometry.attributes.uv.data) {
+                         mesh.geometry.attributes.uv.data.array = undefined;
+                    }
+                } 
+                if (mesh.geometry.attributes.normal) {
+                    mesh.geometry.attributes.normal.array = undefined;
+                    if (mesh.geometry.attributes.normal.data) {
+                        mesh.geometry.attributes.normal.data.array = undefined;
+                    }
+                }
             }
+            if (mesh.material && mesh.material.map) {
+                mesh.material.map.mipmaps = undefined;
+                if (mesh.material.map.source) {
+                    mesh.material.map.source.data = undefined;
+                }
+            }
+
+            mesh.onAfterRender = previousOnAfterRender;
         }
     });
 ```
 
-Be sure to call this in the mesh onAfterRender callback to make sure the data is on the GPU.
+Be sure to call this in the mesh onAfterRender callback to make sure the data is already on GPU.
 
 Depending on the mesh and texture type, different properties might hold data to be nullified so it can be garbage collected. It's up to the user to debug and see what geometry or material properties hold references to large data.
