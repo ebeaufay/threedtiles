@@ -222,7 +222,7 @@ Google requires that, copyright info for producers of the 3D data be displayed.
 A global function #getOGC3DTilesCopyrightInfo returns the list of vendors that need to be displayed.
 
 ```
-import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "./tileset/OGC3DTile";
+import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "@jdultra/threedtiles';
 
 ...
 
