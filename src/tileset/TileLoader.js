@@ -226,12 +226,12 @@ class TileLoader {
         if (closest >= 0) {
             const closestItem = this.ready.splice(closest, 1).pop();
             this.nextReady.push(closestItem);
-            /*  const siblings = closestItem[4]();
+             const siblings = closestItem[4]();
              for (let i = this.ready.length - 1; i >= 0; i--) {
                  if (siblings.map(s=>s.uuid).includes(this.ready[i][6])) {
                      this.nextReady.push(this.ready.splice(i, 1).pop());
                  }
-             } */
+             }
         }
     }
 
@@ -257,7 +257,7 @@ class TileLoader {
         const realAbortController = new AbortController();
         abortController.signal.addEventListener("abort", () => {
             if (!self.register[key] || Object.keys(self.register[key]).length == 0) {
-                realAbortController.abort();
+                realAbortController.abort("user abort");
             }
         })
 
@@ -375,7 +375,9 @@ class TileLoader {
                             self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                         });
                     }).catch((e) => {
-                        console.error(e)
+                        if(e!=="user abort" && e.code !== 20) {
+                            console.error(e);
+                        }
                     }).finally(() => {
                         concurrentDownloads--;
                     });

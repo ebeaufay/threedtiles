@@ -314,9 +314,12 @@ class OGC3DTile extends THREE.Object3D {
                 self.hasMeshContent++;
             }
         }
+        
         if (!!self.json.content) { //if there is a content, json or otherwise, schedule it to be loaded 
             _checkContent(self.json.content);
-
+            if(self.hasMeshContent==0){
+                self.level = Math.max(0,self.parentTile?self.parentTile.level+0.01:0.0);
+            }
             switch (self.loadingStrategy) {
                 case "IMMEDIATE": self._load(true, false); break;
                 default: self._load();
@@ -324,14 +327,16 @@ class OGC3DTile extends THREE.Object3D {
 
         } else if (!!self.json.contents) { //if there is a content, json or otherwise, schedule it to be loaded 
             self.json.contents.forEach(e => _checkContent(e))
-
+            if(self.hasMeshContent==0){
+                self.level = Math.max(0,self.parentTile?self.parentTile.level+0.01:0.0);
+            }
             switch (self.loadingStrategy) {
                 case "IMMEDIATE": self._load(true, false); break;
                 default: self._load();
             }
             //scheduleLoadTile(this);
         }
-
+        
 
         if (!!self.centerModel) {
             const tempSphere = new THREE.Sphere();
@@ -534,7 +539,11 @@ class OGC3DTile extends THREE.Object3D {
                         }, !self.cameraOnLoad ? () => 0 : () => {
                             let multiplier = 1;
                             if ((self.metric && self.metric < 0) || self.deleted) multiplier = 2;
-                            return self._calculateDistanceToCamera(self.cameraOnLoad) * multiplier * self.level;
+                            if(self.parentTile){
+                                return self.parentTile._calculateDistanceToCamera(self.cameraOnLoad) * multiplier * self.level;
+                            }else{
+                                return self._calculateDistanceToCamera(self.cameraOnLoad) * multiplier * self.level;
+                            }
                         }, () => self._getSiblings(),
                             self.level,
                             !!self.json.boundingVolume.region ? false : true,
@@ -1094,7 +1103,7 @@ class OGC3DTile extends THREE.Object3D {
                 rootPath: self.rootPath,
                 geometricErrorMultiplier: self.geometricErrorMultiplier,
                 loadOutsideView: self.loadOutsideView,
-                level: self.level + 1,
+                level: Math.floor(self.level) + 1,
                 tileLoader: self.tileLoader,
                 cameraOnLoad: camera,
                 occlusionCullingService: self.occlusionCullingService,
@@ -1171,6 +1180,7 @@ class OGC3DTile extends THREE.Object3D {
                 this.childrenTiles.every(child => {
                     if (!child._isReady()) {
                         allChildrenReady = false;
+                        //console.log(child.level)
                         return false;
                     }
                     return true;

@@ -47,8 +47,8 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
-let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
-//let google = initGoogleTileset(scene, tileLoader, "IMMEDIATE", 0.5, 1.0);
+//let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
+let google = initGoogleTileset(scene, tileLoader, "INCREMENTAL", 0.5, 1.0);
 
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
@@ -393,7 +393,7 @@ function createInstancedTileLoader(scene) {
 function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias) {
     const google = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyBp1cFQawvAdwPlWlYtMZkDA5AXVmOcfk0" },
+        queryParams: { key: "AIzaSyA0xuS0FF4L7ZopG_WlTjneevhbNoRCFyI" },
         geometricErrorMultiplier: geometricErrorMultiplier, // controls the level of detail
         //loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
@@ -406,7 +406,7 @@ function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMul
 
     });
 
-    earthAntiGeoreferencing(google, 2.71266274, 39.53647313, 200);
+    earthAntiGeoreferencing(google, -2.915, 53.392, 200);
     scene.add(google);
     return google;
 }
@@ -548,7 +548,7 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
     tileLoader.update();
-    const info = ogc3DTiles.update(camera);
+    const info = google.update(camera);
     infoTilesToLoad.innerText = info.numTilesLoaded
     infoTilesRendered.innerText = info.numTilesRendered
     infoMaxLOD.innerText = info.maxLOD
