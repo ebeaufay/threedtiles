@@ -67,12 +67,12 @@ function initSliders(){
 
     lodSlider.addEventListener("input", e=>{
         lodSliderValue.innerText = lodSlider.value;
-        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
+        google.setGeometricErrorMultiplier(lodSlider.value)
     })
 
     distanceBiasSlider.addEventListener("input", e=>{
         distanceBiasSliderValue.innerText = distanceBiasSlider.value;
-        ogc3DTiles.setDistanceBias(distanceBiasSlider.value)
+        google.setDistanceBias(distanceBiasSlider.value)
     })
 
     fpsSlider.addEventListener("input", e=>{
@@ -96,10 +96,10 @@ function initSliders(){
 }
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier, distanceBias){
-    scene.remove(ogc3DTiles);
-    ogc3DTiles.dispose();
+    scene.remove(google);
+    google.dispose();
     tileLoader.clear();
-    ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
+    google = initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
 }
 
 function initTileLoader(){
@@ -393,7 +393,7 @@ function createInstancedTileLoader(scene) {
 function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias) {
     const google = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyA0xuS0FF4L7ZopG_WlTjneevhbNoRCFyI" },
+        queryParams: { key: "" },
         geometricErrorMultiplier: geometricErrorMultiplier, // controls the level of detail
         //loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
@@ -406,7 +406,7 @@ function initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMul
 
     });
 
-    earthAntiGeoreferencing(google, -2.915, 53.392, 200);
+    //earthAntiGeoreferencing(google, -2.915, 53.392, 200);
     scene.add(google);
     return google;
 }
@@ -498,7 +498,9 @@ function initInstancedTilesets(instancedTileLoader) {
 
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000);
-    camera.position.set(-20,50,100);
+    
+    camera.position.copy(llhToCartesianFast(-2.915, 53.392, 200));
+    
     camera.lookAt(0, -25, 0);
 
     camera.matrixAutoUpdate = true;
@@ -515,7 +517,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0,0,0);
+    controller.target.copy(llhToCartesianFast(-2.915, 53.392, 0));
 
 
     controller.minDistance = 1;

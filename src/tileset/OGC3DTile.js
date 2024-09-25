@@ -1278,15 +1278,15 @@ class OGC3DTile extends THREE.Object3D {
         let distance = 0;
         if (this.boundingVolume instanceof OBB) {
             // box
-            tempBox3.copy(this.boundingVolume.aabb);
+            /* tempBox3.copy(this.boundingVolume.aabb);
             tempBox3.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsBox(tempBox3)) return -1;
-            distance = Math.max(0, tempBox3.distanceToPoint(camera.position) - camera.near);
+            distance = Math.max(0, tempBox3.distanceToPoint(camera.position) - camera.near); */
 
-            /* tempSphere.copy(this.boundingVolume.sphere);
+            tempSphere.copy(this.boundingVolume.sphere);
             tempSphere.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
-            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius); */
+            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near);
         } else if (this.boundingVolume instanceof THREE.Sphere) {
             //sphere
             tempSphere.copy(this.boundingVolume);
