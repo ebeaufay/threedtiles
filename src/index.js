@@ -15,7 +15,7 @@ import { Sky } from "three/addons/objects/Sky";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
 
-
+let lon = -2.915;
 let t = 0;
 let lightShadowMapViewer;
 let paused = false;
@@ -47,8 +47,8 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const tileLoader = initTileLoader();
-//let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
-let google = initGoogleTileset(scene, tileLoader, "INCREMENTAL", 0.5, 1.0);
+let ogc3DTiles = initTilesets(scene, tileLoader, "IMMEDIATE", 1.0, 1.0);
+//let google = initGoogleTileset(scene, tileLoader, "INCREMENTAL", 0.5, 1.0);
 
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
@@ -67,19 +67,19 @@ function initSliders(){
 
     lodSlider.addEventListener("input", e=>{
         lodSliderValue.innerText = lodSlider.value;
-        google.setGeometricErrorMultiplier(lodSlider.value)
+        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
     })
 
     distanceBiasSlider.addEventListener("input", e=>{
         distanceBiasSliderValue.innerText = distanceBiasSlider.value;
-        google.setDistanceBias(distanceBiasSlider.value)
+        ogc3DTiles.setDistanceBias(distanceBiasSlider.value)
     })
 
     fpsSlider.addEventListener("input", e=>{
         fpsSliderValue.innerText = fpsSlider.value;
         targetFrameRate = fpsSlider.value
     })
-
+    
     
     loadingStrategyWrapper.addEventListener("click", e=>{
         
@@ -96,10 +96,10 @@ function initSliders(){
 }
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier, distanceBias){
-    scene.remove(google);
-    google.dispose();
+    scene.remove(ogc3DTiles);
+    ogc3DTiles.dispose();
     tileLoader.clear();
-    google = initGoogleTileset(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
+    ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier, distanceBias)
 }
 
 function initTileLoader(){
@@ -311,29 +311,28 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
-        url: "http://localhost:8082/georef_tileset.json", //UM
+        url: "http://localhost:8081/tileset.json", //UM
         
         geometricErrorMultiplier: 1,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
         static: true,
-        centerModel: true,
+        centerModel: false,
         loadingStrategy: loadingStrategy,
         distanceBias: distanceBias,
-        drawBoundingVolume: true,
+        drawBoundingVolume: false,
         //renderer: renderer,
         onLoadCallback:(e)=>{
             console.log(e)
         }
 
     });
-    
+    ogc3DTile.position.copy(llhToCartesianFast(-2.915, 53.392, 0));
     ogc3DTile.updateMatrices();
-    setTimeout(()=>{
-        ogc3DTile.rotateOnAxis(new THREE.Vector3(1,0,0), -3.1415*0.5);
-        ogc3DTile.updateMatrices();
-    },1000)
+
+    
+    
     
     /* o.traverse(c=>{
         c.matrixNedUpdate = true;
@@ -547,10 +546,21 @@ function animate1() {
     //lightShadowMapViewer.render(renderer);
 }
 
+
+    
 function animate() {
     requestAnimationFrame( animate );
+
+    lon+=0.000001;
+    t++;
+    if(t%400 == 0){
+        ogc3DTiles.position.copy(llhToCartesianFast(lon, 53.392, 0));
+        ogc3DTiles.updateMatrices();
+    }
+    
+
     tileLoader.update();
-    const info = google.update(camera);
+    const info = ogc3DTiles.update(camera);
     infoTilesToLoad.innerText = info.numTilesLoaded
     infoTilesRendered.innerText = info.numTilesRendered
     infoMaxLOD.innerText = info.maxLOD

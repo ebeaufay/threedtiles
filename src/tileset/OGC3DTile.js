@@ -210,7 +210,9 @@ class OGC3DTile extends THREE.Object3D {
         this.updateMatrix();
         if(this.static){
             this.traverse(o=>{
-                if(o.isObject3D) o.matrixWorldAutoUpdate = true;
+                if(o.isObject3D) {
+                    o.matrixWorldAutoUpdate = true;
+                }
             });
         }
         this.updateMatrixWorld(true);
@@ -523,6 +525,7 @@ class OGC3DTile extends THREE.Object3D {
                             averageTime/=numTiles;
                             console.log(averageTime);*/
                             self.add(mesh);
+                            self.updateMatrices();
                             /* mesh.matrixWorldNeedsUpdate = true;
                             self.matrixWorldNeedsUpdate = true;
                             //self.updateMatrix();
