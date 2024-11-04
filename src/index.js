@@ -551,12 +551,12 @@ function animate1() {
 function animate() {
     requestAnimationFrame( animate );
 
-    lon+=0.000001;
+   /*  lon+=0.000001;
     t++;
     if(t%400 == 0){
         ogc3DTiles.position.copy(llhToCartesianFast(lon, 53.392, 0));
         ogc3DTiles.updateMatrices();
-    }
+    } */
     
 
     tileLoader.update();
