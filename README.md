@@ -7,9 +7,9 @@
 A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support
 
 ## sample getting started projects
-Getting started vanilla js: 
-[app](www.jdultra.com/threedtiles/demos/gettingStarted)
-[code](www.jdultra.com/threedtiles/demos/gettingStarted/threedtiles-gettingStarted.zip))
+Getting started vanilla js:    
+[app](www.jdultra.com/threedtiles/demos/gettingStarted)    
+[code](www.jdultra.com/threedtiles/demos/gettingStarted/threedtiles-gettingStarted.zip)
 
 [Getting started react-three-fiber](https://drive.google.com/file/d/1C102qriCsnra9EUbb8WzO4jZStp-eEah/view?usp=sharing)
 
