@@ -13,7 +13,7 @@ Getting started vanilla js:
 
 GettingStarted RTF:    
 [app](https://www.jdultra.com/threedtiles/demos/gettingStartedRTF)    
-[code](https://www.jdultra.com/threedtiles/demos/gettingStartedRTF/threedtiles-gettingStarted-RTF.zip)    
+[code](https://www.jdultra.com/threedtiles/demos/gettingStartedRTF/threedtiles-gettingStarted-rtf.zip)    
 
 ## Demos
 
