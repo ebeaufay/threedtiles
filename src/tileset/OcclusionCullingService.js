@@ -4,7 +4,7 @@ import * as THREE from 'three';
 /**
  * An occlusion culling service that helps to only refine tiles that are visible.
  * This occlusion culling has a cost but allows downloading much less data.
- * For models that have a lot of geometry that is often hidden from the camera by walls, this can greatly improve the frame-rate.
+ * For models that have a lot of geometry that is often hidden from the camera by walls, this can improve the frame-rate.
  * @class
  */
 class OcclusionCullingService {

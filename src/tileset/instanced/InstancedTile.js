@@ -616,7 +616,7 @@ class InstancedTile extends THREE.Object3D {
 
         /////// return metric based on geometric error and distance
 
-        const distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
+        let distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius);
 
         /////// Apply the bias factor to the distance
         distance = Math.pow(distance,this.distanceBias);

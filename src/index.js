@@ -1,9 +1,8 @@
-import "regenerator-runtime/runtime.js";
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
-import { MapControls, OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
