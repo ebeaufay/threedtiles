@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema",
+    "title": "ULTRA_splats",
+    "type": "object",
+    "description": "glTF extension for encoding gaussian splats.",
+    "allOf": [
+        { "$ref": "glTFProperty.schema.json" }
+    ],
+    "properties": {
+        "harmonicLevels": {
+            "type": "integer",
+            "description": "the number of available spherical harmonics levels.",
+            "minimum": 0,
+            "maximum": 3
+        }
+    },
+    "required": ["harmonicLevels"]
+}

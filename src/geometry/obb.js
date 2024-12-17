@@ -1,64 +1,178 @@
-import { Matrix3, Sphere, Vector3, Box3 } from "three";
+
+
+import { Matrix3, Matrix4, Ray, Sphere, Vector3, Box3 } from "three";
+import { OBB as threeOBB } from 'three/addons/math/OBB.js';
+
+const tempMatrix = new Matrix3();
+const tempVector3 = new Vector3();
+const size = new Vector3();
+const aabb = new Box3();
+const matrix = new Matrix4();
+const inverse = new Matrix4();
+const localRay = new Ray();
 
 class OBB {
     constructor(values) {
         this.center = new Vector3(values[0], values[1], values[2]);
-        var e1 = new Vector3(values[3], values[4], values[4]);
-        var e2 = new Vector3(values[6], values[7], values[8]);
-        var e3 = new Vector3(values[9], values[10], values[11]);
+        this.e1 = new Vector3(values[3], values[4], values[5]);
+        this.e2 = new Vector3(values[6], values[7], values[8]);
+        this.e3 = new Vector3(values[9], values[10], values[11]);
 
-        this.halfWidth = e1.length();
-        this.halfHeight = e2.length();
-        this.halfDepth = e3.length();
+        this.halfSize = new Vector3(this.e1.length(), this.e2.length(), this.e3.length());
 
-        this.aabb = new Box3();
+        this.e1.normalize();
+        this.e2.normalize();
+        this.e3.normalize();
 
-        const corner = new Vector3();
-        const signs = [-1, 1];
 
-        for (let x of signs) {
-            for (let y of signs) {
-                for (let z of signs) {
-                    corner.copy(this.center)
-                        .addScaledVector(e1, x)
-                        .addScaledVector(e2, y)
-                        .addScaledVector(e3, z);
-                    this.aabb.expandByPoint(corner);
-                }
-            }
-        }
+        this.rotationMatrix = new Matrix3();
+        this.rotationMatrix.set(
+            this.e1.x, this.e1.y, this.e1.z,
+            this.e2.x, this.e2.y, this.e2.z,
+            this.e3.x, this.e3.y, this.e3.z);
+    }
 
-        e1.normalize();
-        e2.normalize();
-        e3.normalize();
+    copy(aObb) {
+        this.center.copy(aObb.center);
+        this.rotationMatrix.copy(aObb.rotationMatrix);
+        this.halfSize.copy(aObb.halfSize);
+    }
 
-        // A sphere is used for frustum culling
-        this.sphere = new Sphere(this.center, Math.sqrt(this.halfWidth * this.halfWidth + this.halfHeight * this.halfHeight + this.halfDepth * this.halfDepth));
+    getSize( result ) {
 
-        this.matrixToOBBCoordinateSystem = new Matrix3();
-        this.matrixToOBBCoordinateSystem.set(
-            e1.x, e1.y, e1.z,
-            e2.x, e2.y, e2.z,
-            e3.x, e3.y, e3.z);
+		return result.copy( this.halfSize ).multiplyScalar( 2 );
+
+	}
+
+    applyMatrix4(matrix) {
+
+        const e = matrix.elements;
+
+        let sx = tempVector3.set(e[0], e[1], e[2]).length();
+        const sy = tempVector3.set(e[4], e[5], e[6]).length();
+        const sz = tempVector3.set(e[8], e[9], e[10]).length();
+
+        const det = matrix.determinant();
+        if (det < 0) sx = - sx;
+
+        tempMatrix.setFromMatrix4(matrix);
+
+        const invSX = 1 / sx;
+        const invSY = 1 / sy;
+        const invSZ = 1 / sz;
+
+        tempMatrix.elements[0] *= invSX;
+        tempMatrix.elements[1] *= invSX;
+        tempMatrix.elements[2] *= invSX;
+
+        tempMatrix.elements[3] *= invSY;
+        tempMatrix.elements[4] *= invSY;
+        tempMatrix.elements[5] *= invSY;
+
+        tempMatrix.elements[6] *= invSZ;
+        tempMatrix.elements[7] *= invSZ;
+        tempMatrix.elements[8] *= invSZ;
+
+        this.rotationMatrix.multiply(tempMatrix);
+
+        this.halfSize.x *= sx;
+        this.halfSize.y *= sy;
+        this.halfSize.z *= sz;
+
+        tempVector3.setFromMatrixPosition(matrix);
+        this.center.applyMatrix4(matrix);
+
+        return this;
+
+    }
+    
+    intersectRay( ray, result ) {
+
+		// the idea is to perform the intersection test in the local space
+		// of the OBB.
+
+		this.getSize( size );
+		aabb.setFromCenterAndSize( tempVector3.set( 0, 0, 0 ), size );
+
+		// create a 4x4 transformation matrix
+
+		matrix.setFromMatrix3( this.rotationMatrix );
+		matrix.setPosition( this.center );
+
+		// transform ray to the local space of the OBB
+
+		inverse.copy( matrix ).invert();
+		localRay.copy( ray ).applyMatrix4( inverse );
+
+		// perform ray <-> AABB intersection test
+
+		if ( localRay.intersectBox( aabb, result ) ) {
+
+			// transform the intersection point back to world space
+
+			return result.applyMatrix4( matrix );
+
+		} else {
+
+			return null;
+
+		}
+
+	}
+
+    intersectsRay( ray ) {
+
+		return this.intersectRay( ray, tempVector3 ) !== null;
+
+	}
+
+    insidePlane(plane) {
+        // compute the projection interval radius of this OBB onto L(t) = this->center + t * p.normal;
+
+        const r = this.halfSize.x * Math.abs(plane.normal.dot(this.e1)) +
+            this.halfSize.y * Math.abs(plane.normal.dot(this.e2)) +
+            this.halfSize.z * Math.abs(plane.normal.dot(this.e3));
+
+        // compute distance of the OBB's center from the plane
+
+        const d = plane.distanceToPoint(this.center);
+
+        // Intersection occurs when distance d falls within [-r,+r] interval
+
+        return [Math.abs(d) <= r, d > -r];
+
     }
 
     inFrustum(frustum) {
-        // frustum check simplified to bounding sphere intersection
-        return frustum.intersectsSphere(this.sphere);
+
+        this.rotationMatrix.extractBasis(this.e1, this.e2, this.e3);
+
+        let toReturn = true;
+        for (let i = 0; i < 6; i++) {
+            const plane = frustum.planes[i];
+            const planeIntersection = this.insidePlane(plane);
+            /* if (planeIntersection[0]) {
+                return true;
+            } */
+            if (!planeIntersection[1] && toReturn) {
+                return false;
+            }
+        }
+        return true;
     }
     distanceToPoint(point) {
 
-        let transformedPoint = point.clone();
-        transformedPoint.sub(this.center);
-        transformedPoint.applyMatrix3(this.matrixToOBBCoordinateSystem);
+        tempVector3.copy(point);
+        tempVector3.sub(this.center);
+        tempVector3.applyMatrix3(this.rotationMatrix);
 
         //// point to bounds 
-        let dx = Math.max(0, Math.max(-this.halfWidth - transformedPoint.x, transformedPoint.x - this.halfWidth));
-        let dy = Math.max(0, Math.max(-this.halfHeight - transformedPoint.y, transformedPoint.y - this.halfHeight));
-        let dz = Math.max(0, Math.max(-this.halfDepth - transformedPoint.z, transformedPoint.z - this.halfDepth));
+        let dx = Math.max(0, Math.max(-this.halfSize.x - tempVector3.x, tempVector3.x - this.halfSize.x));
+        let dy = Math.max(0, Math.max(-this.halfSize.y - tempVector3.y, tempVector3.y - this.halfSize.y));
+        let dz = Math.max(0, Math.max(-this.halfSize.z - tempVector3.z, tempVector3.z - this.halfSize.z));
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
-    
+
 }
 
 export { OBB };

@@ -5,6 +5,9 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import terser from '@rollup/plugin-terser';
 
 export default defineConfig({
+  worker: {
+    format: 'es',
+  },
   // Define the build configuration
   build: {
     // Specify library mode

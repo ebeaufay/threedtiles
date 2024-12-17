@@ -6,6 +6,38 @@
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <title>Three 3DTiles viewer sample</title>
   <style>
+    .unselectable {
+            user-select: none; /* Modern browsers */
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer */
+        }
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
     .slidecontainer {
       width: 100%;
     }
@@ -20,6 +52,7 @@
       opacity: 0.7;
       -webkit-transition: .2s;
       transition: opacity .2s;
+      box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff;
     }
 
     .slider:hover {
@@ -32,7 +65,7 @@
       width: 25px;
       height: 25px;
       border-radius: 50%;
-      background: #0439aa;
+      background: #011d5c;
       cursor: pointer;
     }
 
@@ -43,41 +76,82 @@
       background: #04AA6D;
       cursor: pointer;
     }
+
+    .responsive-div {
+    background-color: #fac19e00;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    position: absolute; /* To position the div */
+    position: absolute; z-index: 999;display: flex;  flex-wrap: wrap;
+    pointer-events: none;
+}
+.responsive-div > * {
+    pointer-events: auto;
+}
+
+/* Default positioning for portrait mode */
+@media (orientation: portrait) {
+    .responsive-div {
+        right:0%; bottom:0%; height:25%; width:100%;flex-direction: row;
+    }
+}
+
+/* Positioning for landscape mode */
+@media (orientation: landscape) {
+    .responsive-div {
+        right:2%; top:2%; width:25%; height:25%;flex-direction: row;
+    }
+}
   </style>
 </head>
 
 <body>
   <div id="screen"></div>
-  <div style="position: absolute; z-index: 999;right:0%; top:0%; width:12%; height:100%; background-color: #acacacd2; display: flex; flex-direction: column; flex-wrap: wrap;">
-    <div style="z-index:1000;margin:10%;">
-      <input type="range" min="0.01" max="4.0" value="1.0" step="0.01" class="slider" id="lodMultiplier" >
-      <p style="color:#0439aa;">detail multiplier: <span id="multiplierValue">1.0</span></p>
+  <!-- <div class="overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+  </div> -->
+  <div class="unselectable responsive-div" >
+    <div style="z-index:1000;margin:1%;width: 80%;">
+      <input type="range" min="0.01" max="1.5" value="0.4" step="0.01" class="slider" id="lodMultiplier" >
+      <p style="color:#011d5c; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff;">detail multiplier: <span id="multiplierValue">0.5</span></p>
     </div>
-    <div style="z-index: 1000;margin: 10%;">
+    <!-- <div style="z-index: 1000;margin: 10%;">
       <input type="range" min="0.5" max="1.5" value="1.0" step="0.01" class="slider" id="distanceBias" >
-      <p style="color: #0439aa;">distance bias: <span id="distanceBiasValue">1.0</span></p>
-    </div>
-    <div style="z-index: 1000;margin: 10%;">
+      <p style="color: #011d5c;">distance bias: <span id="distanceBiasValue">1.0</span></p>
+    </div> -->
+    <!-- <div style="z-index: 1000;margin: 1%;width: 80%;">
+      <input type="range" min="0.0" max="200" value="200.0" step="1" class="slider" id="cropRadius" >
+      <p style="color: #011d5c; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff; ">crop radius: <span id="cropRadiusValue">200.0</span></p>
+    </div> -->
+    <!-- <div style="z-index: 1000;margin: 10%;">
       <input type="range" min="10" max="200" value="200" step="1" class="slider" id="targetFPS" >
-      <p style="color: #0439aa;">target fps: <span id="targetFPSValue">200</span></p>
-    </div>
-    <div style="z-index: 1000;margin: 10%;" id="loadingStrategyWrapper">
+      <p style="color: #011d5c;">target fps: <span id="targetFPSValue">200</span></p>
+    </div> -->
+    <!-- <div style="z-index: 1000;margin: 10%;" id="loadingStrategyWrapper">
       <input type="range" min="0" max="1" value="0" step="1" class="slider" style="width:25%; float:right; pointer-events: none;" id="loadingStrategy">
-      <p style="color: #0439aa;">Strategy: <span id="loadingStrategyValue">INCREMENTAL</span></p>
-    </div>
-    <div style="z-index: 1000;margin: 10%;">
+      <p style="color: #011d5c;">Strategy: <span id="loadingStrategyValue">INCREMENTAL</span></p>
+    </div> -->
+    <!-- <div style="z-index: 1000;margin: 10%;">
       <input type="checkbox" id="autorotate" >
-      <span style="color: #0439aa;">Auto Rotate </span>
-    </div>
-    <div style="z-index: 1000;margin: 10%;">
-      <div>Tiles To Load <span style="color: #0439aa;" id="tilesToLoadValue">0</span></div>
-      <div>Tiles Rendered <span style="color: #0439aa;" id="tilesRenderedValue">0</span></div>
-      <div>max LOD <span style="color: #0439aa;" id="maxLODValue">0</span></div>
-      <div>percentage loaded <span style="color: #0439aa;" id="percentageValue">0</span></div>
+      <span style="color: #011d5c;">Auto Rotate </span>
+    </div> -->
+    <!-- <div style="z-index: 1000;margin: 10%;">
+      <div>Tiles To Load <span style="color: #011d5c;" id="tilesToLoadValue">0</span></div>
+      <div>Tiles Rendered <span style="color: #011d5c;" id="tilesRenderedValue">0</span></div>
+      <div>max LOD <span style="color: #011d5c;" id="maxLODValue">0</span></div>
+      <div>percentage loaded <span style="color: #011d5c;" id="percentageValue">0</span></div>
       
-    </div>
+    </div> -->
   </div>
-  
+
+  <div id="website" class="outlinedText unselectable"
+    style="position: absolute;top: 20px; left:25px; z-index: 99;font-size: 16px;font-family: 'Orbitron', sans-serif;letter-spacing: 0.3em;cursor: pointer;color:white">
+    <img src="https://www.jdultra.com/assets/iconSmall.png" class="unselectable" width="14px"
+      height="14px"><span class="unselectable">
+      JDULTRA</span>
+  </div>
+
   <script type="module" src="/src/index.js"></script>
 </body>
 

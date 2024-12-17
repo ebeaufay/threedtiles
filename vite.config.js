@@ -11,6 +11,10 @@ export default defineConfig({
   // Base public path when served in development or production
   base: './',
 
+  worker: {
+    format: 'es',
+  },
+  
   // Define plugins if any
   plugins: [
     // Example: glsl(), // If using GLSL shaders

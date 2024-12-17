@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LinkedHashMap } from 'js-utils-z';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
+import { SplatsDecoder } from "../decoder/SplatsDecoder";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
@@ -28,15 +29,16 @@ class TileLoader {
      *
      * 
      * @param {Object} [options] - Optional configuration object.
+     * @param {renderer} [options.renderer] - the WebGL renderer
      * @param {number} [options.maxCachedItems=100] - the cache size.
      * @param {function} [options.meshCallback = undefined] - A callback to call on newly decoded meshes.
      * @param {function} [options.pointsCallback = undefined] - A callback to call on newly decoded points.
      * @param {sring} [options.proxy = undefined] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
      * @param {KTX2Loader} [options.ktx2Loader = undefined] - A KTX2Loader (three/addons)
      * @param {DRACOLoader} [options.dracoLoader = undefined] - A DRACOLoader (three/addons)
-     * @param {renderer} [options.renderer = undefined] - optional the renderer, this is required only for on the fly ktx2 support. not needed if you pass a ktx2Loader manually
      */
     constructor(options) {
+        this.renderer = options.renderer;
         this.zUpToYUpMatrix = new THREE.Matrix4();
         this.zUpToYUpMatrix.set(1, 0, 0, 0,
             0, 0, -1, 0,
@@ -47,8 +49,9 @@ class TileLoader {
         if (!!options) {
             this.meshCallback = options.meshCallback;
             this.pointsCallback = options.pointsCallback;
-            if (options.maxCachedItems) this.maxCachedItems = options.maxCachedItems;
+            if (options.maxCachedItems!=undefined) this.maxCachedItems = options.maxCachedItems;
         }
+        
 
         this.gltfLoader = new GLTFLoader();
         if (!!options && !!options.dracoLoader) {
@@ -75,6 +78,7 @@ class TileLoader {
         this.hasMeshOptDecoder = true;
 
         this.b3dmDecoder = new B3DMDecoder(this.gltfLoader);
+        this.splatsDecoder = new SplatsDecoder(this.gltfLoader, this.renderer);
 
         this.cache = new LinkedHashMap();
         this.register = {};
@@ -250,7 +254,7 @@ class TileLoader {
      * @param {Boolean} meshZupToYup 
      * @param {Number} geometricError 
      */
-    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError, splatsMesh) {
         const self = this;
         const key = _simplifyPath(path);
 
@@ -314,76 +318,123 @@ class TileLoader {
                         self._checkSize();
                         this._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                     }).catch((e) => {
-                        console.error(e)
+                        //console.error(e)
                     }).finally(() => {
                         concurrentDownloads--;
                     });
 
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
-                downloadFunction = () => {
-                    var fetchFunction;
-                    if (!self.proxy) {
-                        fetchFunction = () => {
-                            return fetch(path, { signal: realAbortController.signal });
-                        }
-                    } else {
-                        fetchFunction = () => {
-                            return fetch(self.proxy,
-                                {
-                                    method: 'POST',
-                                    body: path,
-                                    signal: realAbortController.signal
-                                }
-                            );
-                        }
-                    }
-                    concurrentDownloads++;
-                    fetchFunction().then(result => {
-                        if (!result.ok) {
-                            console.error("could not load tile with path : " + path)
-                            throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
-                        }
-                        return result.arrayBuffer();
-                    }).then(async arrayBuffer => {
-                        await _checkLoaderInitialized(this.gltfLoader);
-                        this.gltfLoader.parse(arrayBuffer, null, gltf => {
-                            gltf.scene.asset = gltf.asset;
-                            if (sceneZupToYup) {
-                                gltf.scene.applyMatrix4(this.zUpToYUpMatrix);
+                if(splatsMesh){
+                    
+                    downloadFunction = () => {
+                    
+        
+                        var fetchFunction;
+                        if (!self.proxy) {
+                            fetchFunction = () => {
+                                return fetch(path, { signal: realAbortController.signal });
                             }
-                            gltf.scene.traverse((o) => {
-
-                                if (o.isMesh) {
-                                    if (meshZupToYup) {
-                                        o.applyMatrix4(this.zUpToYUpMatrix);
+                        } else {
+                            fetchFunction = () => {
+                                return fetch(self.proxy,
+                                    {
+                                        method: 'POST',
+                                        body: path,
+                                        signal: realAbortController.signal
                                     }
-                                    if (!!self.meshCallback) {
-                                        self.meshCallback(o, geometricError);
-                                    }
-                                }
-                                if (o.isPoints) {
-
-                                    if (!!self.pointsCallback) {
-                                        self.pointsCallback(o, geometricError);
-                                    }
-                                }
-                            });
-
-                            self.cache.put(key, gltf.scene);
+                                );
+                            }
+                        }
+                        concurrentDownloads++;
+                        fetchFunction().then(result => {
+                            if (!result.ok) {
+                                console.error("could not load tile with path : " + path)
+                                throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
+                            }
+                            return result.arrayBuffer();
+    
+                        }).then(resultArrayBuffer => {
+    
+                            return this.splatsDecoder.parseSplats(resultArrayBuffer, sceneZupToYup, meshZupToYup, splatsMesh);
+                        }).then(mesh => {
+                            self.cache.put(key, mesh);
                             self._checkSize();
                             self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                        }).catch((e) => {
+                            //console.error(e)
+                        }).finally(() => {
+                            concurrentDownloads--;
                         });
-                    }).catch((e) => {
-                        if(e!=="user abort" && e.code !== 20) {
-                            console.error(e);
-                        }
-                    }).finally(() => {
-                        concurrentDownloads--;
-                    });
-
-
+    
+                    }
                 }
+                else{
+                    downloadFunction = () => {
+                        var fetchFunction;
+                        if (!self.proxy) {
+                            fetchFunction = () => {
+                                return fetch(path, { signal: realAbortController.signal });
+                            }
+                        } else {
+                            fetchFunction = () => {
+                                return fetch(self.proxy,
+                                    {
+                                        method: 'POST',
+                                        body: path,
+                                        signal: realAbortController.signal
+                                    }
+                                );
+                            }
+                        }
+                        concurrentDownloads++;
+                        fetchFunction().then(result => {
+                            if (!result.ok) {
+                                console.error("could not load tile with path : " + path)
+                                throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
+                            }
+                            return result.arrayBuffer();
+                        }).then(async arrayBuffer => {
+                            await _checkLoaderInitialized(this.gltfLoader);
+                            this.gltfLoader.parse(arrayBuffer, null, gltf => {
+                                gltf.scene.asset = gltf.asset;
+                                if (sceneZupToYup) {
+                                    gltf.scene.applyMatrix4(this.zUpToYUpMatrix);
+                                }
+                                gltf.scene.traverse((o) => {
+    
+                                    if (o.isMesh) {
+                                        if (meshZupToYup) {
+                                            o.applyMatrix4(this.zUpToYUpMatrix);
+                                        }
+                                        if (!!self.meshCallback) {
+                                            self.meshCallback(o, geometricError);
+                                        }
+                                    }
+                                    if (o.isPoints) {
+    
+                                        if (!!self.pointsCallback) {
+                                            self.pointsCallback(o, geometricError);
+                                        }
+                                    }
+                                });
+    
+                                self.cache.put(key, gltf.scene);
+                                self._checkSize();
+                                self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                            });
+                        }).catch((e) => {
+                            if(e!=="user abort" && e.code !== 20) {
+                                //console.error(e);
+                            }
+                        }).finally(() => {
+                            concurrentDownloads--;
+                        });
+    
+    
+                    }
+                }
+                
             } else if (path.includes(".json")) {
                 downloadFunction = () => {
                     var fetchFunction;
@@ -417,7 +468,7 @@ class TileLoader {
                         self._checkSize();
                         self._meshReceived(self.cache, self.register, key);
                     }).catch((e) => {
-                        console.error(e)
+                        //console.error(e)
                     }).finally(() => {
                         concurrentDownloads--;
                     });
@@ -458,7 +509,7 @@ class TileLoader {
             delete this.register[key][tileIdentifier];
 
             //this.register[key][tileIdentifier] = undefined;
-            //this._checkSize();
+            this._checkSize();
         }
     }
 
@@ -479,25 +530,30 @@ class TileLoader {
                     self.cache.remove(entry.key);
                     delete self.register[entry.key];
                     //self.register[entry.key] = undefined;
-                    entry.value.traverse((o) => {
+                    if(entry.value.isSplatsBatch){
+                        entry.value.remove();
+                    }else{
+                        entry.value.traverse((o) => {
 
-                        if (o.material) {
-                            // dispose materials
-                            if (o.material.length) {
-                                for (let i = 0; i < o.material.length; ++i) {
-                                    o.material[i].dispose();
+                            if (o.material) {
+                                // dispose materials
+                                if (o.material.length) {
+                                    for (let i = 0; i < o.material.length; ++i) {
+                                        o.material[i].dispose();
+                                    }
+                                }
+                                else {
+                                    o.material.dispose()
                                 }
                             }
-                            else {
-                                o.material.dispose()
+                            if (o.geometry) {
+                                // dispose geometry
+                                o.geometry.dispose();
+    
                             }
-                        }
-                        if (o.geometry) {
-                            // dispose geometry
-                            o.geometry.dispose();
-
-                        }
-                    });
+                        });
+                    }
+                    
                 }
             }
 
