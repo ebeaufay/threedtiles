@@ -632,6 +632,10 @@ animate();
 However, if you have several OGC3DTiles loaded or when you use instancedTilesets, you may have hundreds or even thousands of LOD trees that need to be updated individually. In order to preserve frame-rate,
 you'll want to avoid updating every single tileset on every frame.
 
+#### Mobile performance 
+just a note because this is valid for any heavy webgl app. mobiles throttle automatically when it deems the app heavy.
+if you control frame-rate manually by only doing updates and renders at 30fps, mobile apps will run more smoothly because the automatic throttling, which is very un-smooth, doesn't kick in as much.
+
 ### Memory
 This is especially important for iOS that limits the memory per tab quite harshly and doesn't allow growing the memory allocated to a tab.
 
