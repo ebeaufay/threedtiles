@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LinkedHashMap } from 'js-utils-z';
+import { LinkedHashMap } from '../utils/LinkedHashMap';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
 import { SplatsDecoder } from "../decoder/SplatsDecoder";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

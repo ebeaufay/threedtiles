@@ -1,6 +1,6 @@
 {
   "name": "@jdultra/threedtiles",
-  "version": "13.0.0",
+  "version": "13.0.14",
   "author": "Emeric Beaufays",
   "description": "An OGC 3DTiles viewer for Three.js",
   "main": "dist/threedtiles.cjs.js",
@@ -28,24 +28,29 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "three": "0.170.0"
+    "three": "^0.171.0"
   },
   "dependencies": {
     "@haragei/dag": "^1.1.0",
     "data-structure-typed": "^1.53.5",
-    "js-utils-z": "^1.2.1",
     "meshoptimizer": "^0.20.0",
     "path-browserify": "^1.0.1",
-    "three": "0.170.0",
+    "three": "^0.171.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@laynezh/vite-plugin-lib-assets": "^0.5.24",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-inject": "^5.0.5",
     "@rollup/plugin-terser": "^0.4.4",
-    "@types/three": "^0.169.0",
+    "@types/three": "^0.171.0",
+    "install": "^0.13.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
-    "vite-plugin-static-copy": "^2.0.0",
+    "vite-plugin-static-copy": "^2.2.0",
     "vitest": "^2.1.5"
   }
 }

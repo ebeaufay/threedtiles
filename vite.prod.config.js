@@ -3,51 +3,41 @@ import { defineConfig } from 'vite';
 import path from 'path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import terser from '@rollup/plugin-terser';
+import libAssetsPlugin from '@laynezh/vite-plugin-lib-assets'
+
 
 export default defineConfig({
+  base: './',
   worker: {
     format: 'es',
   },
-  // Define the build configuration
   build: {
-    // Specify library mode
     lib: {
-      // Entry point of your library
-      entry: path.resolve(__dirname, 'src/entry.js'), // or 'src/entry.ts' if using TypeScript
-
-      // Name of the library (used in UMD/IIFE builds)
+      entry: path.resolve(__dirname, 'src/entry.js'),
       name: 'threedtiles',
-
-      // File name for the output (without extension)
       fileName: (format) => `threedtiles.${format}.js`,
-      
-      // Formats to build
-      formats: ['es', 'cjs', 'umd'], // Adjust based on your needs
+      formats: ['es', 'cjs', 'umd'], 
     },
     
     // Output directory
     outDir: 'dist',
     
-    // Rollup options
     rollupOptions: {
-      // External dependencies that shouldn't be bundled
       external: ['three'],
 
       output: {
-        // Provide global variables for external dependencies in UMD/IIFE builds
         globals: {
           three: 'THREE',
         },
+        assetFileNames: 'assets/[name]-[hash][extname]',
       },
     },
     
-    // Ensure that sourcemaps are generated
     sourcemap: true,
 
     
   },
 
-  // Resolve module aliases (optional)
   resolve: {
     alias: {
       // Add more aliases if needed
@@ -74,5 +64,20 @@ export default defineConfig({
         },
       ],
     }),
+    libAssetsPlugin({
+      include: /\.(gltf|glb|hdr|png|jpe?g|svg|gif|ktx2)(\?.*)?$/,
+      limit: 1024 * 8
+    }),
+  ],
+  assetsInclude: [
+    '**/*.gltf',
+    '**/*.glb',
+    '**/*.hdr',
+    '**/*.bin',
+    '**/*.png',
+    '**/*.jpe?g',
+    '**/*.svg',
+    '**/*.gif',
+    '**/*.ktx2',
   ],
 });

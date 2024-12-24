@@ -77,6 +77,7 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Number} [properties.distanceBias = 1] - optional a bias that allows loading more or less detail closer to the camera relative to far away. The value should be a positive number. A value below 1 loads less detail near the camera and a value above 1 loads more detail near the camera. This needs to be compensated by the geometricErrorMultiplier in order to load a reasonable number of tiles.
      * @param {String} [properties.loadingStrategy = "INCREMENTAL"] - optional a strategy for loading tiles "INCREMENTAL" loads intermediate LODs while "IMMEDIATE" skips intermediate LODs.
      * @param {String} [properties.drawBoundingVolume = false] - optional draws the bounding volume (may cause flickering)
+     * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
      */
     constructor(properties) {
         super();

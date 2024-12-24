@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LinkedHashMap } from 'js-utils-z';
+import { LinkedHashMap } from '../../utils/LinkedHashMap';
 import { B3DMDecoder } from "../../decoder/B3DMDecoder";
 import { MeshTile } from './MeshTile';
 import { JsonTile } from './JsonTile';

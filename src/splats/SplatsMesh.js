@@ -20,7 +20,7 @@ zUpToYUpMatrix3x3.set(
     0, -1, 0);
 
 class SplatsMesh extends Mesh {
-    constructor(renderer) {
+    constructor(renderer, fragShader) {
 
         const textureSize = 512;
 
@@ -71,7 +71,6 @@ class SplatsMesh extends Mesh {
         renderer.initRenderTarget(cov2RenderTarget);
 
 
-
         const material = new ShaderMaterial(
             {
                 uniforms: {
@@ -83,15 +82,18 @@ class SplatsMesh extends Mesh {
                     positionTexture: { value: positionRenderTarget.texture },
                     zUpToYUpMatrix3x3: { value: zUpToYUpMatrix3x3 },
                     sizeMultiplier: { value: 1 },
-                    cropRadius: { value: Number.MAX_VALUE }
+                    cropRadius: { value: Number.MAX_VALUE },
+                    cameraNear: {value: 0.01},
+                    cameraFar: {value: 10},
+                    computeLinearDepth:{value: true}
                 },
-                vertexShader: vertexShader(),
-                fragmentShader: fragmentShader(),
+                vertexShader: splatsVertexShader(),
+                fragmentShader: fragShader?fragShader:splatsFragmentShader(),
                 transparent: true,
                 side: FrontSide,
                 depthTest: false,
                 depthWrite: false,
-                depthFunc: AlwaysDepth
+                //depthFunc: AlwaysDepth
             }
         );
         const geometry = new InstancedBufferGeometry();
@@ -388,7 +390,7 @@ class SplatsMesh extends Mesh {
             }
 
         }
-       
+
 
         const show = (callback) => {
             if (visible == false) {
@@ -410,8 +412,8 @@ class SplatsMesh extends Mesh {
                 xyz: [self.cameraPosition.x, self.cameraPosition.z, -self.cameraPosition.y],
                 id: self.sortID++
             });
-            
-            
+
+
         }
         const remove = () => {
             raycast = undefined;
@@ -643,10 +645,13 @@ function saveBuffer(pixelBuffer) {
         URL.revokeObjectURL(url);
     }, 'image/png');
 }
-function vertexShader() {
+export function splatsVertexShader() {
     return `
 precision highp float;
 precision highp int;
+
+#include <common>
+#include <packing>
 
 uniform float textureSize;
 uniform float numSlices;
@@ -654,13 +659,19 @@ uniform float sizeMultiplier;
 in uint order;
 out vec4 color;
 out vec2 vUv;
-out vec3 splatPosition;
+out vec3 splatPositionWorld;
+out float splatDepth;
+//out float orthographicDepth;
 out float splatCrop;
 uniform sampler3D colorTexture;
 uniform sampler3D positionTexture;
 uniform sampler3D cov1Texture;
 uniform sampler3D cov2Texture;
 uniform mat3 zUpToYUpMatrix3x3;
+uniform float logDepthBufFC;
+//uniform float cameraNear;
+//uniform float cameraFar;
+//uniform bool computeLinearDepth;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -718,7 +729,7 @@ void modelTransform(in vec3 splatPosition, in mat3 covariance, inout vec3 vertex
         right = normalize(cross(upReference, look));
     }
 
-vec3 up = cross(look, right);
+    vec3 up = cross(look, right);
 
     // Construct the billboard rotation matrix
     mat3 billboardRot = mat3(
@@ -762,48 +773,63 @@ vec3 up = cross(look, right);
     vertexPosition = billboardRot * vertexPosition + splatPosition;
 }
 
+
 void main() {
     vUv = vec2(position);
 
-    splatPosition = vec3(0.0);
+    splatPositionWorld = vec3(0.0);
     mat3 covariance = mat3(0.0);
-    getVertexData(splatPosition, covariance);
-    splatCrop = sqrt(color.w); // discard more pixels when opacity is low
-    splatPosition = (modelMatrix * vec4(splatPosition, 1.0)).xyz;
+    getVertexData(splatPositionWorld, covariance);
+    splatCrop = 0.5*sqrt(color.w); // discard more pixels when opacity is low
+    splatPositionWorld = (modelMatrix * vec4(splatPositionWorld, 1.0)).xyz;
     
 
     vec3 outPosition = vec3(position)*sizeMultiplier;
-    modelTransform(splatPosition, covariance, outPosition);
+    modelTransform(splatPositionWorld, covariance, outPosition);
     
     gl_Position = projectionMatrix * viewMatrix * vec4(outPosition, 1.0);
+    /* if(computeLinearDepth){
+        orthographicDepth = viewZToOrthographicDepth( -gl_Position.w, cameraNear, cameraFar );
+    } */
+    
+    vec4 centerP = projectionMatrix * viewMatrix * vec4(splatPositionWorld, 1.0);
+    #if defined( USE_LOGDEPTHBUF )
+	    float isPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
+        splatDepth = isPerspective == 0.0 ? centerP.z : log2( 1.0 + centerP.w ) * logDepthBufFC * 0.5;
+    #else
+        splatDepth = (centerP.z / centerP.w)* 0.5 + 0.5;
+    #endif
+
     
 }
 `};
-function fragmentShader() {
+export function splatsFragmentShader() {
     return `
 precision highp float;
 
 in vec4 color;
 in vec2 vUv;
-in vec3 splatPosition;
+in vec3 splatPositionWorld;
+in float splatDepth;
+//in float orthographicDepth;
 in float splatCrop;
 uniform float textureSize;
 uniform float cropRadius;
 
 void main() {
-    if(length(splatPosition)>cropRadius) discard;
+    if(length(splatPositionWorld)>cropRadius) discard;
     float l = length(vUv);
     
     // Early discard for pixels outside the radius
-    if (l > splatCrop) {
-        //gl_FragColor = vec4(color.xyz,1.0);
-        //return;
+    if (l > 0.5) {
         discard;
     };
      vec2 p = vUv * 4.0;
     float alpha = exp(-dot(p, p));
 
     gl_FragColor = vec4(pow(color.xyz,vec3(1.0/2.2)), color.w * pow(alpha, 1.8)); 
+    //gl_FragColor = vec4(splatDepth,0.0,0.0,1.0); 
+    //gl_FragDepth = splatDepth;
     
 }`
 };
