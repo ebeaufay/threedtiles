@@ -57,12 +57,7 @@ const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
 
-const gg = new THREE.PlaneGeometry( 10, 10 );
-const mm = new THREE.MeshDepthMaterial( {side: THREE.DoubleSide} );
-const plane = new THREE.Mesh( gg, mm );
-plane.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI*0.5);
-plane.position.set(0,0,0);
-scene.add( plane );
+
 
 const raycaster = new THREE.Raycaster();
 raycaster.params.Points.threshold = 0.002;
@@ -418,7 +413,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //url: "https://vectuel-3d-models.s3.eu-west-3.amazonaws.com/DAE/SM/B/tileset.json", //UM
         // url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
-        url: "http://localhost:8081/tileset.json", //UM
+        url: "http://localhost:8082/tileset.json", //UM
 
         geometricErrorMultiplier: 0.4,
         distanceBias: 1,
@@ -426,7 +421,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         tileLoader: tileLoader,
         static: false,
         centerModel: false,
-        //loadingStrategy: "IMMEDIATE",
+        loadingStrategy: "IMMEDIATE",
         distanceBias: distanceBias,
         drawBoundingVolume: false,
         //renderer: renderer,
@@ -435,11 +430,11 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         }
 
     });
-    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5);
-    ogc3DTile2.position.set(2,0,0)
+    //ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5);
+    //ogc3DTile2.position.set(2,0,0)
     //ogc3DTile2.scale.set(0.5,0.5,0.5)
     ogc3DTile2.updateMatrices();
-    ogc3DTile2.setSplatsCropRadius(500);
+    //ogc3DTile2.setSplatsCropRadius(500);
     scene.add(ogc3DTile2);
     //
 
@@ -595,7 +590,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.01, 10);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.01, 1000);
 
     camera.position.set(1.5, 2, 2.5);
 

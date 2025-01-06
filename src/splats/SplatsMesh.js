@@ -10,6 +10,7 @@ import {
     MinPriorityQueue
 } from 'data-structure-typed';
 import { SplatsCollider } from "./SplatsColider";
+import WorkerConstructor from './PointsManager.worker.js?worker';
 
 const tmpVector = new Vector3();
 const tmpVector2 = new Vector3();
@@ -133,9 +134,7 @@ class SplatsMesh extends Mesh {
             this.freeAddresses.add(i);
         }
 
-        this.worker = new Worker(new URL('./PointsManager.worker.js', import.meta.url), {
-            type: 'module'
-        })
+        this.worker = new WorkerConstructor({ type: 'module' });
 
         this.sortListeners = [];
         this.worker.onmessage = message => {
