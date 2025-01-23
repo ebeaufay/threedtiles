@@ -22,7 +22,7 @@ export default defineConfig({
 
   // Configure the development server
   server: {
-    port: 3000,       // Change the port if needed
+    port: 3001,       // Change the port if needed
     open: true,       // Automatically open the app in the browser
     // proxy: { ... }, // Set up proxy if you're making API calls
   },

@@ -128,9 +128,8 @@ function initSliders() {
     }) */
     lodSlider.addEventListener("input", e => {
         lodSliderValue.innerText = lodSlider.value;
-        ogc3DTiles.forEach(tileset=>{
-            tileset.setGeometricErrorMultiplier(lodSlider.value)
-        })
+        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
+        
     })
 
     /* distanceBiasSlider.addEventListener("input", e => {
@@ -174,7 +173,7 @@ function initTileLoader() {
     const tileLoader = new TileLoader({
         renderer: renderer,
         //ktx2Loader:ktx2Loader,
-        maxCachedItems: 200,
+        maxCachedItems: 20,
         meshCallback: (mesh, geometricError) => {
             mesh.material.wireframe = false;
             mesh.onAfterRender = () => {
@@ -189,7 +188,7 @@ function initTileLoader() {
             //mesh.material.side = THREE.DoubleSide;
         },
         pointsCallback: (points, geometricError) => {
-            points.material.size = Math.min(1.0, 0.1 * Math.sqrt(geometricError));
+            points.material.size = Math.min(1.0, 0.03 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
             //points.add(new THREE.BoxHelper( points, 0xffff00 ))
 
@@ -197,15 +196,15 @@ function initTileLoader() {
     });
     return tileLoader;
 }
-const gltfLoader = new GLTFLoader();
+/* const gltfLoader = new GLTFLoader();
 
 
 //gltfLoader.setKTX2Loader(ktx2Loader)
 
 
-/* gltfLoader.load(
+gltfLoader.load(
     // resource URL
-    'http://localhost:8080/export.glb',
+    'http://localhost:8084/LaPalmaPriness_8M_8-8K_4-4K (1).glb',
     // called when the resource is loaded
     function (gltf) {
 
@@ -333,7 +332,7 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(1);
     renderer.maxSamples = 0;
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
@@ -404,7 +403,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     ogc3DTile.setSplatsCropRadius(500);
     scene.add(ogc3DTile); */
 
-    const ogc3DTile2 = new OGC3DTile({
+    /* const ogc3DTile2 = new OGC3DTile({
 
         //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
@@ -429,19 +428,33 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
             console.log(e)
         }
 
+    }); */
+
+    const googleTiles = new OGC3DTile({
+        url: "http://localhost:8085/tileset.json",
+        geometricErrorMultiplier: 1.0, // controls the level of detail
+        loadOutsideView: false, // when true, extra low detail tiles are loaded outside the frustum
+        tileLoader: tileLoader,
+        renderer: renderer,
+        loadingStrategy: "INCREMENTAL",
+        loadOutsideView: false,
+        drawBoundingVolume: false,
+        center:true
+
     });
-    //ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5);
-    //ogc3DTile2.position.set(2,0,0)
+    //googleTiles.setSplatsCropRadius(5)
+    googleTiles.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 1);
+    googleTiles.position.set(0,0,0)
     //ogc3DTile2.scale.set(0.5,0.5,0.5)
-    ogc3DTile2.updateMatrices();
+    //ogc3DTile2.updateMatrices();
     //ogc3DTile2.setSplatsCropRadius(500);
-    scene.add(ogc3DTile2);
+    scene.add(googleTiles);
     //
 
     //const axesHelper = new THREE.AxesHelper( 5000 );
     //scene.add( axesHelper );
 
-    return [ogc3DTile2];
+    return googleTiles;
 }
 
 
@@ -592,7 +605,7 @@ function initInstancedTilesets(instancedTileLoader) {
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.01, 1000);
 
-    camera.position.set(1.5, 2, 2.5);
+    camera.position.set(5, 5, 0);
 
     camera.lookAt(0, 0, 0);
 
@@ -610,11 +623,11 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0.5, -0.7, 0);
+    controller.target.set(0, 0, 0);
 
 
     controller.minDistance = 0;
-    controller.maxDistance = 30000;
+    controller.maxDistance = 10000000;
     controller.autoRotate = false;
     const checkbox = document.getElementById("autorotate");
     /* checkbox.addEventListener("click", () => {
@@ -646,9 +659,8 @@ function animate() {
 
     if (!paused) {
         tileLoader.update();
-        ogc3DTiles.forEach(tileset=>{
-            tileset.update(camera);
-        })
+        ogc3DTiles.update(camera);
+        
         
         /* const info = ogc3DTiles.update(camera);
         infoTilesToLoad.innerText = info.numTilesLoaded
@@ -661,7 +673,7 @@ function animate() {
 
         // calculate objects intersecting the picking ray
         const a = [];
-        let intersects = raycaster.intersectObject(ogc3DTiles[0], true, a);
+        let intersects = raycaster.intersectObject(ogc3DTiles, true, a);
 
         if(intersects.length>0){
             sphere.position.copy(intersects[0].point);

@@ -191,15 +191,30 @@ class TileLoader {
             }
         }
         if (this.nextDownloads.length > 0) return;
+        let highestLevel = 0;
+        let lowestLevel = Number.MAX_SAFE_INTEGER;
+        let lowestIndex = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
+            
             const dist = this.downloads[i].distanceFunction();
             if (dist <= smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
             }
+            highestLevel = Math.max(this.downloads[i].level);
+            if(this.downloads[i].loadingStrategy != "IMMEDIATE" && this.downloads[i].level<lowestLevel){
+                lowestLevel = this.downloads[i].level;
+                lowestIndex = i;
+            }
+            
         }
-        if (closest >= 0) {
-            const closestItem = this.downloads.splice(closest, 1).pop();
+        let closestItem;
+        if(highestLevel>lowestLevel+4){
+            closestItem = this.downloads.splice(lowestIndex, 1).pop();
+        }else if (closest >= 0){
+            closestItem = this.downloads.splice(closest, 1).pop();
+        }
+        if (!!closestItem) {
             this.nextDownloads.push(closestItem);
             const siblings = closestItem.getSiblings();
             for (let i = this.downloads.length - 1; i >= 0; i--) {
@@ -254,7 +269,7 @@ class TileLoader {
      * @param {Boolean} meshZupToYup 
      * @param {Number} geometricError 
      */
-    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, sceneZupToYup, meshZupToYup, geometricError, splatsMesh) {
+    get(abortController, tileIdentifier, path, callback, distanceFunction, getSiblings, level, loadingStrategy, sceneZupToYup, meshZupToYup, geometricError, splatsMesh) {
         const self = this;
         const key = _simplifyPath(path);
 
@@ -315,8 +330,8 @@ class TileLoader {
                         return this.b3dmDecoder.parseB3DM(resultArrayBuffer, (mesh) => { self.meshCallback(mesh, geometricError) }, sceneZupToYup, meshZupToYup);
                     }).then(mesh => {
                         self.cache.put(key, mesh);
-                        self._checkSize();
                         this._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                        self._checkSize();
                     }).catch((e) => {
                         //console.error(e)
                     }).finally(() => {
@@ -359,8 +374,8 @@ class TileLoader {
                             return this.splatsDecoder.parseSplats(resultArrayBuffer, sceneZupToYup, meshZupToYup, splatsMesh);
                         }).then(mesh => {
                             self.cache.put(key, mesh);
-                            self._checkSize();
                             self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                            self._checkSize();
                         }).catch((e) => {
                             //console.error(e)
                         }).finally(() => {
@@ -420,8 +435,8 @@ class TileLoader {
                                 });
     
                                 self.cache.put(key, gltf.scene);
-                                self._checkSize();
                                 self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                                self._checkSize();
                             });
                         }).catch((e) => {
                             if(e!=="user abort" && e.code !== 20) {
@@ -465,10 +480,10 @@ class TileLoader {
                         return resolveImplicite(json, path)
                     }).then(json => {
                         self.cache.put(key, json);
-                        self._checkSize();
                         self._meshReceived(self.cache, self.register, key);
+                        self._checkSize();
                     }).catch((e) => {
-                        //console.error(e)
+                        console.error(e)
                     }).finally(() => {
                         concurrentDownloads--;
                     });
@@ -476,12 +491,13 @@ class TileLoader {
             }
             this._scheduleDownload({
                 "shouldDoDownload": () => {
-                    return !abortController.signal.aborted && !!self.register[key] && Object.keys(self.register[key]).length > 0;
+                    return true;//!abortController.signal.aborted && !!self.register[key] && Object.keys(self.register[key]).length > 0;
                 },
                 "doDownload": downloadFunction,
                 "distanceFunction": distanceFunction,
                 "getSiblings": getSiblings,
                 "level": level,
+                "loadingStrategy": loadingStrategy,
                 "uuid": tileIdentifier
             })
         }
@@ -532,7 +548,7 @@ class TileLoader {
                     //self.register[entry.key] = undefined;
                     if(entry.value.isSplatsBatch){
                         entry.value.remove();
-                    }else{
+                    }else if (!!entry.value.traverse){
                         entry.value.traverse((o) => {
 
                             if (o.material) {

@@ -1,6 +1,6 @@
 {
   "name": "@jdultra/threedtiles",
-  "version": "13.0.15",
+  "version": "13.0.33",
   "author": "Emeric Beaufays",
   "description": "An OGC 3DTiles viewer for Three.js",
   "main": "dist/threedtiles.cjs.js",
@@ -28,14 +28,13 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "three": "^0.171.0"
+    "three": "^0.172.0"
   },
   "dependencies": {
     "@haragei/dag": "^1.1.0",
     "data-structure-typed": "^1.53.5",
     "meshoptimizer": "^0.20.0",
     "path-browserify": "^1.0.1",
-    "three": "^0.171.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
@@ -44,7 +43,7 @@
     "@rollup/plugin-commonjs": "^28.0.2",
     "@rollup/plugin-inject": "^5.0.5",
     "@rollup/plugin-terser": "^0.4.4",
-    "@types/three": "^0.171.0",
+    "@types/three": "^0.172.0",
     "install": "^0.13.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.6.3",

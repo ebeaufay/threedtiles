@@ -18,7 +18,7 @@ class PointsManager {
 
 
     hidePoints(insertionIndex) {
-        /* console.log("hide"); */
+        //console.log("hide");
         const pointSet = this.pointSets.get(insertionIndex);
         if (pointSet.used) {
             pointSet.used = false;

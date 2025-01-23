@@ -75,7 +75,10 @@ class OGC3DTile extends THREE.Object3D {
      * @param {DracoLoader} [properties.dracoLoader = undefined] - optional a draco loader (three/addons).
      * @param {KTX2Loader} [properties.ktx2Loader = undefined] - optional a ktx2 loader (three/addons).
      * @param {Number} [properties.distanceBias = 1] - optional a bias that allows loading more or less detail closer to the camera relative to far away. The value should be a positive number. A value below 1 loads less detail near the camera and a value above 1 loads more detail near the camera. This needs to be compensated by the geometricErrorMultiplier in order to load a reasonable number of tiles.
-     * @param {String} [properties.loadingStrategy = "INCREMENTAL"] - optional a strategy for loading tiles "INCREMENTAL" loads intermediate LODs while "IMMEDIATE" skips intermediate LODs.
+     * @param {String} [properties.loadingStrategy = "INCREMENTAL"] - optional a strategy for loading tiles 
+     *      -  "INCREMENTAL" loads intermediate LODs and will load nearer tiles first
+     *      -  "PERLEVEL" loads intermediate LODs and loads nearer tiles first but waits for all tiles of the lowest level to be loaded before loading higher detail tiles
+     *      -  "IMMEDIATE" skips intermediate LODs. tiles are missing until loaded when moving to a new area
      * @param {String} [properties.drawBoundingVolume = false] - optional draws the bounding volume (may cause flickering)
      * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
      */
@@ -365,20 +368,14 @@ class OGC3DTile extends THREE.Object3D {
             if (self.hasMeshContent == 0) {
                 self.level = Math.max(0, self.parentTile ? self.parentTile.level + 0.01 : 0.0);
             }
-            switch (self.loadingStrategy) {
-                case "IMMEDIATE": self._load(true, false); break;
-                default: self._load();
-            }
+            self._load();
 
         } else if (!!self.json.contents) { //if there is a content, json or otherwise, schedule it to be loaded 
             self.json.contents.forEach(e => _checkContent(e))
             if (self.hasMeshContent == 0) {
                 self.level = Math.max(0, self.parentTile ? self.parentTile.level + 0.01 : 0.0);
             }
-            switch (self.loadingStrategy) {
-                case "IMMEDIATE": self._load(true, false); break;
-                default: self._load();
-            }
+
             //scheduleLoadTile(this);
         }
 
@@ -403,7 +400,7 @@ class OGC3DTile extends THREE.Object3D {
             self.updateMatrices();
             //self.updateMatrixWorld(true);
         }
-        if (properties.onLoadCallback) self.onLoadCallback(self);
+        if (self.onLoadCallback) self.onLoadCallback(self);
         self.isSetup = true;
 
 
@@ -416,6 +413,10 @@ class OGC3DTile extends THREE.Object3D {
                 box.applyMatrix4(this.matrixWorld);
                 self.bbox = new THREE.Box3Helper(box, new THREE.Color(Math.random(), Math.random(), Math.random()));
                 //self.bbox.renderOrder = -1;
+                self.add(self.bbox);
+                self.bbox.material.visible = false;
+            } else if (self.boundingVolume instanceof OBB) {
+                self.bbox = self.boundingVolume.helper();
                 self.add(self.bbox);
                 self.bbox.material.visible = false;
             }
@@ -466,6 +467,7 @@ class OGC3DTile extends THREE.Object3D {
         return urlObj.toString();
     }
     async _load(loadJson = true, loadMesh = true) {
+
         var self = this;
         if (self.deleted) return;
         if (!!self.json.content) {
@@ -512,8 +514,9 @@ class OGC3DTile extends THREE.Object3D {
             }
 
             if (!!url) {
+                self.contentURL.push(url);
                 if (loadMesh && (url.includes(".b3dm") || url.includes(".glb") || url.includes(".gltf"))) {
-                    self.contentURL.push(url);
+
                     try {
 
                         self.tileLoader.get(self.abortController, self.uuid, url, mesh => {
@@ -562,15 +565,46 @@ class OGC3DTile extends THREE.Object3D {
 
 
                         }, !self.cameraOnLoad ? () => 0 : () => {
-                            let multiplier = 1;
-                            if ((self.metric && self.metric < 0) || self.deleted) multiplier = 2;
+                            /* if (self.parentTile && (self.parentTile.metric != undefined && self.parentTile.metric < 0) || self.parentTile.deleted) {
+                                return Number.MAX_VALUE;
+                            }  */
+
+                            if (self.loadingStrategy == "IMMEDIATE") {
+                                return self._calculateDistanceToCamera(self.cameraOnLoad);
+                            }
+                            if (self.loadingStrategy == "INCREMENTAL") {
+
+                                if (self.parentTile) {
+                                    return self.parentTile._calculateDistanceToCamera(self.cameraOnLoad) / Math.max(1, self.parentTile.level);
+                                } else {
+                                    return self._calculateDistanceToCamera(self.cameraOnLoad) / Math.max(1, self.level);
+                                }
+                                /* if (self.parentTile) {
+                                    if(self.parentTile.materialVisibility) return 0;
+                                    return 1/self.parentTile._calculateDistanceToCamera(self.cameraOnLoad);
+                                } else {
+                                    return 0;
+                                } */
+                            }
+                            if (self.loadingStrategy == "PERLEVEL") {
+                                if (self.parentTile) {
+                                    return self.level + self.parentTile._calculateDistanceToCamera(self.cameraOnLoad);
+                                } else {
+                                    return self.level + self._calculateDistanceToCamera(self.cameraOnLoad);
+                                }
+                            }
+                            return 0;
+
+                            /* let multiplier = 1;
+                            if ((self.metric!=undefined && self.metric < 0) || self.deleted) multiplier = 2;
                             if (self.parentTile) {
                                 return self.parentTile._calculateDistanceToCamera(self.cameraOnLoad) * multiplier * self.level;
                             } else {
                                 return self._calculateDistanceToCamera(self.cameraOnLoad) * multiplier * self.level;
-                            }
+                            } */
                         }, () => self._getSiblings(),
                             self.level,
+                            self.loadingStrategy,
                             !!self.json.boundingVolume.region ? false : true,
                             !!self.json.boundingVolume.region,
                             self.geometricError,
@@ -584,6 +618,7 @@ class OGC3DTile extends THREE.Object3D {
                 } else if (loadJson && url.includes(".json")) {
                     self.jsonRequested = url;
                     self.tileLoader.get(self.abortController, self.uuid, url, async json => {
+                        self.jsonReceived = true;
                         if (!!self.deleted) return;
 
                         json.rootPath = path.dirname(url);
@@ -620,7 +655,6 @@ class OGC3DTile extends THREE.Object3D {
      * Disposes of all the resources used by the tileset.
      */
     dispose() {
-
         const self = this;
 
 
@@ -636,15 +670,14 @@ class OGC3DTile extends THREE.Object3D {
                 }
             }
         })
-        self.meshContent = [];
-        if (self.bbox) self.bbox.dispose();
+
 
 
         self.childrenTiles.forEach(tile => tile.dispose());
         self.deleted = true;
 
         if (self.splatsMesh) {
-            
+
             self.meshContent.forEach(splat => splat.hide());
             if (!self.parentTile) {
                 self.splatsMesh.dispose();
@@ -657,10 +690,12 @@ class OGC3DTile extends THREE.Object3D {
             self.contentURL = [];
         }
 
-        if (!!self.abortController) { // abort tile request
+        if (!!self.abortController && !self.jsonRequested) { // abort tile request
             self.abortController.abort("tile not needed");
         }
         this.parent = null;
+        self.meshContent = [];
+        if (self.bbox) self.bbox.dispose();
         //this.parentTile = null;
         this.dispatchEvent({ type: 'removed' });
     }
@@ -732,7 +767,7 @@ class OGC3DTile extends THREE.Object3D {
                 return false;
 
             }
-            if (intersection && this.materialVisibility && this.splatsReady) {
+            if (intersection && this.materialVisibility && !!this.splatsReady) {
                 tempIntersects.length = 0;
                 this.meshContent.forEach(mc => {
                     if (mc.isSplatsBatch) {
@@ -861,6 +896,7 @@ class OGC3DTile extends THREE.Object3D {
         if (self.shouldBeVisible) {
             if (self.meshContent.length == self.hasMeshContent) {
                 if (!self.materialVisibility) {
+                    //console.log(!!self.splatsReady)
                     self._changeContentVisibility(true);
                     self.childrenTiles.forEach(child => {
                         child._updateNodeVisibilityImmediate(parentDisplaysMesh);
@@ -886,7 +922,7 @@ class OGC3DTile extends THREE.Object3D {
                 return;
             }
 
-            if (self.materialVisibility && (!self.splatsMesh || self.splatsReady)) {
+            if (self.materialVisibility && (!self.splatsMesh || !!self.splatsReady)) {
 
                 if (parentDisplaysMesh) {
                     self._changeContentVisibility(false);
@@ -913,7 +949,7 @@ class OGC3DTile extends THREE.Object3D {
                     } else {
 
                         self.childrenTiles.forEach(child => {
-                            child._updateNodeVisibilityImmediate((!self.splatsMesh || self.splatsReady));
+                            child._updateNodeVisibilityImmediate((!self.splatsMesh || !!self.splatsReady));
                         })
                     }
                 }
@@ -1075,7 +1111,7 @@ class OGC3DTile extends THREE.Object3D {
             if (self.occlusionCullingService && self.hasMeshContent && !self.occlusionCullingService.hasID(self.colorID)) {
                 return;
             }
-            if (!self.hasMeshContent || (metric <= self.geometricErrorMultiplier * self.geometricError && self.meshContent.length > 0)) {
+            if (!self.hasMeshContent || (metric <= self.geometricErrorMultiplier * self.geometricError && (self.meshContent.length > 0 || self.splatsMesh))) {
                 if (!!self.json && !!self.json.children && self.childrenTiles.length != self.json.children.length) {
                     self._loadJsonChildren(camera);
                     return;
@@ -1086,6 +1122,14 @@ class OGC3DTile extends THREE.Object3D {
 
         function _updateNodeVisibility(metric) {
 
+            // outside frustum
+            if (metric < 0) {
+                self.inFrustum = false;
+                self._changeContentVisibility(!!self.loadOutsideView);
+                return;
+            } else {
+                self.inFrustum = true;
+            }
             //doesn't have a mesh content
             if (!self.hasMeshContent) return;
 
@@ -1095,14 +1139,7 @@ class OGC3DTile extends THREE.Object3D {
             }
 
 
-            // outside frustum
-            if (metric < 0) {
-                self.inFrustum = false;
-                self._changeContentVisibility(!!self.loadOutsideView);
-                return;
-            } else {
-                self.inFrustum = true;
-            }
+
 
             // has no children
             if (self.childrenTiles.length == 0) {
@@ -1153,7 +1190,7 @@ class OGC3DTile extends THREE.Object3D {
                 self.meshContent.length > 0 &&
                 self.materialVisibility &&
                 self._areAllChildrenLoadedAndHidden()) {
-                    
+
                 if (self.splatsMesh && this.materialVisibility && !self.splatsReady) {
                     return;
                 }
@@ -1228,7 +1265,7 @@ class OGC3DTile extends THREE.Object3D {
                 if (!child.metric < 0) {
                     return true;
                 };
-                if (child.materialVisibility && (!self.splatsMesh || self.splatsReady)) {
+                if (child.materialVisibility && (!self.splatsMesh || !!self.splatsReady)) {
                     allLoadedAndHidden = false;
                     return false;
                 } else if (self.occlusionCullingService.hasID(child.colorID)) {
@@ -1268,7 +1305,7 @@ class OGC3DTile extends THREE.Object3D {
             return true;
         }
         // if this tile has no mesh content or if it's marked as visible false, look at children
-        if ((!this.hasMeshContent || this.meshContent.length == 0 || (!this.materialVisibility) || (self.splatsMesh && !self.splatsReady))) {
+        if ((!this.hasMeshContent || this.meshContent.length == 0 || (!this.materialVisibility))) {
             if (this.children.length > 0) {
                 var allChildrenReady = true;
                 this.childrenTiles.every(child => {
@@ -1293,12 +1330,11 @@ class OGC3DTile extends THREE.Object3D {
         }
         // if mesh content not yet loaded
         if (this.meshContent.length < this.hasMeshContent) {
-            console.log("jkhkjh")
             return false;
         }
 
 
-        if (this.materialVisibility && (!this.splatsMesh || this.splatsReady)) {
+        if (this.materialVisibility) {
             return true;
         }
 
@@ -1313,7 +1349,7 @@ class OGC3DTile extends THREE.Object3D {
         if (!!this.materialVisibility || (!this.loadOutsideView && this.metric < 0)) {
             return true;
         } else {
-            if (this.splatsMesh) {
+            /* if (this.splatsMesh) {
                 if (this.splatsReady) {
                     return true
                 } else {
@@ -1321,7 +1357,7 @@ class OGC3DTile extends THREE.Object3D {
                 }
             } else {
                 return false;
-            }
+            } */
             //return false;
             if (this.childrenTiles.length > 0) {
                 var allChildrenReady = true;
@@ -1334,7 +1370,8 @@ class OGC3DTile extends THREE.Object3D {
                 });
                 return allChildrenReady;
             } else {
-                if (this.splatsMesh) {
+                return false;
+                /* if (this.splatsMesh) {
                     if (this.splatsReady) {
                         return true
                     } else {
@@ -1342,7 +1379,7 @@ class OGC3DTile extends THREE.Object3D {
                     }
                 } else {
                     return false;
-                }
+                } */
             }
         }
 
@@ -1361,20 +1398,20 @@ class OGC3DTile extends THREE.Object3D {
                 let splatsCount = 0;
                 self.meshContent.forEach(mc => {
                     if (visibility && mc.isSplatsBatch) {
-                        self.splatsReady = true;
+                        //self.splatsReady = true;
                         splatsCount++;
-                        
+
                         mc.show(() => {
-                            if(self.materialVisibility){
+                            if (self.materialVisibility) {
                                 self.splatsReady = true;
                             }
-                            
+
                         });
 
                     }
                     else {
                         mc.hide();
-                        //self.splatsReady = false;
+                        self.splatsReady = false;
                     }
                 });
 
@@ -1424,7 +1461,8 @@ class OGC3DTile extends THREE.Object3D {
             if (!tempOBB.inFrustum(frustum)) return -1;
             distance = Math.max(0, tempOBB.distanceToPoint(camera.position) - camera.near);
 
-            /* tempSphere.copy(this.boundingVolume.sphere);
+            /* tempSphere.center.copy(this.boundingVolume.center);
+            tempSphere.radius = Math.sqrt(this.boundingVolume.halfSize.x*this.boundingVolume.halfSize.x+ this.boundingVolume.halfSize.y*this.boundingVolume.halfSize.y+ this.boundingVolume.halfSize.z*this.boundingVolume.halfSize.z)
             tempSphere.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
             distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near); */
@@ -1512,7 +1550,7 @@ class OGC3DTile extends THREE.Object3D {
      */
     setGeometricErrorMultiplier(geometricErrorMultiplier) {
         this.geometricErrorMultiplier = geometricErrorMultiplier;
-        this.splatsReady = true;
+        //this.splatsReady = true;
         this.childrenTiles.forEach(child => child.setGeometricErrorMultiplier(geometricErrorMultiplier));
     }
 

@@ -1,6 +1,6 @@
 
 
-import { Matrix3, Matrix4, Ray, Sphere, Vector3, Box3 } from "three";
+import { Matrix3, Matrix4, Ray, Sphere, Vector3, Box3, BufferGeometry, LineSegments, LineBasicMaterial } from "three";
 import { OBB as threeOBB } from 'three/addons/math/OBB.js';
 
 const tempMatrix = new Matrix3();
@@ -20,32 +20,34 @@ class OBB {
 
         this.halfSize = new Vector3(this.e1.length(), this.e2.length(), this.e3.length());
 
+
         this.e1.normalize();
         this.e2.normalize();
         this.e3.normalize();
 
-
         this.rotationMatrix = new Matrix3();
         this.rotationMatrix.set(
-            this.e1.x, this.e1.y, this.e1.z,
-            this.e2.x, this.e2.y, this.e2.z,
-            this.e3.x, this.e3.y, this.e3.z);
+            this.e1.x, this.e2.x, this.e3.x,
+            this.e1.y, this.e2.y, this.e3.y,
+            this.e1.z, this.e2.z, this.e3.z);
     }
 
     copy(aObb) {
         this.center.copy(aObb.center);
         this.rotationMatrix.copy(aObb.rotationMatrix);
         this.halfSize.copy(aObb.halfSize);
+        this.e1.copy(aObb.e1);
+        this.e2.copy(aObb.e2);
+        this.e3.copy(aObb.e3);
     }
 
-    getSize( result ) {
+    getSize(result) {
 
-		return result.copy( this.halfSize ).multiplyScalar( 2 );
+        return result.copy(this.halfSize).multiplyScalar(2);
 
-	}
+    }
 
     applyMatrix4(matrix) {
-
         const e = matrix.elements;
 
         let sx = tempVector3.set(e[0], e[1], e[2]).length();
@@ -81,54 +83,57 @@ class OBB {
 
         tempVector3.setFromMatrixPosition(matrix);
         this.center.applyMatrix4(matrix);
-
+        //console.log(this.e1);
+        this.rotationMatrix.extractBasis(this.e1, this.e2, this.e3);
+        //console.log(this.e1)
         return this;
 
     }
-    
-    intersectRay( ray, result ) {
 
-		// the idea is to perform the intersection test in the local space
-		// of the OBB.
+    intersectRay(ray, result) {
 
-		this.getSize( size );
-		aabb.setFromCenterAndSize( tempVector3.set( 0, 0, 0 ), size );
+        // the idea is to perform the intersection test in the local space
+        // of the OBB.
 
-		// create a 4x4 transformation matrix
+        this.getSize(size);
+        aabb.setFromCenterAndSize(tempVector3.set(0, 0, 0), size);
 
-		matrix.setFromMatrix3( this.rotationMatrix );
-		matrix.setPosition( this.center );
+        // create a 4x4 transformation matrix
 
-		// transform ray to the local space of the OBB
+        matrix.setFromMatrix3(this.rotationMatrix);
+        matrix.setPosition(this.center);
 
-		inverse.copy( matrix ).invert();
-		localRay.copy( ray ).applyMatrix4( inverse );
+        // transform ray to the local space of the OBB
 
-		// perform ray <-> AABB intersection test
+        inverse.copy(matrix).invert();
+        localRay.copy(ray).applyMatrix4(inverse);
 
-		if ( localRay.intersectBox( aabb, result ) ) {
+        // perform ray <-> AABB intersection test
 
-			// transform the intersection point back to world space
+        if (localRay.intersectBox(aabb, result)) {
 
-			return result.applyMatrix4( matrix );
+            // transform the intersection point back to world space
 
-		} else {
+            return result.applyMatrix4(matrix);
 
-			return null;
+        } else {
 
-		}
+            return null;
 
-	}
+        }
 
-    intersectsRay( ray ) {
+    }
 
-		return this.intersectRay( ray, tempVector3 ) !== null;
+    intersectsRay(ray) {
 
-	}
+        return this.intersectRay(ray, tempVector3) !== null;
+
+    }
 
     insidePlane(plane) {
         // compute the projection interval radius of this OBB onto L(t) = this->center + t * p.normal;
 
+        plane.normal.normalize();
         const r = this.halfSize.x * Math.abs(plane.normal.dot(this.e1)) +
             this.halfSize.y * Math.abs(plane.normal.dot(this.e2)) +
             this.halfSize.z * Math.abs(plane.normal.dot(this.e3));
@@ -139,22 +144,19 @@ class OBB {
 
         // Intersection occurs when distance d falls within [-r,+r] interval
 
-        return [Math.abs(d) <= r, d > -r];
+        return d > -r;
 
     }
 
     inFrustum(frustum) {
 
-        this.rotationMatrix.extractBasis(this.e1, this.e2, this.e3);
+        //this.rotationMatrix.extractBasis(this.e1, this.e2, this.e3);
 
-        let toReturn = true;
         for (let i = 0; i < 6; i++) {
             const plane = frustum.planes[i];
             const planeIntersection = this.insidePlane(plane);
-            /* if (planeIntersection[0]) {
-                return true;
-            } */
-            if (!planeIntersection[1] && toReturn) {
+
+            if (!planeIntersection) {
                 return false;
             }
         }
@@ -171,6 +173,74 @@ class OBB {
         let dy = Math.max(0, Math.max(-this.halfSize.y - tempVector3.y, tempVector3.y - this.halfSize.y));
         let dz = Math.max(0, Math.max(-this.halfSize.z - tempVector3.z, tempVector3.z - this.halfSize.z));
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    helper() {
+        const hs = this.halfSize;
+        const c = this.center;
+        const e1 = this.e1;
+        const e2 = this.e2;
+        const e3 = this.e3;
+    
+        // Calculate all 8 corners
+        const corners = [
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(hs.x))
+                .add(e2.clone().multiplyScalar(hs.y))
+                .add(e3.clone().multiplyScalar(hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(-hs.x))
+                .add(e2.clone().multiplyScalar(hs.y))
+                .add(e3.clone().multiplyScalar(hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(-hs.x))
+                .add(e2.clone().multiplyScalar(-hs.y))
+                .add(e3.clone().multiplyScalar(hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(hs.x))
+                .add(e2.clone().multiplyScalar(-hs.y))
+                .add(e3.clone().multiplyScalar(hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(hs.x))
+                .add(e2.clone().multiplyScalar(hs.y))
+                .add(e3.clone().multiplyScalar(-hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(-hs.x))
+                .add(e2.clone().multiplyScalar(hs.y))
+                .add(e3.clone().multiplyScalar(-hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(-hs.x))
+                .add(e2.clone().multiplyScalar(-hs.y))
+                .add(e3.clone().multiplyScalar(-hs.z)),
+            new Vector3().copy(c)
+                .add(e1.clone().multiplyScalar(hs.x))
+                .add(e2.clone().multiplyScalar(-hs.y))
+                .add(e3.clone().multiplyScalar(-hs.z)),
+        ];
+    
+        // Define the edges by connecting the corners
+        const edges = [
+            0, 1, 1, 2, 2, 3, 3, 0, // Top face
+            4, 5, 5, 6, 6, 7, 7, 4, // Bottom face
+            0, 4, 1, 5, 2, 6, 3, 7  // Side edges
+        ];
+    
+        // Create geometry and add line segments
+        const geometry = new BufferGeometry().setFromPoints(corners);
+        geometry.setIndex(edges);
+        geometry.computeBoundingSphere();
+    
+        // Create line material
+        const material = new LineBasicMaterial({ color: 0xff0000 });
+    
+        // Create the wireframe mesh
+        const wireframe = new LineSegments(geometry, material);
+    
+        wireframe.dispose = ()=>{
+            material.dispose();
+            geometry.dispose();
+        }
+        return wireframe;
     }
 
 }

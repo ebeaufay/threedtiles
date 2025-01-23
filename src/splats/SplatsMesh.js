@@ -113,12 +113,14 @@ class SplatsMesh extends Mesh {
 
 
         super(geometry, material);
-
+        this.numBatches = 0;
+        this.numVisibleBatches = 0;
         this.orderAttribute = orderAttribute;
         this.textureSize = textureSize;
         this.numTextures = numTextures;
         this.batchSize = batchSize;
         this.maxSplats = maxSplats;
+        this.numSplatsRendered = 0;
 
         this.colorRenderTarget = colorRenderTarget;
         this.positionRenderTarget = positionRenderTarget;
@@ -139,6 +141,8 @@ class SplatsMesh extends Mesh {
         this.sortListeners = [];
         this.worker.onmessage = message => {
             const newOrder = new Uint32Array(message.data.order);
+            this.numSplatsRendered = newOrder.length;
+            //console.log(newOrder.length)
             if (newOrder.length > this.orderAttribute.count) {
                 const geometry = new InstancedBufferGeometry();
                 const vertices = new Float32Array([-0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0]);
@@ -213,13 +217,7 @@ class SplatsMesh extends Mesh {
         this.copyScene.matrixAutoUpdate = false;
         this.copyQuad.matrixAutoUpdate = false;
         const self = this;
-        document.addEventListener('keyup', function (event) {
-            if (event.key === 'a') {
-                self.growTextures()
-                console.log(self.positionRenderTarget.depth)
-                // Add your logic here
-            }
-        });
+        
     }
 
     dispose() {
@@ -313,7 +311,7 @@ class SplatsMesh extends Mesh {
 
     addSplatsTile(positions, colors, cov1, cov2) {
         const self = this;
-        const tileCount = positions.count;
+        
         const positionArray = positions.data ? positions.data.array : positions.array;
         const stride = positions.data && positions.data.isInterleavedBuffer ? positions.data.stride : 3;
         const offset = positions.data && positions.data.isInterleavedBuffer ? positions.offset : 0;
@@ -378,7 +376,9 @@ class SplatsMesh extends Mesh {
 
         let visible = false;
         const hide = () => {
+            
             if (visible == true) {
+                self.numVisibleBatches--;
                 visible = false;
                 self.worker.postMessage({
                     method: "hideBatches",
@@ -393,24 +393,25 @@ class SplatsMesh extends Mesh {
 
         const show = (callback) => {
             if (visible == false) {
+                self.numVisibleBatches--;
                 visible = true;
+                const sortID = self.sortID;
+                const listener = (id => {
+                    if (id >= sortID) {
+                        callback();
+                        return true;
+                    }
+                    return false;
+                });
+                self.sortListeners.push(listener)
+    
+                self.worker.postMessage({
+                    method: "showBatches",
+                    insertionIndexes: pointManagerAddresses,
+                    xyz: [self.cameraPosition.x, self.cameraPosition.z, -self.cameraPosition.y],
+                    id: self.sortID++
+                });
             }
-            const sortID = self.sortID;
-            const listener = (id => {
-                if (id >= sortID) {
-                    callback();
-                    return true;
-                }
-                return false;
-            });
-            self.sortListeners.push(listener)
-
-            self.worker.postMessage({
-                method: "showBatches",
-                insertionIndexes: pointManagerAddresses,
-                xyz: [self.cameraPosition.x, self.cameraPosition.z, -self.cameraPosition.y],
-                id: self.sortID++
-            });
 
 
         }
@@ -659,6 +660,7 @@ in uint order;
 out vec4 color;
 out vec2 vUv;
 out vec3 splatPositionWorld;
+out vec3 splatPositionModel;
 out float splatDepth;
 //out float orthographicDepth;
 out float splatCrop;
@@ -776,11 +778,11 @@ void modelTransform(in vec3 splatPosition, in mat3 covariance, inout vec3 vertex
 void main() {
     vUv = vec2(position);
 
-    splatPositionWorld = vec3(0.0);
+    splatPositionModel = vec3(0.0);
     mat3 covariance = mat3(0.0);
-    getVertexData(splatPositionWorld, covariance);
+    getVertexData(splatPositionModel, covariance);
     splatCrop = 0.5*sqrt(color.w); // discard more pixels when opacity is low
-    splatPositionWorld = (modelMatrix * vec4(splatPositionWorld, 1.0)).xyz;
+    splatPositionWorld = (modelMatrix * vec4(splatPositionModel, 1.0)).xyz;
     
 
     vec3 outPosition = vec3(position)*sizeMultiplier;
@@ -808,6 +810,7 @@ precision highp float;
 
 in vec4 color;
 in vec2 vUv;
+in vec3 splatPositionModel;
 in vec3 splatPositionWorld;
 in float splatDepth;
 //in float orthographicDepth;
@@ -816,7 +819,7 @@ uniform float textureSize;
 uniform float cropRadius;
 
 void main() {
-    if(length(splatPositionWorld)>cropRadius) discard;
+    if(length(splatPositionModel)>cropRadius) discard;
     float l = length(vUv);
     
     // Early discard for pixels outside the radius

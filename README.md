@@ -182,6 +182,19 @@ const ogc3DTile = new OGC3DTile({
 });
 ```
 
+#### PERLEVEL
+
+PERLEVEL loading loads all required tiles of a given level before moving to the higher level of detail tiles.
+
+To set the PERLEVEL loading strategy:
+```
+const ogc3DTile = new OGC3DTile({
+    url: "https://storage.googleapis.com/ogc-3d-tiles/ayutthaya/tileset.json",
+    renderer: renderer,
+    loadingStrategy: "PERLEVEL"
+});
+```
+
 ### load tiles outside of view
 By default, only the tiles that intersect the view frustum are loaded. When the camera moves, the scene will have to load the missing tiles and the user might see some holes in the model.
 Instead of this behaviour, you can force the lowest possible LODs to be loaded for tiles outside the view so that there are no gaps in the mesh when the camera moves. This also allows displaying shadows from parts of the scene that are not in the view.
