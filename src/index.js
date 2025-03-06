@@ -430,7 +430,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     const googleTiles = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "AIzaSyD5lm27SjppfG4b4Qbr0r1xy5vAKb1139Y" },
+        queryParams: { key: "" },
         geometricErrorMultiplier: 0.5, // controls the level of detail
         loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
