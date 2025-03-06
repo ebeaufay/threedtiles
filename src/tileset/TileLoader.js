@@ -36,8 +36,12 @@ class TileLoader {
      * @param {sring} [options.proxy = undefined] - An optional proxy that tile requests will be directed too as POST requests with the actual tile url in the body of the request.
      * @param {KTX2Loader} [options.ktx2Loader = undefined] - A KTX2Loader (three/addons)
      * @param {DRACOLoader} [options.dracoLoader = undefined] - A DRACOLoader (three/addons)
+     * @param {number} [options.downloadParallelism = 8] - Maximum number of parallel downloads
+     * @param {number} [options.timeout = 5000] - number of milliseconds to keep tiles in cache before clearing
      */
     constructor(options) {
+        this.downloadParallelism = options.downloadParallelism == undefined? 8 : options.downloadParallelism;
+        this.timeout = (options.timeout != undefined) ? options.timeout : 5000;
         this.renderer = options.renderer;
         this.zUpToYUpMatrix = new THREE.Matrix4();
         this.zUpToYUpMatrix.set(1, 0, 0, 0,
@@ -49,9 +53,9 @@ class TileLoader {
         if (!!options) {
             this.meshCallback = options.meshCallback;
             this.pointsCallback = options.pointsCallback;
-            if (options.maxCachedItems!=undefined) this.maxCachedItems = options.maxCachedItems;
+            if (options.maxCachedItems != undefined) this.maxCachedItems = options.maxCachedItems;
         }
-        
+
 
         this.gltfLoader = new GLTFLoader();
         if (!!options && !!options.dracoLoader) {
@@ -60,6 +64,7 @@ class TileLoader {
         } else {
             const dracoLoader = new DRACOLoader();
             dracoLoader.setDecoderPath('https://storage.googleapis.com/ogc-3d-tiles/draco/');
+            this.dracoLoader = dracoLoader;
             this.gltfLoader.setDRACOLoader(dracoLoader);
             this.gltfLoader.hasDracoLoader = true;
         }
@@ -70,6 +75,7 @@ class TileLoader {
         } else if (!!options && !!options.renderer) {
             const ktx2Loader = new KTX2Loader();
             ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(options.renderer);
+            this.ktx2loader = ktx2Loader;
             this.gltfLoader.setKTX2Loader(ktx2Loader);
             this.gltfLoader.hasKTX2Loader = true;
         }
@@ -97,14 +103,14 @@ class TileLoader {
      * launches tile downloading and loading in an orderly fashion.
      */
     update() {
-        
+
         const self = this;
-        if (concurrentDownloads < 8) {
+        if (concurrentDownloads < self.downloadParallelism) {
             self._download();
         }
-        
+
         self._loadBatch();
-        
+
     }
 
 
@@ -128,19 +134,19 @@ class TileLoader {
     _meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
         this.ready.unshift([cache, register, key, distanceFunction, getSiblings, level, uuid]);
     }
-    
+
     _loadBatch() {
         if (this.nextReady.length == 0) {
             this._getNextReady();
         }
-        while(this.nextReady.length > 0){
+        while (this.nextReady.length > 0) {
             const data = this.nextReady.shift();
             if (!data) return;
             const cache = data[0];
             const register = data[1];
             const key = data[2];
             const mesh = cache.get(key);
-    
+
             if (!!mesh && !!register[key]) {
                 Object.keys(register[key]).forEach(tile => {
                     const callback = register[key][tile];
@@ -154,7 +160,7 @@ class TileLoader {
                 this._getNextReady();
             }
         }
-        
+
         return;
 
         /* while (this.ready.length > 0) {
@@ -195,23 +201,23 @@ class TileLoader {
         let lowestLevel = Number.MAX_SAFE_INTEGER;
         let lowestIndex = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
-            
+
             const dist = this.downloads[i].distanceFunction();
             if (dist <= smallestDistance) {
                 smallestDistance = dist;
                 closest = i;
             }
             highestLevel = Math.max(this.downloads[i].level);
-            if(this.downloads[i].loadingStrategy != "IMMEDIATE" && this.downloads[i].level<lowestLevel){
+            if (this.downloads[i].loadingStrategy != "IMMEDIATE" && this.downloads[i].level < lowestLevel) {
                 lowestLevel = this.downloads[i].level;
                 lowestIndex = i;
             }
-            
+
         }
         let closestItem;
-        if(highestLevel>lowestLevel+4){
+        if (highestLevel > lowestLevel + 4) {
             closestItem = this.downloads.splice(lowestIndex, 1).pop();
-        }else if (closest >= 0){
+        } else if (closest >= 0) {
             closestItem = this.downloads.splice(closest, 1).pop();
         }
         if (!!closestItem) {
@@ -245,12 +251,12 @@ class TileLoader {
         if (closest >= 0) {
             const closestItem = this.ready.splice(closest, 1).pop();
             this.nextReady.push(closestItem);
-             const siblings = closestItem[4]();
-             for (let i = this.ready.length - 1; i >= 0; i--) {
-                 if (siblings.map(s=>s.uuid).includes(this.ready[i][6])) {
-                     this.nextReady.push(this.ready.splice(i, 1).pop());
-                 }
-             }
+            const siblings = closestItem[4]();
+            for (let i = this.ready.length - 1; i >= 0; i--) {
+                if (siblings.map(s => s.uuid).includes(this.ready[i][6])) {
+                    this.nextReady.push(this.ready.splice(i, 1).pop());
+                }
+            }
         }
     }
 
@@ -299,8 +305,8 @@ class TileLoader {
             let downloadFunction;
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
-                    
-        
+
+
                     var fetchFunction;
                     if (!self.proxy) {
                         fetchFunction = () => {
@@ -340,11 +346,11 @@ class TileLoader {
 
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
-                if(splatsMesh){
-                    
+                if (splatsMesh) {
+
                     downloadFunction = () => {
-                    
-        
+
+
                         var fetchFunction;
                         if (!self.proxy) {
                             fetchFunction = () => {
@@ -368,9 +374,9 @@ class TileLoader {
                                 throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
                             }
                             return result.arrayBuffer();
-    
+
                         }).then(resultArrayBuffer => {
-    
+
                             return this.splatsDecoder.parseSplats(resultArrayBuffer, sceneZupToYup, meshZupToYup, splatsMesh);
                         }).then(mesh => {
                             self.cache.put(key, mesh);
@@ -381,10 +387,10 @@ class TileLoader {
                         }).finally(() => {
                             concurrentDownloads--;
                         });
-    
+
                     }
                 }
-                else{
+                else {
                     downloadFunction = () => {
                         var fetchFunction;
                         if (!self.proxy) {
@@ -417,7 +423,7 @@ class TileLoader {
                                     gltf.scene.applyMatrix4(this.zUpToYUpMatrix);
                                 }
                                 gltf.scene.traverse((o) => {
-    
+
                                     if (o.isMesh) {
                                         if (meshZupToYup) {
                                             o.applyMatrix4(this.zUpToYUpMatrix);
@@ -427,29 +433,29 @@ class TileLoader {
                                         }
                                     }
                                     if (o.isPoints) {
-    
+
                                         if (!!self.pointsCallback) {
                                             self.pointsCallback(o, geometricError);
                                         }
                                     }
                                 });
-    
+
                                 self.cache.put(key, gltf.scene);
                                 self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
                                 self._checkSize();
                             });
                         }).catch((e) => {
-                            if(e!=="user abort" && e.code !== 20) {
+                            if (e !== "user abort" && e.code !== 20) {
                                 //console.error(e);
                             }
                         }).finally(() => {
                             concurrentDownloads--;
                         });
-    
-    
+
+
                     }
                 }
-                
+
             } else if (path.includes(".json")) {
                 downloadFunction = () => {
                     var fetchFunction;
@@ -507,7 +513,7 @@ class TileLoader {
     /**
      * Invalidates all the unused cached tiles.
      */
-    clear(){
+    clear() {
         const temp = this.maxCachedItems;
         this.maxCachedItems = 0;
         this._checkSize();
@@ -522,13 +528,28 @@ class TileLoader {
     invalidate(path, tileIdentifier) {
         const key = _simplifyPath(path);
         if (!!this.register[key]) {
-            delete this.register[key][tileIdentifier];
+            setTimeout(() => {
+                if (this.register && this.register[key]) {
+                    delete this.register[key][tileIdentifier];
+                    this._checkSize();
+                }
+            }, this.timeout);
 
-            //this.register[key][tileIdentifier] = undefined;
-            this._checkSize();
         }
     }
 
+    dispose() {
+        let entry = this.cache.head();
+        this._disposeEntryContent(entry);
+        while ((entry = entry.next()).key != undefined) {
+            this._disposeEntryContent(entry);
+        }
+        this.cache.reset();
+        this.cache = undefined;
+        this.register = undefined;
+        if(this.dracoLoader) this.dracoLoader.dispose();
+        if(this.ktx2loader) this.ktx2loader.dispose();
+    }
     _checkSize() {
         const self = this;
 
@@ -546,33 +567,37 @@ class TileLoader {
                     self.cache.remove(entry.key);
                     delete self.register[entry.key];
                     //self.register[entry.key] = undefined;
-                    if(entry.value.isSplatsBatch){
-                        entry.value.remove();
-                    }else if (!!entry.value.traverse){
-                        entry.value.traverse((o) => {
+                    self._disposeEntryContent(entry);
 
-                            if (o.material) {
-                                // dispose materials
-                                if (o.material.length) {
-                                    for (let i = 0; i < o.material.length; ++i) {
-                                        o.material[i].dispose();
-                                    }
-                                }
-                                else {
-                                    o.material.dispose()
-                                }
-                            }
-                            if (o.geometry) {
-                                // dispose geometry
-                                o.geometry.dispose();
-    
-                            }
-                        });
-                    }
-                    
                 }
             }
 
+        }
+    }
+    _disposeEntryContent(entry) {
+        if(!entry.value) return;
+        if (entry.value.isSplatsBatch) {
+            entry.value.remove();
+        } else if (!!entry.value.traverse) {
+            entry.value.traverse((o) => {
+
+                if (o.material) {
+                    // dispose materials
+                    if (o.material.length) {
+                        for (let i = 0; i < o.material.length; ++i) {
+                            o.material[i].dispose();
+                        }
+                    }
+                    else {
+                        o.material.dispose()
+                    }
+                }
+                if (o.geometry) {
+                    // dispose geometry
+                    o.geometry.dispose();
+
+                }
+            });
         }
     }
 }

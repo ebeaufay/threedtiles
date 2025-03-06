@@ -75,13 +75,13 @@ class OBB {
         tempMatrix.elements[7] *= invSZ;
         tempMatrix.elements[8] *= invSZ;
 
-        this.rotationMatrix.multiply(tempMatrix);
+        this.rotationMatrix.premultiply(tempMatrix);
 
         this.halfSize.x *= sx;
         this.halfSize.y *= sy;
         this.halfSize.z *= sz;
 
-        tempVector3.setFromMatrixPosition(matrix);
+        //tempVector3.setFromMatrixPosition(matrix);
         this.center.applyMatrix4(matrix);
         //console.log(this.e1);
         this.rotationMatrix.extractBasis(this.e1, this.e2, this.e3);

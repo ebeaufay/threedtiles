@@ -21,7 +21,7 @@ zUpToYUpMatrix3x3.set(
     0, -1, 0);
 
 class SplatsMesh extends Mesh {
-    constructor(renderer, fragShader) {
+    constructor(renderer, isStatic, fragShader) {
 
         const textureSize = 512;
 
@@ -113,6 +113,7 @@ class SplatsMesh extends Mesh {
 
 
         super(geometry, material);
+        this.matrixAutoUpdate = false;
         this.numBatches = 0;
         this.numVisibleBatches = 0;
         this.orderAttribute = orderAttribute;
@@ -230,6 +231,7 @@ class SplatsMesh extends Mesh {
         this.colorRenderTarget.dispose();
         this.worker.terminate();
         this.worker = null;
+        this.orderAttribute.array =undefined;
         this.geometry.dispose();
     }
 
@@ -289,6 +291,7 @@ class SplatsMesh extends Mesh {
     }
 
     sort(cameraPosition) {
+        if(!this.worker) return;
         if (!cameraPosition && this.cameraPosition) {
             this.worker.postMessage({
                 method: "sort",
@@ -310,6 +313,7 @@ class SplatsMesh extends Mesh {
     }
 
     addSplatsTile(positions, colors, cov1, cov2) {
+        if(!this.worker) return;
         const self = this;
         
         const positionArray = positions.data ? positions.data.array : positions.array;
@@ -377,7 +381,7 @@ class SplatsMesh extends Mesh {
         let visible = false;
         const hide = () => {
             
-            if (visible == true) {
+            if (visible == true && self.worker) {
                 self.numVisibleBatches--;
                 visible = false;
                 self.worker.postMessage({
@@ -392,7 +396,7 @@ class SplatsMesh extends Mesh {
 
 
         const show = (callback) => {
-            if (visible == false) {
+            if (visible == false && self.worker) {
                 self.numVisibleBatches--;
                 visible = true;
                 const sortID = self.sortID;
@@ -416,6 +420,7 @@ class SplatsMesh extends Mesh {
 
         }
         const remove = () => {
+            if(!self.worker) return;
             raycast = undefined;
             self.worker.postMessage({
                 method: "removeBatches",

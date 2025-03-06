@@ -244,18 +244,22 @@ class OGC3DTile extends THREE.Object3D {
      */
     updateMatrices() {
         this.updateMatrix();
+        if(this.splatsMesh) this.splatsMesh.updateMatrix();
         if (this.static) {
             this.traverse(o => {
                 if (o.isObject3D) {
                     o.matrixWorldAutoUpdate = true;
                 }
             });
+            if(this.splatsMesh) this.splatsMesh.matrixWorldAutoUpdate = true;
         }
         this.updateMatrixWorld(true);
+        
         if (this.static) {
             this.traverse(o => {
                 if (o.isObject3D) o.matrixWorldAutoUpdate = false;
             });
+            if(this.splatsMesh) this.splatsMesh.matrixWorldAutoUpdate = false;
         }
     }
     /**
@@ -273,11 +277,14 @@ class OGC3DTile extends THREE.Object3D {
         const self = this;
 
         if (properties.json.extensionsRequired) {
-            if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats")) {
+            if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats") || properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats_V2")) {
                 self.splatsMesh = new SplatsMesh(self.tileLoader.renderer)
-                this.splatsMesh.setSplatsCropRadius(this.splatsCropRadius)
-                this.splatsMesh.setSplatsSizeMultiplier(this.splatsSizeMultiplier)
+                self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
+                self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
+                if(self.static) self.splatsMesh.matrixWorldAutoUpdate = false;
                 self.add(self.splatsMesh);
+                self.updateMatrices();
+                
             }
         }
         if (!!properties.json.root) {
@@ -681,6 +688,7 @@ class OGC3DTile extends THREE.Object3D {
             self.meshContent.forEach(splat => splat.hide());
             if (!self.parentTile) {
                 self.splatsMesh.dispose();
+                self.splatsMesh = undefined;
             }
         }
         if (!!self.contentURL) {
