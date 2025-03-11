@@ -402,7 +402,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     ogc3DTile.setSplatsCropRadius(500);
     scene.add(ogc3DTile); */
 
-    const ogc3DTile2 = new OGC3DTile({
+    /* const ogc3DTile2 = new OGC3DTile({
 
         url: "http://localhost:8080/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
@@ -412,7 +412,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         // url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
         //url: "http://localhost:8082/tileset.json", //UM
-
+        renderer: renderer,
         geometricErrorMultiplier: 0.4,
         distanceBias: 1,
         loadOutsideView: false,
@@ -429,32 +429,32 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     });
     scene.add(ogc3DTile2);
-    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1.0);
+    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1.0); */
 
-    /* const googleTiles = new OGC3DTile({
+    const googleTiles = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
-        queryParams: { key: "" },
+        queryParams: { key: "AIzaSyD5lm27SjppfG4b4Qbr0r1xy5vAKb1139Y" },
         geometricErrorMultiplier: 0.5, // controls the level of detail
-        loadOutsideView: true, // when true, extra low detail tiles are loaded outside the frustum
+        loadOutsideView: false, // when true, extra low detail tiles are loaded outside the frustum
         tileLoader: tileLoader,
         renderer: renderer,
         static: true,
     });
 
-    earthAntiGeoreferencing(googleTiles, -76.613170, 39.274965, -16); */
+    earthAntiGeoreferencing(googleTiles, -76.613170, 39.274965, -16);
     //googleTiles.setSplatsCropRadius(5)
     /* googleTiles.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * -0.5);
     googleTiles.position.set(0,0,0)
     //ogc3DTile2.scale.set(0.5,0.5,0.5)
     googleTiles.updateMatrices(); */
     //ogc3DTile2.setSplatsCropRadius(500);
-    // scene.add(googleTiles);
+     scene.add(googleTiles);
     //
 
     //const axesHelper = new THREE.AxesHelper( 5000 );
     //scene.add( axesHelper );
 
-    return [ ogc3DTile2];
+    return [ googleTiles];
 }
 
 

@@ -1508,7 +1508,7 @@ class OGC3DTile extends THREE.Object3D {
 
         let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
 
-        return (window.devicePixelRatio * 16 * lambda) / (s * scale);
+        return (16 * lambda) / (s * scale);
     }
 
     _getSiblings() {

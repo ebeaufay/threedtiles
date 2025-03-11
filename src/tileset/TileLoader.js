@@ -188,10 +188,10 @@ class TileLoader {
         let smallestDistance = Number.POSITIVE_INFINITY;
         let closest = -1;
         for (let i = this.downloads.length - 1; i >= 0; i--) {
-            /* if (!this.downloads[i].shouldDoDownload()) {
+            if (!this.downloads[i].shouldDoDownload()) {
                 this.downloads.splice(i, 1);
                 continue;
-            } */
+            }
             if (!this.downloads[i].distanceFunction) { // if no distance function, must be a json, give absolute priority!
                 this.nextDownloads.push(this.downloads.splice(i, 1)[0]);
             }
@@ -301,7 +301,7 @@ class TileLoader {
         const cachedObject = self.cache.get(key);
         if (!!cachedObject) {
             this._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-        } else if (Object.keys(self.register[key]).length == 1) {
+        } else /* if (Object.keys(self.register[key]).length == 1) */ {
             let downloadFunction;
             if (path.includes(".b3dm")) {
                 downloadFunction = () => {
@@ -497,7 +497,7 @@ class TileLoader {
             }
             this._scheduleDownload({
                 "shouldDoDownload": () => {
-                    return true;//!abortController.signal.aborted && !!self.register[key] && Object.keys(self.register[key]).length > 0;
+                    return !abortController.signal.aborted && !!self.register[key] && Object.keys(self.register[key]).length > 0 && !self.cache.get(key);
                 },
                 "doDownload": downloadFunction,
                 "distanceFunction": distanceFunction,
@@ -527,14 +527,14 @@ class TileLoader {
      */
     invalidate(path, tileIdentifier) {
         const key = _simplifyPath(path);
-        
-        if (!!this.register[key]) {
+        const self = this;
+        if (!!self.register[key]) {
             setTimeout(() => {
-                if (this.register && this.register[key]) {
-                    delete this.register[key][tileIdentifier];
-                    this._checkSize();
+                if (self.register && self.register[key]) {
+                    delete self.register[key][tileIdentifier];
+                    self._checkSize();
                 }
-            }, this.timeout);
+            }, self.timeout);
 
         }
     }
