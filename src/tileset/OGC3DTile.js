@@ -119,8 +119,9 @@ class OGC3DTile extends THREE.Object3D {
             tileLoaderOptions.dracoLoader = properties.dracoLoader;
             tileLoaderOptions.ktx2Loader = properties.ktx2Loader;
             this.tileLoader = new TileLoader(tileLoaderOptions);
+            const update = this.update
             this.update = (camera) => {
-                this.update(camera);
+                update.call(this, camera);
                 this.tileLoader.update();
             }
         }
