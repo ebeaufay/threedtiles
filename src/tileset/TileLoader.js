@@ -527,6 +527,7 @@ class TileLoader {
      */
     invalidate(path, tileIdentifier) {
         const key = _simplifyPath(path);
+        
         if (!!this.register[key]) {
             setTimeout(() => {
                 if (this.register && this.register[key]) {

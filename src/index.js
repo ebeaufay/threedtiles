@@ -59,7 +59,7 @@ const scene = initScene();
 
 
 
-const raycaster = new THREE.Raycaster();
+/* const raycaster = new THREE.Raycaster();
 raycaster.params.Points.threshold = 0.002;
 const pointer = new THREE.Vector2();
 const geometry = new THREE.SphereGeometry(0.02, 32, 16);
@@ -72,7 +72,7 @@ scene.add(sphere);
 window.addEventListener('pointermove', (event) => {
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
-});
+}); */
 
 const clock = new THREE.Clock();
 
@@ -99,6 +99,8 @@ const cropRadiusValue = document.getElementById("cropRadiusValue");
 
 let tileLoader;
 let ogc3DTiles;
+tileLoader = initTileLoader();
+            ogc3DTiles = initTilesets(scene, tileLoader, "INCREMENTAL", 1.0, 1.0);
 //let google = initGoogleTileset(scene, tileLoader, "INCREMENTAL", 0.5, 1.0);
 
 let targetFrameRate = _isMobileDevice() ? 30 : 5000;
@@ -128,7 +130,7 @@ function initSliders() {
     }) */
     lodSlider.addEventListener("input", e => {
         lodSliderValue.innerText = lodSlider.value;
-        ogc3DTiles.setGeometricErrorMultiplier(lodSlider.value)
+        ogc3DTiles.forEach(t=>t.setGeometricErrorMultiplier(Number(lodSlider.value)));
         
     })
 
@@ -402,7 +404,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     const ogc3DTile2 = new OGC3DTile({
 
-        url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
+        url: "http://localhost:8080/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/splatsMirai/tileset.json", //UM
@@ -414,21 +416,22 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         geometricErrorMultiplier: 0.4,
         distanceBias: 1,
         loadOutsideView: false,
-        tileLoader: tileLoader,
+        //tileLoader: tileLoader,
         static: false,
         centerModel: true,
-        loadingStrategy: "IMMEDIATE",
+        //loadingStrategy: "IMMEDIATE",
         distanceBias: distanceBias,
         drawBoundingVolume: false,
         //renderer: renderer,
         onLoadCallback: (e) => {
-            console.log(e)
+            //console.log(e)
         }
 
     });
     scene.add(ogc3DTile2);
+    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1.0);
 
-    const googleTiles = new OGC3DTile({
+    /* const googleTiles = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
         queryParams: { key: "" },
         geometricErrorMultiplier: 0.5, // controls the level of detail
@@ -438,20 +441,20 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         static: true,
     });
 
-    earthAntiGeoreferencing(googleTiles, -76.613170, 39.274965, -16);
+    earthAntiGeoreferencing(googleTiles, -76.613170, 39.274965, -16); */
     //googleTiles.setSplatsCropRadius(5)
     /* googleTiles.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * -0.5);
     googleTiles.position.set(0,0,0)
     //ogc3DTile2.scale.set(0.5,0.5,0.5)
     googleTiles.updateMatrices(); */
     //ogc3DTile2.setSplatsCropRadius(500);
-    scene.add(googleTiles);
+    // scene.add(googleTiles);
     //
 
     //const axesHelper = new THREE.AxesHelper( 5000 );
     //scene.add( axesHelper );
 
-    return [googleTiles, ogc3DTile2];
+    return [ ogc3DTile2];
 }
 
 
@@ -603,13 +606,13 @@ function initInstancedTilesets(instancedTileLoader) {
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100000);
 
-    camera.position.set(0.4,0.4, 0);
+    camera.position.set(100,100, 0);
 
     camera.lookAt(0, 0.0, 0);
 
     camera.matrixAutoUpdate = true;
 
-    document.addEventListener('keydown', function (event) {
+    /* document.addEventListener('keydown', function (event) {
         if (event.key === 'p') {
             paused = !paused;
         }
@@ -628,7 +631,7 @@ function initCamera(width, height) {
             tileLoader = undefined;
         }
         
-    });
+    }); */
 
     return camera;
 }
