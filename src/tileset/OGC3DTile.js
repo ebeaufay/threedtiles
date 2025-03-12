@@ -401,6 +401,31 @@ class OGC3DTile extends THREE.Object3D {
 
                 tempQuaternion.setFromUnitVectors(tempVec1.normalize(), upVector.normalize());
                 self.applyQuaternion(tempQuaternion);
+            } else if (!!this.json.boundingVolume.box) {
+                // 从box的方向向量中提取旋转
+                const box = this.json.boundingVolume.box;
+                const xAxis = new THREE.Vector3(box[3], box[4], box[5]).normalize();
+                const yAxis = new THREE.Vector3(box[6], box[7], box[8]).normalize();
+                const zAxis = new THREE.Vector3(box[9], box[10], box[11]).normalize();
+                
+                // 创建旋转矩阵
+                const rotationMatrix = new THREE.Matrix4();
+                rotationMatrix.makeBasis(xAxis, yAxis, zAxis);
+                
+                // 从旋转矩阵中提取四元数
+                const quaternion = new THREE.Quaternion();
+                quaternion.setFromRotationMatrix(rotationMatrix);
+                
+                // 计算将y轴对齐到世界坐标系的旋转
+                const alignmentQuaternion = new THREE.Quaternion();
+                alignmentQuaternion.setFromUnitVectors(zAxis, upVector);
+                
+                // 应用180度水平旋转
+                const horizontalRotation = new THREE.Quaternion();
+                horizontalRotation.setFromAxisAngle(upVector, Math.PI);
+                
+                // 组合所有旋转：先应用原始旋转的逆，然后是垂直对齐，最后是水平旋转
+                self.quaternion.copy(horizontalRotation).multiply(alignmentQuaternion).multiply(quaternion.invert());
             }
             tempVec2.applyMatrix4(self.matrix);
             self.position.sub(tempVec2);
