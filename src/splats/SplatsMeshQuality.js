@@ -6,7 +6,6 @@ import {
     WebGL3DRenderTarget, OrthographicCamera, Scene,
     NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor
 } from "three";
-import { gamma } from 'mathjs';
 import {
     MinPriorityQueue
 } from 'data-structure-typed';
@@ -81,10 +80,6 @@ class SplatsMesh extends Mesh {
                     cameraFar: { value: 10 },
                     computeLinearDepth: { value: true },
                     viewportPixelSize: { value: new Vector2() },
-                    k: {value: 2},
-                    beta_k: {value: 2},
-                    minSplatPixelSize: {value: 0},
-                    minOpacity: {value: 0.01},
                 },
                 vertexShader: splatsVertexShader(),
                 fragmentShader: fragShader ? fragShader : splatsFragmentShader(),
@@ -226,21 +221,7 @@ class SplatsMesh extends Mesh {
         const self = this;
 
     }
-    /**
-     * Sets the splats visualization quality where 1 is the maximum quality and 0 is the fastest
-     * @param {number} quality value between 0 and 1 (1 highest quality) 
-     */
-    setQuality(quality){
-        quality = Math.max(0,Math.min(1,(1-quality)));
-        const k = 2+quality*2;
-        this.material.uniforms.k.value = k;
-        this.material.uniforms.beta_k.value = Math.pow((4.0 * gamma(2.0/k)) /k, k/2);
-        this.material.uniforms.minSplatPixelSize.value = quality*5;
-        this.material.uniforms.minOpacity.value = 0.1+quality*0.09;
-    }
     updateShaderParams(camera) {
-        const proj = camera.projectionMatrix.elements;
-        
         this.renderer.getSize(this.material.uniforms.viewportPixelSize.value);
         this.material.uniforms.viewportPixelSize.value.multiplyScalar(this.renderer.getPixelRatio())
     }
@@ -661,10 +642,6 @@ uniform float logDepthBufFC;
 //uniform float cameraFar;
 //uniform bool computeLinearDepth;
 uniform vec2 viewportPixelSize;        // vec2(width , height)
-uniform float k;
-uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
-uniform float minSplatPixelSize;
-uniform float minOpacity;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -789,12 +766,9 @@ void main() {
     mat3 covariance = mat3(0.0);
     getVertexData(splatPositionModel, covariance);
     
-    /* opacity ‑> stds */
-    float maxV     = min(1.0,max(color.a, 0.0001));
-    float thresh     = min(minOpacity, maxV);
-    if(thresh >= maxV) return;
-    float lnRatio = log(thresh/maxV);
-    stds      = pow(-8.0 * lnRatio/beta_k, 1.0/k);//sqrt(2.0 * log(maxV / thresh));
+    float maxV     = max(color.a, 0.0001);
+    float thresh     = min(0.01, maxV);
+    stds      = sqrt(2.0 * log(maxV / thresh));
     
 
     splatPositionWorld = (modelMatrix * vec4(splatPositionModel, 1.0)).xyz;//+vec3(999999);
@@ -812,13 +786,13 @@ void main() {
     
     vec4 outPosition = projectionMatrix * viewMatrix * vec4(offsetWorld+splatPositionWorld,1.0);
     
-    vec3 glPosNDC = outPosition.xyz / outPosition.w;
+    /* vec3 glPosNDC = outPosition.xyz / outPosition.w;
     vec3 splatPosNDC = splatPositionProjected.xyz / splatPositionProjected.w;
     vec2 pixelOffset = abs((glPosNDC - splatPosNDC).xy)*viewportPixelSize;
 
-    if(pixelOffset.x < minSplatPixelSize && pixelOffset.y < minSplatPixelSize){
+    if(pixelOffset.x < 1.0 || pixelOffset.y < 1.0){
         return;
-    }
+    } */
     
     gl_Position = outPosition;
     /* if(computeLinearDepth){
@@ -851,23 +825,21 @@ layout(location = 0) out vec4 fragColor;
 
 uniform float textureSize;
 
-uniform float k;
-uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
-
 void main() {
-    float l = dot(vUv, vUv);
-    if (l > 0.25) discard;           // early out unchanged
-    /* if (l > 0.245){
-        fragColor = vec4(pow(color.xyz, vec3(1.0/2.2)), 0.8);
-        return;
-    } */
-    vec2  p   = vUv * stds;
-    float r2  = dot(p, p);           // r²
-    float rk  = pow(r2, 0.5 * k);    // r^{k}
-    float alpha = color.w * exp(-beta_k * rk);
-
+    float l = (vUv.x * vUv.x) + (vUv.y * vUv.y);
+    
+    // Early discard for pixels outside the radius
+    if (l > 0.25) {
+        discard;
+    };
+    
+    vec2 p = vUv * stds;
+    float pp = exp(-dot(p, p));
+    float alpha = color.w *pp*pp;
     fragColor = vec4(pow(color.xyz,vec3(1.0/2.2)), alpha);
     
+    
+    //fragColor = vec4(splatDepth,0.0,0.0,1.0); 
     //gl_FragDepth = splatDepth;
     
 }`

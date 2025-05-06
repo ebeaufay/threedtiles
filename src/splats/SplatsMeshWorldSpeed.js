@@ -6,7 +6,6 @@ import {
     WebGL3DRenderTarget, OrthographicCamera, Scene,
     NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor
 } from "three";
-import { gamma } from 'mathjs';
 import {
     MinPriorityQueue
 } from 'data-structure-typed';
@@ -81,10 +80,8 @@ class SplatsMesh extends Mesh {
                     cameraFar: { value: 10 },
                     computeLinearDepth: { value: true },
                     viewportPixelSize: { value: new Vector2() },
-                    k: {value: 2},
-                    beta_k: {value: 2},
-                    minSplatPixelSize: {value: 0},
-                    minOpacity: {value: 0.01},
+                    k: {value: 3},
+                    beta_k: {value: 2.426}
                 },
                 vertexShader: splatsVertexShader(),
                 fragmentShader: fragShader ? fragShader : splatsFragmentShader(),
@@ -225,18 +222,6 @@ class SplatsMesh extends Mesh {
         this.copyQuad.matrixAutoUpdate = false;
         const self = this;
 
-    }
-    /**
-     * Sets the splats visualization quality where 1 is the maximum quality and 0 is the fastest
-     * @param {number} quality value between 0 and 1 (1 highest quality) 
-     */
-    setQuality(quality){
-        quality = Math.max(0,Math.min(1,(1-quality)));
-        const k = 2+quality*2;
-        this.material.uniforms.k.value = k;
-        this.material.uniforms.beta_k.value = Math.pow((4.0 * gamma(2.0/k)) /k, k/2);
-        this.material.uniforms.minSplatPixelSize.value = quality*5;
-        this.material.uniforms.minOpacity.value = 0.1+quality*0.09;
     }
     updateShaderParams(camera) {
         const proj = camera.projectionMatrix.elements;
@@ -663,8 +648,6 @@ uniform float logDepthBufFC;
 uniform vec2 viewportPixelSize;        // vec2(width , height)
 uniform float k;
 uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
-uniform float minSplatPixelSize;
-uniform float minOpacity;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -791,8 +774,8 @@ void main() {
     
     /* opacity ‑> stds */
     float maxV     = min(1.0,max(color.a, 0.0001));
-    float thresh     = min(minOpacity, maxV);
-    if(thresh >= maxV) return;
+    float thresh     = min(0.05, maxV);
+    if(thresh == maxV) return;
     float lnRatio = log(thresh/maxV);
     stds      = pow(-8.0 * lnRatio/beta_k, 1.0/k);//sqrt(2.0 * log(maxV / thresh));
     
@@ -816,7 +799,7 @@ void main() {
     vec3 splatPosNDC = splatPositionProjected.xyz / splatPositionProjected.w;
     vec2 pixelOffset = abs((glPosNDC - splatPosNDC).xy)*viewportPixelSize;
 
-    if(pixelOffset.x < minSplatPixelSize && pixelOffset.y < minSplatPixelSize){
+    if(pixelOffset.x < 5.0 && pixelOffset.y < 5.0){
         return;
     }
     

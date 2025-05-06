@@ -14,6 +14,7 @@ const tempOBB = new OBB([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]);
 const tempBox3 = new THREE.Box3();
 const tempVec1 = new THREE.Vector3(0, 0, 0);
 const tempVec2 = new THREE.Vector3(0, 0, 0);
+
 const upVector = new THREE.Vector3(0, 1, 0);
 const tempRay = new THREE.Ray();
 const inverseWorld = new THREE.Matrix4();
@@ -54,8 +55,8 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Number} [properties.geometricErrorMultiplier = 1] - the geometric error of the parent. 1.0 by default corresponds to a maxScreenSpaceError of 16
      * @param {Boolean} [properties.loadOutsideView = false] - if truthy, tiles otside the camera frustum will be loaded with the least possible amount of detail
      * @param {TileLoader} [properties.tileLoader = undefined] - A tile loader that can be shared among tilesets in order to share a common cache.
-     * @param {Function} [properties.meshCallback = undefined] - A callback function that will be called on every mesh
-     * @param {Function} [properties.pointsCallback = undefined] - A callback function that will be called on every points
+     * @param {Function} [properties.meshCallback = undefined] - A callback function that will be called on every mesh (if TileLoader is provided, this function will be overridden by the tileLoader's own callback)
+     * @param {Function} [properties.pointsCallback = undefined] - A callback function that will be called on every points (if TileLoader is provided, this function will be overridden by the tileLoader's own callback)
      * @param {Function} [properties.onLoadCallback = undefined] - A callback function that will be called when the root tile has been loaded
      * @param {OcclusionCullingService} [properties.occlusionCullingService = undefined] - A service that handles occlusion culling
      * @param {Boolean} [properties.centerModel = false] - If true, the tileset will be centered on 0,0,0 and in the case of georeferenced tilesets that use the "region" bounding volume, it will also be rotated so that the up axis matched the world y axis.
@@ -81,11 +82,13 @@ class OGC3DTile extends THREE.Object3D {
      *      -  "IMMEDIATE" skips intermediate LODs. tiles are missing until loaded when moving to a new area
      * @param {String} [properties.drawBoundingVolume = false] - optional draws the bounding volume (may cause flickering)
      * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
+     * @param {number} [properties.splatsQuality = 1.0] - optional pass a visual quality for splats between 0 and 1. Lower quality improves performance at the cost of visual approximations.
      */
     constructor(properties) {
         super();
         const self = this;
         self.splatsMesh = properties.splatsMesh;
+        self.splatsQuality = properties.splatsQuality!=undefined?properties.splatsQuality:1.0;
         this.contentURL = [];
         if (!!properties.domWidth && !!properties.domHeight) {
             this.rendererSize = new THREE.Vector2(properties.domWidth, properties.domHeight);
@@ -280,6 +283,7 @@ class OGC3DTile extends THREE.Object3D {
         if (properties.json.extensionsRequired) {
             if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats") || properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats_V2")) {
                 self.splatsMesh = new SplatsMesh(self.tileLoader.renderer)
+                self.splatsMesh.setQuality(self.splatsQuality);
                 self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
                 self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
                 if(self.static) self.splatsMesh.matrixWorldAutoUpdate = false;
@@ -799,6 +803,9 @@ class OGC3DTile extends THREE.Object3D {
      * @returns {{numTilesLoaded: number, numTilesRendered: number, maxLOD: number, percentageLoaded: number}} An object containing describing the current state of the loaded tileset.
      */
     update(camera) {
+        if(this.splatsMesh){
+            this.splatsMesh.updateShaderParams(camera, this.renderer)
+        }
         const frustum = new THREE.Frustum();
         frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
 
@@ -827,7 +834,6 @@ class OGC3DTile extends THREE.Object3D {
             transformedCameraPosition.copy(camera.position);
             inverseWorld.copy(this.matrixWorld).invert();
             transformedCameraPosition.applyMatrix4(inverseWorld);
-
             this.splatsMesh.sort(transformedCameraPosition);
         }
 
@@ -1591,6 +1597,14 @@ class OGC3DTile extends THREE.Object3D {
 
         sfct.set(x, y, z);
     }
+
+
+    hideCopyright(){
+        _hideCopyright();
+    }
+    showCopyright(){
+        _showCopyright();
+    }
 }
 export { OGC3DTile, getOGC3DTilesCopyrightInfo };
 
@@ -1620,6 +1634,38 @@ function _showError(error) {
     }, 8000);
 }
 
+function _hideCopyright(){
+    if (!copyrightDiv) {
+        copyrightDiv = document.createElement('div');
+        copyrightDiv.style.position = 'fixed';
+        copyrightDiv.style.bottom = '20px';
+        copyrightDiv.style.left = '20px';
+        copyrightDiv.style.color = 'white';
+        copyrightDiv.style.textShadow = '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000';
+        copyrightDiv.style.padding = '10px';
+        copyrightDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'; // semi-transparent black background
+
+        // Append the div to the body of the document
+        document.body.appendChild(copyrightDiv);
+    }
+    copyrightDiv.style.opacity = 0;
+}
+function _showCopyright(){
+    if (!copyrightDiv) {
+        copyrightDiv = document.createElement('div');
+        copyrightDiv.style.position = 'fixed';
+        copyrightDiv.style.bottom = '20px';
+        copyrightDiv.style.left = '20px';
+        copyrightDiv.style.color = 'white';
+        copyrightDiv.style.textShadow = '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000';
+        copyrightDiv.style.padding = '10px';
+        copyrightDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'; // semi-transparent black background
+
+        // Append the div to the body of the document
+        document.body.appendChild(copyrightDiv);
+    }
+    copyrightDiv.style.opacity = 1;
+}
 function _updateCopyrightLabel() {
     // Create a new div
     if (!copyrightDiv) {

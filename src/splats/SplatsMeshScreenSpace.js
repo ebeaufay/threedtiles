@@ -6,7 +6,6 @@ import {
     WebGL3DRenderTarget, OrthographicCamera, Scene,
     NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor
 } from "three";
-import { gamma } from 'mathjs';
 import {
     MinPriorityQueue
 } from 'data-structure-typed';
@@ -15,6 +14,7 @@ import WorkerConstructor from './PointsManager.worker.js?worker';
 
 const tmpVector = new Vector3();
 const tmpVector2 = new Vector3();
+const sz = new Vector2();
 const zUpToYUpMatrix3x3 = new Matrix3();
 zUpToYUpMatrix3x3.set(
     1, 0, 0,
@@ -25,6 +25,7 @@ function packHalf2x16(x, y) {
     return (DataUtils.toHalfFloat(x) | (DataUtils.toHalfFloat(y) << 16)) >>> 0;
 }
 class SplatsMesh extends Mesh {
+
     constructor(renderer, isStatic, fragShader) {
 
         const textureSize = 1024;
@@ -80,11 +81,11 @@ class SplatsMesh extends Mesh {
                     cameraNear: { value: 0.01 },
                     cameraFar: { value: 10 },
                     computeLinearDepth: { value: true },
+                    inverseFocalAdjustment: { value: new Vector2() },
                     viewportPixelSize: { value: new Vector2() },
-                    k: {value: 2},
-                    beta_k: {value: 2},
-                    minSplatPixelSize: {value: 0},
-                    minOpacity: {value: 0.01},
+                    focal: { value: new Vector2() },
+                    k: {value: 3},
+                    beta_k: {value: 2.426}
                 },
                 vertexShader: splatsVertexShader(),
                 fragmentShader: fragShader ? fragShader : splatsFragmentShader(),
@@ -226,24 +227,27 @@ class SplatsMesh extends Mesh {
         const self = this;
 
     }
-    /**
-     * Sets the splats visualization quality where 1 is the maximum quality and 0 is the fastest
-     * @param {number} quality value between 0 and 1 (1 highest quality) 
-     */
-    setQuality(quality){
-        quality = Math.max(0,Math.min(1,(1-quality)));
-        const k = 2+quality*2;
-        this.material.uniforms.k.value = k;
-        this.material.uniforms.beta_k.value = Math.pow((4.0 * gamma(2.0/k)) /k, k/2);
-        this.material.uniforms.minSplatPixelSize.value = quality*5;
-        this.material.uniforms.minOpacity.value = 0.1+quality*0.09;
-    }
+
     updateShaderParams(camera) {
         const proj = camera.projectionMatrix.elements;
-        
+        this.material.uniforms.inverseFocalAdjustment.value.set(
+            1.0 / proj[0],   // proj[0] == projectionMatrix[0][0]
+            1.0 / proj[5]    // proj[1][1]
+        );
         this.renderer.getSize(this.material.uniforms.viewportPixelSize.value);
         this.material.uniforms.viewportPixelSize.value.multiplyScalar(this.renderer.getPixelRatio())
+
+        const focalLengthX = camera.projectionMatrix.elements[0] * 0.5 *
+            this.material.uniforms.viewportPixelSize.value.x;
+        const focalLengthY = camera.projectionMatrix.elements[5] * 0.5 *
+            this.material.uniforms.viewportPixelSize.value.y;
+
+        this.material.uniforms.focal.value.set(focalLengthX, focalLengthY);
+
+        this.material.uniforms.viewportPixelSize.value.x = 2.0 / this.material.uniforms.viewportPixelSize.value.x;
+        this.material.uniforms.viewportPixelSize.value.y = 2.0 / this.material.uniforms.viewportPixelSize.value.y;
     }
+
     dispose() {
         this.material.dispose();
         this.copyMaterial2D.dispose();
@@ -471,10 +475,10 @@ class SplatsMesh extends Mesh {
 
     }
 
-    
+
     addSplatsBatch(positionsStartIndex, address, positions, colors, cov1, cov2) {
 
-        
+
         const positionColorArray = new Uint32Array(this.batchSize * 4);
         const covarianceArray = new Uint32Array(this.batchSize * 4);
 
@@ -488,13 +492,13 @@ class SplatsMesh extends Mesh {
 
             if (positionIndex >= positions.count) break;
 
-            function f32ToU32( f ) {
-                return (new Uint32Array( new Float32Array( [ f ] ).buffer ))[ 0 ];
+            function f32ToU32(f) {
+                return (new Uint32Array(new Float32Array([f]).buffer))[0];
             }
-            positionColorArray[arrayIndexBase4    ] = positions[pIndex3    ];
+            positionColorArray[arrayIndexBase4] = positions[pIndex3];
             positionColorArray[arrayIndexBase4 + 1] = positions[pIndex3 + 1];
             positionColorArray[arrayIndexBase4 + 2] = positions[pIndex3 + 2];
-            
+
 
             const r = Math.floor(colors.getX(positionIndex) * 255 + 0.5) | 0;
             const g = Math.floor(colors.getY(positionIndex) * 255 + 0.5) | 0;
@@ -580,9 +584,9 @@ class SplatsMesh extends Mesh {
             resolveDepthBuffer: false,
         })
 
-        covarianceRenderTarget.texture.type          = UnsignedIntType;        // not FloatType!
+        covarianceRenderTarget.texture.type = UnsignedIntType;        // not FloatType!
         covarianceRenderTarget.texture.internalFormat = 'RGBA32UI';
-        covarianceRenderTarget.texture.format         = RGBAIntegerFormat;     // ← add
+        covarianceRenderTarget.texture.format = RGBAIntegerFormat;     // ← add
 
         this.renderer.initRenderTarget(covarianceRenderTarget);
         this.copyTex3D(this.covarianceRenderTarget.texture, covarianceRenderTarget, this.numTextures);
@@ -657,17 +661,17 @@ uniform highp usampler3D positionColorTexture;
 uniform highp usampler3D covarianceTexture;
 uniform mat3 zUpToYUpMatrix3x3;
 uniform float logDepthBufFC;
+uniform vec2 inverseFocalAdjustment;   // 1 / (fx, fy)
+uniform vec2 viewportPixelSize;        // vec2(2.0/width , 2.0/height)
 //uniform float cameraNear;
 //uniform float cameraFar;
 //uniform bool computeLinearDepth;
-uniform vec2 viewportPixelSize;        // vec2(width , height)
+const float INV_SQRT8 = 0.353553390593273762200422;
+uniform vec2 focal;
 uniform float k;
 uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
-uniform float minSplatPixelSize;
-uniform float minOpacity;
 
-
-void getVertexData(out vec3 position, out mat3 covariance) {
+void getVertexData(out vec3 p, out vec4 c,  out mat3 covariance) {
     /* float index = float(order)+0.1; // add small offset to avoid floating point errors with modulo
     float pixelsPerSlice = textureSize * textureSize;
     float sliceIndex = floor(index / pixelsPerSlice);
@@ -697,9 +701,10 @@ void getVertexData(out vec3 position, out mat3 covariance) {
 
     // Position
     uvec4 positionColor = texelFetch(positionColorTexture, coord,0);
-    position = vec3(uintBitsToFloat(positionColor.r),uintBitsToFloat(positionColor.g),uintBitsToFloat(positionColor.b));
+    p = (modelMatrix * vec4(uintBitsToFloat(positionColor.r),uintBitsToFloat(positionColor.g),uintBitsToFloat(positionColor.b),1.0)).xyz;
     
-    color = vec4( (positionColor.a & 255u),
+    //color
+    c = vec4( (positionColor.a & 255u),
                   (positionColor.a >> 8)  & 255u,
                   (positionColor.a >> 16) & 255u,
                   (positionColor.a >> 24) ) / 255.0;
@@ -719,120 +724,88 @@ void getVertexData(out vec3 position, out mat3 covariance) {
     mat3 modelRotation = zUpToYUpMatrix3x3*transpose(mat3(modelMatrix));
     covariance = transpose(zUpToYUpMatrix3x3) * covariance * zUpToYUpMatrix3x3;
     covariance = transpose(modelRotation) * covariance * (modelRotation);
-}
-
-bool modelTransform(in vec3 splatWorld, in mat3 covariance, inout vec3 vertexPosition) {
-
-    /* camera‑space Jacobian rows ----------------------------------------- */
-    vec3 posCam = (viewMatrix * vec4(splatWorld, 1.0)).xyz;
-    float invZ  = 1.0 / posCam.z;
-    float invZ2 = invZ * invZ;
-    float fx    = projectionMatrix[0][0];
-    float fy    = projectionMatrix[1][1];
-
-    vec3 j0 = vec3(fx * invZ,            0.0, -fx * posCam.x * invZ2);
-    vec3 j1 = vec3(0.0,  fy * invZ, -fy * posCam.y * invZ2);
-
-    mat3 viewRotT = transpose(mat3(viewMatrix));
-    vec3 j0W = viewRotT * j0;
-    vec3 j1W = viewRotT * j1;
-
-    vec3 tmp0 = covariance * j0W;
-    vec3 tmp1 = covariance * j1W;
-    float a = dot(j0W, tmp0);
-    float b = dot(j0W, tmp1);
-    float c = dot(j1W, tmp1);
-
-    float halfTrace = 0.5 * (a + c);
-    float rootTerm  = sqrt(max(halfTrace * halfTrace - (a * c - b * b), 0.0));
-    float lambda1   = halfTrace + rootTerm;
-    float lambda2   = halfTrace - rootTerm;
-
-    if(min(lambda2,lambda1)<=0.0) {
-        return false;
-    }
-    
-
-
-    vec2 eig1 = (abs(b) < 1e-7)
-              ? ((a >= c) ? vec2(1.0, 0.0) : vec2(0.0, 1.0))
-              : normalize(vec2(b, lambda1 - a));
-    vec2 eig2 = vec2(-eig1.y, eig1.x);
-
-    eig1 *= sqrt(lambda1) * 2.0;
-    eig2 *= sqrt(lambda2) * 2.0;
-
-    float alpha = dot(j0, j0);
-    float beta  = dot(j0, j1);
-    float gamma = dot(j1, j1);
-    float invDet = 1.0 / (alpha * gamma - beta * beta);
-
-    vec3 deltaCam1 = ( gamma * eig1.x - beta * eig1.y) * j0 +
-                     (-beta * eig1.x + alpha * eig1.y) * j1;
-    vec3 deltaCam2 = ( gamma * eig2.x - beta * eig2.y) * j0 +
-                     (-beta * eig2.x + alpha * eig2.y) * j1;
-    deltaCam1 *= invDet*0.5;
-    deltaCam2 *= invDet*0.5;
-
-    vec3 axisW1 = viewRotT * deltaCam1;
-    vec3 axisW2 = viewRotT * deltaCam2;
-
-    vertexPosition = vertexPosition.x * axisW1 + vertexPosition.y * axisW2;
-    return true;
+    //covariance = transpose(zUpToYUpMatrix3x3) * covariance * zUpToYUpMatrix3x3;
 }
 
 
-void main() {
+void main () {
+
     vUv = vec2(position);
 
-    splatPositionModel = vec3(0.0);
-    mat3 covariance = mat3(0.0);
-    getVertexData(splatPositionModel, covariance);
-    
+    /* splat centre + 3‑D covariance in model space */
+    mat3  Vrk = mat3(0.0);
+    getVertexData(splatPositionWorld, color, Vrk);
+
     /* opacity ‑> stds */
     float maxV     = min(1.0,max(color.a, 0.0001));
-    float thresh     = min(minOpacity, maxV);
-    if(thresh >= maxV) return;
+    float thresh     = min(0.05, maxV);
+    if(thresh == maxV) return;
     float lnRatio = log(thresh/maxV);
     stds      = pow(-8.0 * lnRatio/beta_k, 1.0/k);//sqrt(2.0 * log(maxV / thresh));
-    
 
-    splatPositionWorld = (modelMatrix * vec4(splatPositionModel, 1.0)).xyz;//+vec3(999999);
-    vec4 splatPositionProjected = projectionMatrix * viewMatrix * vec4(splatPositionWorld, 1.0);
+    /* view‑space quantities */
+    vec4 splatPositionView = (viewMatrix * vec4(splatPositionWorld, 1.0));
+    vec4 splatPositionProjected = projectionMatrix* splatPositionView;
+
     float clip = 1.2 * splatPositionProjected.w;
     if (splatPositionProjected.z < -splatPositionProjected.w || splatPositionProjected.x < -clip || splatPositionProjected.x > clip || splatPositionProjected.y < -clip || splatPositionProjected.y > clip) {
-        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
         return;
     }
 
-    vec3 offsetWorld = vec3(position)*sizeMultiplier*0.5*stds;
-    
-    bool valid = modelTransform(splatPositionWorld, covariance, offsetWorld);
-    if(!valid) return;
-    
-    vec4 outPosition = projectionMatrix * viewMatrix * vec4(offsetWorld+splatPositionWorld,1.0);
-    
-    vec3 glPosNDC = outPosition.xyz / outPosition.w;
-    vec3 splatPosNDC = splatPositionProjected.xyz / splatPositionProjected.w;
-    vec2 pixelOffset = abs((glPosNDC - splatPosNDC).xy)*viewportPixelSize;
+    vec3 ndcCenter = splatPositionProjected.xyz / splatPositionProjected.w;
 
-    if(pixelOffset.x < minSplatPixelSize && pixelOffset.y < minSplatPixelSize){
+    float invZ  = 1.0 / splatPositionView.z;
+    float s = invZ*invZ;
+
+    mat3 J = mat3(
+        focal.x * invZ, 0.0, -(focal.x * splatPositionView.x) * s,
+        0.0, focal.y * invZ, -(focal.y * splatPositionView.y) * s,
+        0.0, 0.0, 0.0
+    ); 
+    mat3 W = transpose(mat3(viewMatrix));
+    mat3 T = W * J;
+    mat3 cov2Dm = transpose(T) * Vrk * T;
+    //cov2Dm[0][0] += 0.3;
+    //cov2Dm[1][1] += 0.3;
+
+
+    vec3 cov2Dv = vec3(cov2Dm[0][0], cov2Dm[0][1], cov2Dm[1][1]);
+    float a = cov2Dv.x;
+    float d = cov2Dv.z;
+    float b = cov2Dv.y;
+    float D = a * d - b * b;
+    float trace = a + d;
+    float traceOver2 = 0.5 * trace;
+    float term2 = sqrt(max(0.0f, traceOver2 * traceOver2 - D));
+    float eigenValue1 = traceOver2 + term2;
+    float eigenValue2 = traceOver2 - term2;
+
+    if (min(eigenValue2,eigenValue1) <= 1e-9) {
         return;
     }
-    
-    gl_Position = outPosition;
-    /* if(computeLinearDepth){
-        orthographicDepth = viewZToOrthographicDepth( -gl_Position.w, cameraNear, cameraFar );
-    } */
-    
-    #if defined( USE_LOGDEPTHBUF )
-	    float isPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
-        splatDepth = isPerspective == 0.0 ? splatPositionProjected.z : log2( 1.0 + splatPositionProjected.w ) * logDepthBufFC * 0.5;
-    #else
-        splatDepth = (splatPositionProjected.z / splatPositionProjected.w)* 0.5 + 0.5;
-    #endif
 
     
+    vec2 eigenVector1 = normalize(vec2(b, eigenValue1 - a));
+    vec2 eigenVector2 = vec2(-eigenVector1.y, eigenVector1.x);
+
+    float sx = stds * sqrt(eigenValue1)* sizeMultiplier;
+    float sy = stds * sqrt(eigenValue2)* sizeMultiplier;
+    if(sx < 2.5 || sy < 2.5) return;
+    vec2 basisVector1 = eigenVector1 * min(sx, 2048.0);
+    vec2 basisVector2 = eigenVector2 * min(sy, 2048.0);
+
+    vec2 ndcOffset = vec2(position.x * basisVector1 + position.y * basisVector2) * viewportPixelSize*0.5;
+
+    gl_Position = vec4(ndcCenter.xy + ndcOffset, ndcCenter.z, 1.0);
+    
+
+#if defined( USE_LOGDEPTHBUF )
+    float persp  = float( isPerspectiveMatrix( projectionMatrix ) );
+    splatDepth   = (persp == 0.0) ? gl_Position.z
+                 : log2(1.0 + gl_Position.w) * logDepthBufFC * 0.5;
+#else
+    splatDepth   = (gl_Position.z / gl_Position.w) * 0.5 + 0.5;
+#endif
 }
 `};
 export function splatsFragmentShader() {
@@ -850,7 +823,6 @@ in float splatDepth;
 layout(location = 0) out vec4 fragColor;
 
 uniform float textureSize;
-
 uniform float k;
 uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
 

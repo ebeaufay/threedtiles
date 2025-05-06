@@ -95,100 +95,9 @@ const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
 const controller = initController(camera, domContainer);
-const control = new TransformControls(camera, renderer.domElement);
-const gizmo = control.getHelper();
-scene.add(gizmo);
 
-control.addEventListener('dragging-changed', function (event) {
 
-    controller.enabled = !event.value;
 
-});
-window.addEventListener( 'keydown', function ( event ) {
-
-    switch ( event.key ) {
-
-        case 'q':
-            control.setSpace( control.space === 'local' ? 'world' : 'local' );
-            break;
-
-        case 'Shift':
-            control.setTranslationSnap( 1 );
-            control.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
-            control.setScaleSnap( 0.25 );
-            break;
-
-        case 'w':
-            control.setMode( 'translate' );
-            break;
-
-        case 'e':
-            control.setMode( 'rotate' );
-            break;
-
-        case 'r':
-            control.setMode( 'scale' );
-            break;
-
-        case 'c':
-            const position = currentCamera.position.clone();
-
-            currentCamera = currentCamera.isPerspectiveCamera ? cameraOrtho : cameraPersp;
-            currentCamera.position.copy( position );
-
-            orbit.object = currentCamera;
-            control.camera = currentCamera;
-
-            currentCamera.lookAt( orbit.target.x, orbit.target.y, orbit.target.z );
-            onWindowResize();
-            break;
-
-        case 'v':
-            const randomFoV = Math.random() + 0.1;
-            const randomZoom = Math.random() + 0.1;
-
-            cameraPersp.fov = randomFoV * 160;
-            cameraOrtho.bottom = - randomFoV * 500;
-            cameraOrtho.top = randomFoV * 500;
-
-            cameraPersp.zoom = randomZoom * 5;
-            cameraOrtho.zoom = randomZoom * 5;
-            onWindowResize();
-            break;
-
-        case '+':
-        case '=':
-            control.setSize( control.size + 0.1 );
-            break;
-
-        case '-':
-        case '_':
-            control.setSize( Math.max( control.size - 0.1, 0.1 ) );
-            break;
-
-        case 'x':
-            control.showX = ! control.showX;
-            break;
-
-        case 'y':
-            control.showY = ! control.showY;
-            break;
-
-        case 'z':
-            control.showZ = ! control.showZ;
-            break;
-
-        case ' ':
-            control.enabled = ! control.enabled;
-            break;
-
-        case 'Escape':
-            control.reset();
-            break;
-
-    }
-
-} );
 const gl = renderer.getContext();
 const cropRadiusSlider = document.getElementById("cropRadius");
 const cropRadiusValue = document.getElementById("cropRadiusValue");
@@ -198,11 +107,6 @@ let ogc3DTiles;
 tileLoader = initTileLoader();
 ogc3DTiles = initTilesets(scene, tileLoader, "INCREMENTAL", 1.0, 1.0);
 
-const geometry = new THREE.BoxGeometry( 1, 1, 1 ); 
-const material = new THREE.MeshStandardMaterial( {color: 0x00ff00, transparent: true, opacity: 0.5} ); 
-const cube = new THREE.Mesh( geometry, material ); 
-scene.add( cube );
-control.attach(cube)
 const matrices = [];
 window.addEventListener( 'keydown', function ( e ) {
     if(e.key === 'Enter'){
@@ -281,7 +185,7 @@ function reloadTileset(loadingStrategy, geometricErrorMultiplier, distanceBias) 
 function initTileLoader() {
     const ktx2Loader = new KTX2Loader();
     ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
-    const mat = new THREE.MeshStandardMaterial({vertexColors: true, fog: true, side: THREE.DoubleSide});
+    const mat = new THREE.MeshStandardMaterial({vertexColors: true, fog: false, side: THREE.DoubleSide});
     const tileLoader = new TileLoader({
         renderer: renderer,
         //ktx2Loader:ktx2Loader,
@@ -346,7 +250,7 @@ let previousFrame = performance.now();
 animate();
 
 let sky, sun;
-initSky();
+//initSky();
 function initSky() {
     sky = new Sky();
     sky.scale.setScalar(450000);
@@ -395,7 +299,7 @@ function initScene() {
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
     //scene.background = new THREE.Color(0xE5E3E4);
-    scene.background = new THREE.Color(0xffffff);
+    scene.background = new THREE.Color(0x000000);
     const axesHelper = new THREE.AxesHelper(50000000);
     //scene.add(axesHelper);
 
@@ -405,7 +309,7 @@ function initScene() {
     //const helper = new THREE.DirectionalLightHelper(dirLight, 50);
     //scene.add(helper);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
-    scene.fog = new THREE.FogExp2( 0xcccccc, 0.01 );
+    //scene.fog = new THREE.FogExp2( 0xcccccc, 0.01 );
     //const directionalLight = new THREE.DirectionalLight( 0xffffff, 2.0 );
     //scene.add( directionalLight );
 
@@ -446,7 +350,7 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: false, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(1);
     renderer.maxSamples = 0;
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
@@ -526,14 +430,18 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         // url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ifc/architecture/tileset.json",
-        url: "https://storage.googleapis.com/ogc-3d-tiles/ifc/utilities/tileset.json", //UM
+        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/andxwv8gxi6/tileset/tileset.json", //UM
+        url: "http://localhost:8080/tileset.json", //UM
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/rockgarden/teratile/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier: 1.0,
+        geometricErrorMultiplier:10.0,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
-        static: false,
-        centerModel: true,
+        static: true,
+        centerModel: false,
+        splatsQuality: 0.5,
+        
         //loadingStrategy: "IMMEDIATE",
         distanceBias: distanceBias,
         drawBoundingVolume: false,
@@ -544,7 +452,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     });
     scene.add(ogc3DTile2);
-    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1.0);
+    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
 
     /* const googleTiles = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",
@@ -719,11 +627,11 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.01, 2000);
 
-    camera.position.set(100, 100, 0);
+    camera.position.set(0.1, 5, 0);
 
-    camera.lookAt(0, 0.0, 0);
+    camera.lookAt(0, 0.05, 0);
 
     camera.matrixAutoUpdate = true;
 
@@ -754,8 +662,11 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0, 0.0, 0);
-
+    controller.target.set(0, 0.05, 0);
+    controller.rotateSpeed = 0.5;
+    controller.panSpeed = 0.5;
+    controller.enableDamping = true;
+    controller.dampingFactor = 0.1;
 
     controller.minDistance = 0;
     controller.maxDistance = 10000000;
