@@ -105,6 +105,7 @@ Contact: emeric.beaufays@jdultra.com
 - quantization, draco, mshopt and ktx2 compression support
 - point clouds (only through gltf/glb tiles)
 - loading strategy options ("incremental" or "immediate")
+- Gaussian splats (unofficial gltf extension for now)
 
 
 OGC3DTiles 1.1 are supported.
