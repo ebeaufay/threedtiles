@@ -20,8 +20,6 @@
 # external modules
 node_modules
 
-#build folder
-dist
 
 #test datasets
 yamato
@@ -52,5 +50,3 @@ textured_spaceship
 # package-lock
 *package-lock.json
 
-dist/index.js
-dist/index.js.map
