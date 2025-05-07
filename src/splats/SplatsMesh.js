@@ -236,7 +236,7 @@ class SplatsMesh extends Mesh {
         this.material.uniforms.k.value = k;
         this.material.uniforms.beta_k.value = Math.pow((4.0 * gamma(2.0/k)) /k, k/2);
         this.material.uniforms.minSplatPixelSize.value = quality*5;
-        this.material.uniforms.minOpacity.value = 0.1+quality*0.09;
+        this.material.uniforms.minOpacity.value = 0.01+quality*0.09;
     }
     updateShaderParams(camera) {
         const proj = camera.projectionMatrix.elements;
