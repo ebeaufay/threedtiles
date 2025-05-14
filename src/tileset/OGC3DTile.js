@@ -82,13 +82,15 @@ class OGC3DTile extends THREE.Object3D {
      *      -  "IMMEDIATE" skips intermediate LODs. tiles are missing until loaded when moving to a new area
      * @param {String} [properties.drawBoundingVolume = false] - optional draws the bounding volume (may cause flickering)
      * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
-     * @param {number} [properties.splatsQuality = 1.0] - optional pass a visual quality for splats between 0 and 1. Lower quality improves performance at the cost of visual approximations.
+     * @param {number} [properties.splatsQuality = 0.75] - optional pass a visual quality for splats between 0 and 1. Lower quality improves performance at the cost of visual approximations.
+     * @param {number} [properties.splatsCPUCulling = false] - optional if true, splats are culled on CPU asynchronously. Better frame-rate and faster sorting but splats are absent when camera moves quickly until sort finishes.
      */
     constructor(properties) {
         super();
         const self = this;
         self.splatsMesh = properties.splatsMesh;
-        self.splatsQuality = properties.splatsQuality!=undefined?properties.splatsQuality:1.0;
+        self.splatsQuality = properties.splatsQuality!=undefined?properties.splatsQuality:0.75;
+        self.splatsCPUCulling = properties.splatsCPUCulling!=undefined?properties.splatsQuality:false;
         this.contentURL = [];
         if (!!properties.domWidth && !!properties.domHeight) {
             this.rendererSize = new THREE.Vector2(properties.domWidth, properties.domHeight);
@@ -243,6 +245,20 @@ class OGC3DTile extends THREE.Object3D {
     }
 
     /**
+     * Set the splats to use CPU culling. Faster sort and better frame rate at the cost of splats being absent when camera moves quickly.
+     * @param {boolean} splatsCPUCulling 
+     */
+    setSplatsCPUCulling(splatsCPUCulling){
+        this.splatsCPUCulling = splatsCPUCulling;
+        if(this.splatsMesh) this.splatsMesh.setSplatsCPUCulling(splatsCPUCulling)
+    }
+
+    setSplatsQuality(splatsQuality){
+        this.splatsQuality = splatsQuality;
+        if(this.splatsMesh) this.splatsMesh.setQuality(splatsQuality)
+    }
+
+    /**
      * Manually updates all the matrices of the tileset. 
      * To be called after transforming a {@link OGC3DTile tileset} instantiated with the "static" option
      */
@@ -284,6 +300,7 @@ class OGC3DTile extends THREE.Object3D {
             if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats") || properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats_V2")) {
                 self.splatsMesh = new SplatsMesh(self.tileLoader.renderer)
                 self.splatsMesh.setQuality(self.splatsQuality);
+                self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                 self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
                 self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
                 if(self.static) self.splatsMesh.matrixWorldAutoUpdate = false;
@@ -834,7 +851,17 @@ class OGC3DTile extends THREE.Object3D {
             transformedCameraPosition.copy(camera.position);
             inverseWorld.copy(this.matrixWorld).invert();
             transformedCameraPosition.applyMatrix4(inverseWorld);
-            this.splatsMesh.sort(transformedCameraPosition);
+            
+            if(this.splatsCPUCulling){
+                const viewProjModel = new THREE.Matrix4()
+                .multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse ) //  P·V
+                .multiply( this.matrixWorld ); 
+                this.splatsMesh.sort(transformedCameraPosition, viewProjModel);
+            }else{
+                this.splatsMesh.sort(transformedCameraPosition);
+            }
+            
+
         }
 
         return { numTilesLoaded: numTiles[0], numTilesRendered: numTilesRendered[0], maxLOD: maxLOD[0], percentageLoaded: percentageLoaded[0] }

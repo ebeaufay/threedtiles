@@ -4,7 +4,7 @@ import {
     NearestFilter, Data3DTexture, DataTexture, UnsignedByteType, BufferAttribute, InstancedBufferAttribute, DynamicDrawUsage,
     LinearSRGBColorSpace, InstancedBufferGeometry,
     WebGL3DRenderTarget, OrthographicCamera, Scene,
-    NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor
+    NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor, Matrix4
 } from "three";
 import { gamma } from 'mathjs';
 import {
@@ -20,6 +20,12 @@ zUpToYUpMatrix3x3.set(
     1, 0, 0,
     0, 0, 1,
     0, -1, 0);
+    const inverseZUpToYUpMatrix4x4 = new Matrix4().set(
+        1, 0,  0, 0, 
+        0, 0, -1, 0, 
+        0, 1,  0, 0, 
+        0, 0,  0, 1
+    );
 
 function packHalf2x16(x, y) {
     return (DataUtils.toHalfFloat(x) | (DataUtils.toHalfFloat(y) << 16)) >>> 0;
@@ -30,7 +36,7 @@ class SplatsMesh extends Mesh {
         const textureSize = 1024;
 
         const numTextures = 1;
-        const batchSize = Math.min(Math.ceil(1024 / textureSize) * textureSize, Math.pow(textureSize, 2));
+        const batchSize = Math.min(Math.ceil(4096 / textureSize) * textureSize, Math.pow(textureSize, 2));
         let maxSplats = numTextures * Math.pow(textureSize, 2);
         maxSplats = Math.floor(maxSplats / batchSize) * batchSize;
 
@@ -81,10 +87,12 @@ class SplatsMesh extends Mesh {
                     cameraFar: { value: 10 },
                     computeLinearDepth: { value: true },
                     viewportPixelSize: { value: new Vector2() },
-                    k: {value: 2},
-                    beta_k: {value: 2},
-                    minSplatPixelSize: {value: 0},
-                    minOpacity: {value: 0.01},
+                    k: { value: 2 },
+                    beta_k: { value: 2 },
+                    minSplatPixelSize: { value: 0 },
+                    minOpacity: { value: 0.01 },
+                    culling: {value: true},
+                    antialiasingFactor: {value: 2.0}
                 },
                 vertexShader: splatsVertexShader(),
                 fragmentShader: fragShader ? fragShader : splatsFragmentShader(),
@@ -144,6 +152,7 @@ class SplatsMesh extends Mesh {
 
         this.sortListeners = [];
         this.worker.onmessage = message => {
+            //console.log(message.data.sortPerf)
             const newOrder = new Uint32Array(message.data.order);
             this.numSplatsRendered = newOrder.length;
             //console.log(newOrder.length)
@@ -171,7 +180,7 @@ class SplatsMesh extends Mesh {
             this.orderAttribute.addUpdateRange(0, newOrder.length);
             this.orderAttribute.needsUpdate = true;
             this.geometry.instanceCount = message.data.count;
-            console.log(this.geometry.instanceCount)
+            //console.log(this.geometry.instanceCount)
             this.geometry.needsUpdate = true;
             for (let i = this.sortListeners.length - 1; i >= 0; i--) {
                 const done = this.sortListeners[i](message.data.id);
@@ -181,6 +190,7 @@ class SplatsMesh extends Mesh {
             }
         }
         this.cameraPosition = new Vector3(0, 0, 0);
+        this.viewProjModel;
         this.rotateOnAxis(new Vector3(1, 0, 0), Math.PI * 0.5);
         this.frustumCulled = false;
 
@@ -230,19 +240,30 @@ class SplatsMesh extends Mesh {
      * Sets the splats visualization quality where 1 is the maximum quality and 0 is the fastest
      * @param {number} quality value between 0 and 1 (1 highest quality) 
      */
-    setQuality(quality){
-        quality = Math.max(0,Math.min(1,(1-quality)));
-        const k = 2+quality*2;
+    setQuality(quality) {
+        quality = Math.max(0, Math.min(1, (1 - quality)));
+        const k = 2 + quality * 2;
         this.material.uniforms.k.value = k;
-        this.material.uniforms.beta_k.value = Math.pow((4.0 * gamma(2.0/k)) /k, k/2);
-        this.material.uniforms.minSplatPixelSize.value = quality*5;
-        this.material.uniforms.minOpacity.value = 0.01+quality*0.09;
+        this.material.uniforms.beta_k.value = Math.pow((4.0 * gamma(2.0 / k)) / k, k / 2);
+        this.material.uniforms.minSplatPixelSize.value = quality * 5;
+        this.material.uniforms.minOpacity.value = 0.01;// + quality * 0.09;
+    }
+    setSplatsCPUCulling(splatsCPUCuling){
+        this.splatsCPUCuling = splatsCPUCuling;
+        this.material.uniforms.culling.value = !splatsCPUCuling;
     }
     updateShaderParams(camera) {
         const proj = camera.projectionMatrix.elements;
-        
+
         this.renderer.getSize(this.material.uniforms.viewportPixelSize.value);
-        this.material.uniforms.viewportPixelSize.value.multiplyScalar(this.renderer.getPixelRatio())
+        const pixelRatio = this.renderer.getPixelRatio();
+        this.material.uniforms.viewportPixelSize.value.multiplyScalar(pixelRatio)
+        if(pixelRatio<1){
+            this.material.uniforms.antialiasingFactor.value = 2;//pixelRatio;
+        }else{
+            this.material.uniforms.antialiasingFactor.value = 2;
+        }
+        
     }
     dispose() {
         this.material.dispose();
@@ -311,20 +332,31 @@ class SplatsMesh extends Mesh {
         this.material.uniforms.cropRadius.value = cropRadius;
     }
 
-    sort(cameraPosition) {
+    sort(cameraPosition, viewProjModel) {
         if (!this.worker) return;
-        if (!cameraPosition && this.cameraPosition) {
+        if (!cameraPosition) {
             this.worker.postMessage({
                 method: "sort",
                 xyz: [this.cameraPosition.x, this.cameraPosition.z, -this.cameraPosition.y],
+                vpm: this.viewProjModel && this.splatsCPUCuling?this.viewProjModel.toArray():undefined,
                 id: this.sortID++
             })
         }
         else if (!this.cameraPosition || !cameraPosition.equals(this.cameraPosition)) {
             this.cameraPosition.copy(cameraPosition);
+            if(!!viewProjModel){
+                if (!this.viewProjModel) this.viewProjModel = new Matrix4();
+                this.viewProjModel.copy(viewProjModel);
+                this.viewProjModel.multiply(inverseZUpToYUpMatrix4x4);
+            }else{
+                this.viewProjModel = undefined;
+            }
+            
+            
             this.worker.postMessage({
                 method: "sort",
                 xyz: [this.cameraPosition.x, this.cameraPosition.z, -this.cameraPosition.y],
+                vpm: this.viewProjModel && this.splatsCPUCuling?this.viewProjModel.toArray():undefined,
                 id: this.sortID++
             })
         }
@@ -413,6 +445,7 @@ class SplatsMesh extends Mesh {
                     method: "hideBatches",
                     insertionIndexes: pointManagerAddresses,
                     xyz: [self.cameraPosition.x, self.cameraPosition.z, -self.cameraPosition.y],
+                    vpm: this.viewProjModel && this.splatsCPUCuling?this.viewProjModel.toArray():undefined,
                     id: self.sortID++
                 });
             }
@@ -438,6 +471,7 @@ class SplatsMesh extends Mesh {
                     method: "showBatches",
                     insertionIndexes: pointManagerAddresses,
                     xyz: [self.cameraPosition.x, self.cameraPosition.z, -self.cameraPosition.y],
+                    vpm: this.viewProjModel && this.splatsCPUCuling?this.viewProjModel.toArray():undefined,
                     id: self.sortID++
                 });
             }
@@ -451,6 +485,7 @@ class SplatsMesh extends Mesh {
                 method: "removeBatches",
                 insertionIndexes: pointManagerAddresses,
                 xyz: [self.cameraPosition.x, self.cameraPosition.z, -self.cameraPosition.y],
+                vpm: this.viewProjModel && this.splatsCPUCuling?this.viewProjModel.toArray():undefined,
                 id: self.sortID++
             });
             textureAddresses.forEach(address => self.freeAddresses.add(address));
@@ -471,10 +506,10 @@ class SplatsMesh extends Mesh {
 
     }
 
-    
+
     addSplatsBatch(positionsStartIndex, address, positions, colors, cov1, cov2) {
 
-        
+
         const positionColorArray = new Uint32Array(this.batchSize * 4);
         const covarianceArray = new Uint32Array(this.batchSize * 4);
 
@@ -488,13 +523,13 @@ class SplatsMesh extends Mesh {
 
             if (positionIndex >= positions.count) break;
 
-            function f32ToU32( f ) {
-                return (new Uint32Array( new Float32Array( [ f ] ).buffer ))[ 0 ];
+            function f32ToU32(f) {
+                return (new Uint32Array(new Float32Array([f]).buffer))[0];
             }
-            positionColorArray[arrayIndexBase4    ] = positions[pIndex3    ];
+            positionColorArray[arrayIndexBase4] = positions[pIndex3];
             positionColorArray[arrayIndexBase4 + 1] = positions[pIndex3 + 1];
             positionColorArray[arrayIndexBase4 + 2] = positions[pIndex3 + 2];
-            
+
 
             const r = Math.floor(colors.getX(positionIndex) * 255 + 0.5) | 0;
             const g = Math.floor(colors.getY(positionIndex) * 255 + 0.5) | 0;
@@ -580,9 +615,9 @@ class SplatsMesh extends Mesh {
             resolveDepthBuffer: false,
         })
 
-        covarianceRenderTarget.texture.type          = UnsignedIntType;        // not FloatType!
+        covarianceRenderTarget.texture.type = UnsignedIntType;        // not FloatType!
         covarianceRenderTarget.texture.internalFormat = 'RGBA32UI';
-        covarianceRenderTarget.texture.format         = RGBAIntegerFormat;     // ← add
+        covarianceRenderTarget.texture.format = RGBAIntegerFormat;     // ← add
 
         this.renderer.initRenderTarget(covarianceRenderTarget);
         this.copyTex3D(this.covarianceRenderTarget.texture, covarianceRenderTarget, this.numTextures);
@@ -665,6 +700,8 @@ uniform float k;
 uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
 uniform float minSplatPixelSize;
 uniform float minOpacity;
+uniform bool culling;
+uniform float antialiasingFactor;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -742,7 +779,15 @@ bool modelTransform(in vec3 splatWorld, in mat3 covariance, inout vec3 vertexPos
     float a = dot(j0W, tmp0);
     float b = dot(j0W, tmp1);
     float c = dot(j1W, tmp1);
-
+    float sigmaNDC = (antialiasingFactor / viewportPixelSize.x) * 2.0;
+    float k2 = sigmaNDC * sigmaNDC;
+    float detOrig = a * c - b * b;
+    a += k2;
+    c += k2;
+    float detBlur = a * c - b * b;
+    color.a *= sqrt(detOrig / detBlur);
+    if(color.a < 0.01) return false;
+    //color.a = 1.0;
     float halfTrace = 0.5 * (a + c);
     float rootTerm  = sqrt(max(halfTrace * halfTrace - (a * c - b * b), 0.0));
     float lambda1   = halfTrace + rootTerm;
@@ -797,13 +842,17 @@ void main() {
     stds      = pow(-8.0 * lnRatio/beta_k, 1.0/k);//sqrt(2.0 * log(maxV / thresh));
     
 
-    splatPositionWorld = (modelMatrix * vec4(splatPositionModel, 1.0)).xyz;//+vec3(999999);
+    splatPositionWorld = (modelMatrix * vec4(splatPositionModel, 1.0)).xyz;
     vec4 splatPositionProjected = projectionMatrix * viewMatrix * vec4(splatPositionWorld, 1.0);
-    float clip = 1.2 * splatPositionProjected.w;
-    if (splatPositionProjected.z < -splatPositionProjected.w || splatPositionProjected.x < -clip || splatPositionProjected.x > clip || splatPositionProjected.y < -clip || splatPositionProjected.y > clip) {
-        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
-        return;
+
+    if(culling){
+        float clip = 1.2 * splatPositionProjected.w;
+        if (splatPositionProjected.z < -splatPositionProjected.w || splatPositionProjected.x < -clip || splatPositionProjected.x > clip || splatPositionProjected.y < -clip || splatPositionProjected.y > clip) {
+            gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+            return;
+        }
     }
+    
 
     vec3 offsetWorld = vec3(position)*sizeMultiplier*0.5*stds;
     
@@ -812,13 +861,7 @@ void main() {
     
     vec4 outPosition = projectionMatrix * viewMatrix * vec4(offsetWorld+splatPositionWorld,1.0);
     
-    vec3 glPosNDC = outPosition.xyz / outPosition.w;
-    vec3 splatPosNDC = splatPositionProjected.xyz / splatPositionProjected.w;
-    vec2 pixelOffset = abs((glPosNDC - splatPosNDC).xy)*viewportPixelSize;
-
-    if(pixelOffset.x < minSplatPixelSize && pixelOffset.y < minSplatPixelSize){
-        return;
-    }
+    
     
     gl_Position = outPosition;
     /* if(computeLinearDepth){

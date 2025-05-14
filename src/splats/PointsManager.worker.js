@@ -1,11 +1,12 @@
 import { PointsManager } from "./PointsManager";
 
-const sortCallback = ((array, numUsed, id)=>{
+const sortCallback = ((array, numUsed, id, sortPerf)=>{
     const copy = new Uint32Array(array)
     postMessage({
         order: copy.buffer,
         count: numUsed,
-        id: id
+        id: id,
+        sortPerf: sortPerf
     }, [copy.buffer]);
 })
 let pointsManager;
@@ -34,15 +35,14 @@ self.onmessage = function (e) {
                     e.data.insertionIndexes.forEach(insertionIndex => {
                         pointsManager.hidePoints(insertionIndex);
                     });
-                    pointsManager.sort(e.data.xyz, e.data.id)
+                    pointsManager.sort(e.data.xyz, e.data.vpm, e.data.id)
                 }
 
                 break
             case "show":
-
                 if (!!pointsManager) {
                     pointsManager.showPoints(e.data.insertionIndex);
-                    pointsManager.sort(e.data.xyz, e.data.id)
+                    pointsManager.sort(e.data.xyz, e.data.vpm, e.data.id)
                 }
 
                 break;
@@ -52,14 +52,14 @@ self.onmessage = function (e) {
                     e.data.insertionIndexes.forEach(insertionIndex => {
                         pointsManager.showPoints(insertionIndex);
                     });
-                    pointsManager.sort(e.data.xyz, e.data.id)
+                    pointsManager.sort(e.data.xyz, e.data.vpm, e.data.id)
                 }
 
                 break
             case "remove":
                 if (!!pointsManager) {
                     pointsManager.removePoints(e.data.insertionIndex);
-                    pointsManager.sort(e.data.xyz, e.data.id)
+                    pointsManager.sort(e.data.xyz, e.data.vpm, e.data.id)
                 }
 
                 break
@@ -69,13 +69,14 @@ self.onmessage = function (e) {
                     e.data.insertionIndexes.forEach(insertionIndex => {
                         pointsManager.removePoints(insertionIndex);
                     });
-                    pointsManager.sort(e.data.xyz, e.data.id)
+                    pointsManager.sort(e.data.xyz, e.data.vpm, e.data.id)
                 }
 
                 break
             case "sort":
+                
                 if (!!pointsManager) {
-                    pointsManager.sort(e.data.xyz, e.data.id)
+                    pointsManager.sort(e.data.xyz, e.data.vpm, e.data.id)
                 }
                 break
             default:

@@ -6,7 +6,7 @@ const uintView = new Uint32Array(buffer);
 
 class PointsManager {
     constructor(sortCallback) {
-        this.points = new Float32Array(4096  * 3);
+        this.points = new Float32Array(4096 * 3);
         this.distances = new Uint32Array(4096);
         this.pointSets = new Map(); // Map<number, object>
         this.numUsed = 0;
@@ -104,13 +104,45 @@ class PointsManager {
     }
 
 
+    getFrustumPlanes(viewProj, margin = 1.2) { 
+        const p = new Float32Array(24);
+        let i = 0;
+    
+        const emit = (a, b, c, d, useMargin) => {
+            const invLen = 1 / Math.hypot(a, b, c);
+            p[i++] = a * invLen; // Nx
+            p[i++] = b * invLen; // Ny
+            p[i++] = c * invLen; // Nz
+    
+            let d_normalized = d * invLen; // D_orig
+    
+            if (useMargin && margin !== 1.0) {
+                const shift_amount = (1.0-margin);
+                d_normalized -= shift_amount; // D_new = D_orig - shift_amount
+            }
+            p[i++] = d_normalized; // Store the (potentially shifted) D
+        };
+    
+        //      a,b,c,d args                                                                           useMargin
+        emit(viewProj[3] + viewProj[0],  viewProj[7] + viewProj[4],  viewProj[11] + viewProj[8],  viewProj[15] + viewProj[12], true);  // left
+        emit(viewProj[3] - viewProj[0],  viewProj[7] - viewProj[4],  viewProj[11] - viewProj[8],  viewProj[15] - viewProj[12], true);  // right
+        emit(viewProj[3] + viewProj[1],  viewProj[7] + viewProj[5],  viewProj[11] + viewProj[9],  viewProj[15] + viewProj[13], true);  // bottom
+        emit(viewProj[3] - viewProj[1],  viewProj[7] - viewProj[5],  viewProj[11] - viewProj[9],  viewProj[15] - viewProj[13], true);  // top
+        emit(viewProj[3] + viewProj[2],  viewProj[7] + viewProj[6],  viewProj[11] + viewProj[10], viewProj[15] + viewProj[14], false); // near
+        emit(viewProj[3] - viewProj[2],  viewProj[7] - viewProj[6],  viewProj[11] - viewProj[10], viewProj[15] + viewProj[14], false); // far
+    
+        return p;
+    }
 
-
-    computeDistances(x, y, z) {
+    computeDistances(x, y, z,vpm) {
 
         this.distances.fill(0);
         const keys = Array.from(this.pointSets.keys());
         const numKeys = keys.length;
+        let planes;
+        if(!!vpm){
+            planes = this.getFrustumPlanes(vpm);
+        }
         this.numUsed = 0;
         for (let i = 0; i < numKeys; i++) {
             const key = keys[i];
@@ -132,22 +164,43 @@ class PointsManager {
             //this.numUsed += length
             for (let j = 0; j < length; j++) {
                 const idx = key + (j * 3);
-                const dx = x - this.points[idx];
-                const dy = y - this.points[idx + 1];
-                const dz = z - this.points[idx + 2];
-                const d = dx*dx + dy*dy + dz*dz;
+                const vx = this.points[idx];
+                const vy = this.points[idx + 1];
+                const vz = this.points[idx + 2];
+
+                // frustum culling //
+                if(planes){
+                    let visible = true;
+                    for (let p = 0; p < 24; p += 4) {
+                        if (vx * planes[p] +
+                            vy * planes[p + 1] +
+                            vz * planes[p + 2] +
+                            planes[p + 3] < 0) {    // outside this plane
+                            visible = false;
+                            break;
+                        }
+                    }
+                    if (!visible) continue;
+                }
+                
+                const dx = x - vx;
+                const dy = y - vy;
+                const dz = z - vz;
+                const d = dx * dx + dy * dy + dz * dz;
                 floatView[0] = d;
                 this.distances[c] = uintView[0];
                 this.indexes[c++] = keyBase + j;
             }
         }
+        this.numUsed = c;
         
+        this.indexes = this.indexes.subarray(0, c);
+        this.distances = this.distances.subarray(0, c);
     }
 
-    sort(xyz, id) {
+    sort(xyz, vpm, id) {
         // Always store the latest sort request
-
-        this.pendingSort = xyz;
+        this.pendingSort = { xyz, vpm };
         this.pendingID = id;
         //console.log(`Received sort request with ID: ${id}`);
 
@@ -160,12 +213,12 @@ class PointsManager {
 
     // Asynchronous loop to process sort requests sequentially
     async processSortQueue() {
-        if(!this.initialized){
+        if (!this.initialized) {
             await init();
             this.initialized = true;
         }
         while (this.pendingSort) {
-            const currentSort = this.pendingSort;
+            const { xyz, vpm } = this.pendingSort;
             const currentID = this.pendingID;
 
             // Clear the pending sort to capture any new requests during processing
@@ -174,25 +227,23 @@ class PointsManager {
 
             //console.log(`Starting sort with ID: ${currentID}`);
 
-            const start = performance.now();
+            
 
             // Perform the synchronous sort operations
-            this.computeDistances(currentSort[0], currentSort[1], currentSort[2]);
+
+            this.computeDistances(xyz[0], xyz[1], xyz[2], vpm);
             //console.log((performance.now() - start)+' ms');
-        
+
             //console.log(this.indexes.length)
-            
+            const start = performance.now();
             this.indexes = radix_sort_indices(this.indexes, this.distances);
-            /* radixSort(this.indexes, {
-                get: (el) => this.distances[el],
-                reversed: true
-            }); */
             
+
             const duration = performance.now() - start;
             //console.log(`Sort with ID: ${currentID} completed in ${duration.toFixed(2)}ms`);
 
             // Callback after sorting is done
-            this.sortCallback(this.indexes, this.numUsed, currentID);
+            this.sortCallback(this.indexes, this.numUsed, currentID, duration);
 
             // Yield control to the event loop to handle new incoming sort requests
             await new Promise(resolve => setTimeout(resolve, 0));

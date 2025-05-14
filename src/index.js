@@ -116,7 +116,7 @@ window.addEventListener( 'keydown', function ( e ) {
 });
 //let google = initGoogleTileset(scene, tileLoader, "INCREMENTAL", 0.5, 1.0);
 
-let targetFrameRate = _isMobileDevice() ? 30 : 5000;
+let targetFrameRate = _isMobileDevice() ? 30 : 3000;
 initSliders();
 //const tileLoader = createInstancedTileLoader(scene);
 //initInstancedTilesets(tileLoader);
@@ -350,16 +350,9 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(1);
-    renderer.maxSamples = 0;
+    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: false, powerPreference: "high-performance" });
+    renderer.setPixelRatio(0.75);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    //renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    //renderer.toneMappingExposure = 10.0;
-
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.autoClear = false;
 
     dom.appendChild(renderer.domElement);
@@ -431,16 +424,17 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ifc/architecture/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/andxwv8gxi6/tileset/tileset.json", //UM
-        url: "http://localhost:8080/tileset.json", //UM
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/rockgarden/teratile/tileset.json", //UM
+        url: "https://storage.googleapis.com/ogc-3d-tiles/mirai/lzaro3m_v2/tileset.json", //UM
+        //url: "http://localhost:8080/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier:10.0,
+        geometricErrorMultiplier:99.9,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
         static: true,
         centerModel: false,
-        splatsQuality: 0.5,
+        splatsQuality: 0.75,
+        splatsCPUCulling:true,
         
         //loadingStrategy: "IMMEDIATE",
         distanceBias: distanceBias,
@@ -451,6 +445,11 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         }
 
     });
+    
+    setTimeout(()=>{
+        ogc3DTile2.setSplatsCPUCulling(true);
+        ogc3DTile2.setSplatsCPUCulling(false);
+    },5000)
     scene.add(ogc3DTile2);
     ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
 
@@ -627,11 +626,11 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.01, 2000);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.01, 2000);
 
-    camera.position.set(0.1, 5, 0);
+    camera.position.set(0.1, 1, 0);
 
-    camera.lookAt(0, 0.05, 0);
+    camera.lookAt(0, 0.01, 0);
 
     camera.matrixAutoUpdate = true;
 
@@ -665,7 +664,7 @@ function initController(camera, dom) {
     controller.target.set(0, 0.05, 0);
     controller.rotateSpeed = 0.5;
     controller.panSpeed = 0.5;
-    controller.enableDamping = true;
+    controller.enableDamping = false;
     controller.dampingFactor = 0.1;
 
     controller.minDistance = 0;
@@ -718,7 +717,7 @@ function animate() {
         infoTilesRendered.innerText = info.numTilesRendered
         infoMaxLOD.innerText = info.maxLOD
         infoPercentage.innerText = (info.percentageLoaded * 100).toFixed(1); */
-        controller.update();
+        //controller.update();
 
         /* raycaster.setFromCamera(pointer, camera);
 
