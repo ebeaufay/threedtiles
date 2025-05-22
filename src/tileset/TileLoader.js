@@ -119,16 +119,19 @@ class TileLoader {
     }
     _download() {
 
-        if (this.nextDownloads.length == 0) {
-            this._getNextDownloads();
-            if (this.nextDownloads.length == 0) return;
-        }
-        while (this.nextDownloads.length > 0) {
-            const nextDownload = this.nextDownloads.shift();
-            if (!!nextDownload && nextDownload.shouldDoDownload()) {
-                nextDownload.doDownload();
+        do{
+            if (this.nextDownloads.length == 0) {
+                this._getNextDownloads();
+                if (this.nextDownloads.length == 0) return;
             }
-        }
+            while (this.nextDownloads.length > 0) {
+                const nextDownload = this.nextDownloads.shift();
+                if (!!nextDownload && nextDownload.shouldDoDownload()) {
+                    nextDownload.doDownload();
+                }
+            }
+        }while(this.concurrentDownloads < this.downloadParallelism);
+        
         return;
     }
     _meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {

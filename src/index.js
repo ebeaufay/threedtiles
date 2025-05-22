@@ -57,7 +57,8 @@ let lightTarget = new THREE.Object3D();
 const occlusionCullingService = new OcclusionCullingService();
 occlusionCullingService.setSide(THREE.DoubleSide);
 const scene = initScene();
-
+const axesHelper = new THREE.AxesHelper( 5 );
+scene.add( axesHelper );
 
 
 /* const raycaster = new THREE.Raycaster();
@@ -187,6 +188,7 @@ function initTileLoader() {
     ktx2Loader.setTranscoderPath('https://storage.googleapis.com/ogc-3d-tiles/basis/').detectSupport(renderer);
     const mat = new THREE.MeshStandardMaterial({vertexColors: true, fog: false, side: THREE.DoubleSide});
     const tileLoader = new TileLoader({
+        downloadParallelism: 32,
         renderer: renderer,
         //ktx2Loader:ktx2Loader,
         maxCachedItems: 20,
@@ -299,7 +301,7 @@ function initScene() {
     scene.matrixAutoUpdate = false;
     //scene.matrixWorldAutoUpdate = false;
     //scene.background = new THREE.Color(0xE5E3E4);
-    scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0xffffff);
     const axesHelper = new THREE.AxesHelper(50000000);
     //scene.add(axesHelper);
 
@@ -424,17 +426,18 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ifc/architecture/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/andxwv8gxi6/tileset/tileset.json", //UM
-        url: "https://storage.googleapis.com/ogc-3d-tiles/mirai/lzaro3m_v2/tileset.json", //UM
-        //url: "http://localhost:8080/tileset.json", //UM
+        //url: "https://storage.googleapis.com/ogc-3d-tiles/mirai/lzaro3m_v2/tileset.json", //UM
+        url: "http://localhost:8080/berkFullThree5/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier:99.9,
+        geometricErrorMultiplier:99.5,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
         static: true,
-        centerModel: false,
+        centerModel: true,
         splatsQuality: 0.75,
         splatsCPUCulling:true,
+        clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
         
         //loadingStrategy: "IMMEDIATE",
         distanceBias: distanceBias,
@@ -451,7 +454,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         ogc3DTile2.setSplatsCPUCulling(false);
     },5000)
     scene.add(ogc3DTile2);
-    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * -0.5);
+    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5);
 
     /* const googleTiles = new OGC3DTile({
         url: "https://tile.googleapis.com/v1/3dtiles/root.json",

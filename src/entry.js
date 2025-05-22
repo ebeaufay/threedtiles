@@ -4,3 +4,4 @@ export { TileLoader } from "./tileset/TileLoader";
 export { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 export { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 export { splatsVertexShader, splatsFragmentShader } from "./splats/SplatsMesh.js"
+export {OBB} from "./geometry/obb.js"

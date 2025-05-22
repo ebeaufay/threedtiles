@@ -67,6 +67,7 @@ class OGC3DTile extends THREE.Object3D {
      * @param {Object} [properties.parentBoundingVolume = undefined] - optional bounding volume of the parent
      * @param {String} [properties.parentRefine = undefined] - optional refine strategy of the parent of the parent
      * @param {THREE.Camera} [properties.cameraOnLoad = undefined] - optional the camera used when loading this particular sub-tile
+     * @param {THREE.Box3|THREE.Sphere|OBB} [properties.clipShape = undefined] - optional, specify a clip shape object in world space and tiles outside of the shape will not be loaded. The shape is either a THREE.Box3, THREE.Sphere or OBB (import {OBB} from "threedtiles")
      * @param {OGC3DTile} [properties.parentTile = undefined] - optional the OGC3DTile object that loaded this tile as a child
      * @param {String} [properties.proxy = undefined] - optional the url to a proxy service. Instead of fetching tiles via a GET request, a POST will be sent to the proxy url with the real tile address in the body of the request.
      * @param {Boolean} [properties.displayErrors = false] - optional value indicating that errors should be shown on screen.
@@ -89,14 +90,15 @@ class OGC3DTile extends THREE.Object3D {
         super();
         const self = this;
         self.splatsMesh = properties.splatsMesh;
-        self.splatsQuality = properties.splatsQuality!=undefined?properties.splatsQuality:0.75;
-        self.splatsCPUCulling = properties.splatsCPUCulling!=undefined?properties.splatsQuality:false;
+        self.splatsQuality = properties.splatsQuality != undefined ? properties.splatsQuality : 0.75;
+        self.splatsCPUCulling = properties.splatsCPUCulling != undefined ? properties.splatsQuality : false;
         this.contentURL = [];
         if (!!properties.domWidth && !!properties.domHeight) {
             this.rendererSize = new THREE.Vector2(properties.domWidth, properties.domHeight);
         } else {
             this.rendererSize = new THREE.Vector2(1000, 1000);
         }
+        this.setClipShape(properties.clipShape);
         this.loadingStrategy = properties.loadingStrategy ? properties.loadingStrategy.toUpperCase() : "INCREMENTAL";
         this.distanceBias = Math.max(0.0001, properties.distanceBias ? properties.distanceBias : 1);
         this.proxy = properties.proxy;
@@ -224,6 +226,48 @@ class OGC3DTile extends THREE.Object3D {
 
 
     /**
+     * specify a clip shape object in world space and tiles outside of the shape will not be loaded.
+     * @param {THREE.Box3|THREE.Sphere|OBB} [clipShape = undefined] The shape is either a THREE.Box3, THREE.Sphere or OBB (import {OBB} from "threedtiles")
+     */
+    setClipShape(clipShape) {
+        if (clipShape instanceof OBB || clipShape instanceof THREE.Sphere) {
+            this.clipShape = clipShape;
+        }
+        else if (clipShape instanceof THREE.Box3) {
+            const center = new THREE.Vector3();
+            const halfSize = new THREE.Vector3();
+
+            clipShape.getCenter(center);
+            clipShape.getSize(halfSize).multiplyScalar(0.5);
+
+            // rotation is identity by default, so we omit the third argument
+            this.clipShape = new OBB([
+                center.x, center.y, center.z,
+                halfSize.x, 0, 0,
+                0, halfSize.y, 0,
+                0, 0, halfSize.z
+            ]);
+        }
+        else {
+            clipShape = undefined;
+        }
+        if(this.childrenTiles){
+            this.childrenTiles.forEach(ct=>{
+                ct._setClipShape(this.clipShape);
+            })
+        }
+        
+    }
+
+    _setClipShape(clipShape){
+        this.clipShape = clipShape;
+        if(this.childrenTiles){
+            this.childrenTiles.forEach(ct=>{
+                ct._setClipShape(this.clipShape);
+            })
+        }
+    }
+    /**
      * Specify a size multiplier for splats
      * @param {number} sizeMultiplier 
      */
@@ -248,14 +292,14 @@ class OGC3DTile extends THREE.Object3D {
      * Set the splats to use CPU culling. Faster sort and better frame rate at the cost of splats being absent when camera moves quickly.
      * @param {boolean} splatsCPUCulling 
      */
-    setSplatsCPUCulling(splatsCPUCulling){
+    setSplatsCPUCulling(splatsCPUCulling) {
         this.splatsCPUCulling = splatsCPUCulling;
-        if(this.splatsMesh) this.splatsMesh.setSplatsCPUCulling(splatsCPUCulling)
+        if (this.splatsMesh) this.splatsMesh.setSplatsCPUCulling(splatsCPUCulling)
     }
 
-    setSplatsQuality(splatsQuality){
+    setSplatsQuality(splatsQuality) {
         this.splatsQuality = splatsQuality;
-        if(this.splatsMesh) this.splatsMesh.setQuality(splatsQuality)
+        if (this.splatsMesh) this.splatsMesh.setQuality(splatsQuality)
     }
 
     /**
@@ -264,22 +308,22 @@ class OGC3DTile extends THREE.Object3D {
      */
     updateMatrices() {
         this.updateMatrix();
-        if(this.splatsMesh) this.splatsMesh.updateMatrix();
+        if (this.splatsMesh) this.splatsMesh.updateMatrix();
         if (this.static) {
             this.traverse(o => {
                 if (o.isObject3D) {
                     o.matrixWorldAutoUpdate = true;
                 }
             });
-            if(this.splatsMesh) this.splatsMesh.matrixWorldAutoUpdate = true;
+            if (this.splatsMesh) this.splatsMesh.matrixWorldAutoUpdate = true;
         }
         this.updateMatrixWorld(true);
-        
+
         if (this.static) {
             this.traverse(o => {
                 if (o.isObject3D) o.matrixWorldAutoUpdate = false;
             });
-            if(this.splatsMesh) this.splatsMesh.matrixWorldAutoUpdate = false;
+            if (this.splatsMesh) this.splatsMesh.matrixWorldAutoUpdate = false;
         }
     }
     /**
@@ -303,10 +347,10 @@ class OGC3DTile extends THREE.Object3D {
                 self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                 self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
                 self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
-                if(self.static) self.splatsMesh.matrixWorldAutoUpdate = false;
+                if (self.static) self.splatsMesh.matrixWorldAutoUpdate = false;
                 self.add(self.splatsMesh);
                 self.updateMatrices();
-                
+
             }
         }
         if (!!properties.json.root) {
@@ -820,7 +864,7 @@ class OGC3DTile extends THREE.Object3D {
      * @returns {{numTilesLoaded: number, numTilesRendered: number, maxLOD: number, percentageLoaded: number}} An object containing describing the current state of the loaded tileset.
      */
     update(camera) {
-        if(this.splatsMesh){
+        if (this.splatsMesh) {
             this.splatsMesh.updateShaderParams(camera, this.renderer)
         }
         const frustum = new THREE.Frustum();
@@ -851,16 +895,16 @@ class OGC3DTile extends THREE.Object3D {
             transformedCameraPosition.copy(camera.position);
             inverseWorld.copy(this.matrixWorld).invert();
             transformedCameraPosition.applyMatrix4(inverseWorld);
-            
-            if(this.splatsCPUCulling){
+
+            if (this.splatsCPUCulling) {
                 const viewProjModel = new THREE.Matrix4()
-                .multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse ) //  P·V
-                .multiply( this.matrixWorld ); 
+                    .multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse) //  P·V
+                    .multiply(this.matrixWorld);
                 this.splatsMesh.sort(transformedCameraPosition, viewProjModel);
-            }else{
+            } else {
                 this.splatsMesh.sort(transformedCameraPosition);
             }
-            
+
 
         }
 
@@ -1286,7 +1330,8 @@ class OGC3DTile extends THREE.Object3D {
                 distanceBias: self.distanceBias,
                 loadingStrategy: self.loadingStrategy,
                 drawBoundingVolume: self.drawBoundingVolume,
-                splatsMesh: self.splatsMesh
+                splatsMesh: self.splatsMesh,
+                clipShape: self.clipShape,
             });
             self.childrenTiles.push(childTile);
             self.add(childTile);
@@ -1501,6 +1546,15 @@ class OGC3DTile extends THREE.Object3D {
             tempOBB.copy(this.boundingVolume);
             tempOBB.applyMatrix4(this.matrixWorld);
             if (!tempOBB.inFrustum(frustum)) return -1;
+            if (this.clipShape != undefined) {
+                if ((this.clipShape.isSphere && !tempOBB.intersectsSphere(this.clipShape)) ||
+                    (this.clipShape.isOBB && !tempOBB.intersectsOBB(this.clipShape))
+                ) {
+                    return Number.MAX_VALUE;
+                }
+            }
+
+            
             distance = Math.max(0, tempOBB.distanceToPoint(camera.position) - camera.near);
 
             /* tempSphere.center.copy(this.boundingVolume.center);
@@ -1512,6 +1566,14 @@ class OGC3DTile extends THREE.Object3D {
             //sphere
             tempSphere.copy(this.boundingVolume);
             tempSphere.applyMatrix4(this.matrixWorld);
+            if (this.clipShape != undefined) {
+                if ((this.clipShape.isOBB && !this.clipShape.intersectsSphere(tempSphere)) ||
+                    (this.clipShape.isSphere && !this.clipShape.intersectsSphere(tempSphere))
+                ) {
+                    return Number.MAX_VALUE;
+                }
+            }
+            
             if (!frustum.intersectsSphere(tempSphere)) return -1;
             distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near);
         } else {
@@ -1626,10 +1688,10 @@ class OGC3DTile extends THREE.Object3D {
     }
 
 
-    hideCopyright(){
+    hideCopyright() {
         _hideCopyright();
     }
-    showCopyright(){
+    showCopyright() {
         _showCopyright();
     }
 }
@@ -1661,7 +1723,7 @@ function _showError(error) {
     }, 8000);
 }
 
-function _hideCopyright(){
+function _hideCopyright() {
     if (!copyrightDiv) {
         copyrightDiv = document.createElement('div');
         copyrightDiv.style.position = 'fixed';
@@ -1677,7 +1739,7 @@ function _hideCopyright(){
     }
     copyrightDiv.style.opacity = 0;
 }
-function _showCopyright(){
+function _showCopyright() {
     if (!copyrightDiv) {
         copyrightDiv = document.createElement('div');
         copyrightDiv.style.position = 'fixed';
