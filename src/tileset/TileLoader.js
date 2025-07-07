@@ -421,6 +421,7 @@ class TileLoader {
                         }).then(async arrayBuffer => {
                             await _checkLoaderInitialized(this.gltfLoader);
                             this.gltfLoader.parse(arrayBuffer, null, gltf => {
+                                if(!gltf.scene) gltf.scene =  new THREE.Object3D();
                                 gltf.scene.asset = gltf.asset;
                                 if (sceneZupToYup) {
                                     gltf.scene.applyMatrix4(this.zUpToYUpMatrix);

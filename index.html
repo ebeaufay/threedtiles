@@ -7,11 +7,16 @@
   <title>Three 3DTiles viewer sample</title>
   <style>
     .unselectable {
-            user-select: none; /* Modern browsers */
-            -webkit-user-select: none; /* Safari */
-            -moz-user-select: none; /* Firefox */
-            -ms-user-select: none; /* Internet Explorer */
-        }
+      user-select: none;
+      /* Modern browsers */
+      -webkit-user-select: none;
+      /* Safari */
+      -moz-user-select: none;
+      /* Firefox */
+      -ms-user-select: none;
+      /* Internet Explorer */
+    }
+
     .overlay {
       position: absolute;
       top: 0;
@@ -35,9 +40,15 @@
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
+
     .slidecontainer {
       width: 100%;
     }
@@ -78,31 +89,44 @@
     }
 
     .responsive-div {
-    background-color: #fac19e00;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    position: absolute; /* To position the div */
-    position: absolute; z-index: 999;display: flex;  flex-wrap: wrap;
-    pointer-events: none;
-}
-.responsive-div > * {
-    pointer-events: auto;
-}
-
-/* Default positioning for portrait mode */
-@media (orientation: portrait) {
-    .responsive-div {
-        right:0%; bottom:0%; height:25%; width:100%;flex-direction: row;
+      background-color: #fac19e00;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      position: absolute;
+      /* To position the div */
+      position: absolute;
+      z-index: 999;
+      display: flex;
+      flex-wrap: wrap;
+      pointer-events: none;
     }
-}
 
-/* Positioning for landscape mode */
-@media (orientation: landscape) {
-    .responsive-div {
-        right:2%; top:2%; width:25%; height:25%;flex-direction: row;
+    .responsive-div>* {
+      pointer-events: auto;
     }
-}
+
+    /* Default positioning for portrait mode */
+    @media (orientation: portrait) {
+      .responsive-div {
+        right: 0%;
+        bottom: 0%;
+        height: 25%;
+        width: 100%;
+        flex-direction: row;
+      }
+    }
+
+    /* Positioning for landscape mode */
+    @media (orientation: landscape) {
+      .responsive-div {
+        right: 2%;
+        top: 2%;
+        width: 25%;
+        height: 25%;
+        flex-direction: row;
+      }
+    }
   </style>
 </head>
 
@@ -111,11 +135,33 @@
   <!-- <div class="overlay" id="loadingOverlay">
     <div class="spinner"></div>
   </div> -->
-  <div class="unselectable responsive-div" >
+  <div class="unselectable responsive-div">
     <div style="z-index:1000;margin:1%;width: 80%;">
-      <input type="range" min="0.01" max="1.5" value="0.4" step="0.01" class="slider" id="lodMultiplier" >
-      <p style="color:#011d5c; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff;">detail multiplier: <span id="multiplierValue">0.5</span></p>
+      <input type="range" min="0.01" max="1.5" value="0.4" step="0.01" class="slider" id="lodMultiplier">
+      <p style="color:#011d5c; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff;">detail
+        multiplier: <span id="multiplierValue">0.5</span></p>
     </div>
+    <div style="z-index:1000;margin:1%;width: 80%;">
+      <p style="color:#011d5c; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff;">loading
+        strategy:</p>
+      <select id="strategy" name="strategy">
+        <option value="INCREMENTAL">INCREMENTAL</option>
+        <option value="PERLEVEL">PERLEVEL</option>
+        <option value="IMMEDIATE">IMMEDIATE</option>
+      </select>
+    </div>
+    <div id="debugDisplay" style="
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+    border-radius: 5px;
+    z-index: 9999;
+    "></div>
     <!-- <div style="z-index: 1000;margin: 10%;">
       <input type="range" min="0.5" max="1.5" value="1.0" step="0.01" class="slider" id="distanceBias" >
       <p style="color: #011d5c;">distance bias: <span id="distanceBiasValue">1.0</span></p>
@@ -147,8 +193,8 @@
 
   <div id="website" class="outlinedText unselectable"
     style="position: absolute;bottom: 20px; left:25px; z-index: 99;font-size: 16px;font-family: 'Orbitron', sans-serif;letter-spacing: 0.3em;cursor: pointer;color:#011d5c">
-    <img src="https://www.jdultra.com/assets/iconSmall.png" class="unselectable" width="14px"
-      height="14px"><span class="unselectable">
+    <img src="https://www.jdultra.com/assets/iconSmall.png" class="unselectable" width="14px" height="14px"><span
+      class="unselectable">
       JDULTRA</span>
   </div>
 

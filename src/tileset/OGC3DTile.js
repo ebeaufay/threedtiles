@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { resolveImplicite } from './implicit/ImplicitTileResolver.js';
 import { SplatsMesh } from '../splats/SplatsMesh';
+import { SplatsMeshCompatibility } from '../splats/SplatsMeshCompatibility';
 var averageTime = 0;
 
 
@@ -84,14 +85,16 @@ class OGC3DTile extends THREE.Object3D {
      * @param {String} [properties.drawBoundingVolume = false] - optional draws the bounding volume (may cause flickering)
      * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
      * @param {number} [properties.splatsQuality = 0.75] - optional pass a visual quality for splats between 0 and 1. Lower quality improves performance at the cost of visual approximations.
-     * @param {number} [properties.splatsCPUCulling = false] - optional if true, splats are culled on CPU asynchronously. Better frame-rate and faster sorting but splats are absent when camera moves quickly until sort finishes.
+     * @param {boolean} [properties.splatsCPUCulling = false] - optional if true, splats are culled on CPU asynchronously. Better frame-rate and faster sorting but splats are absent when camera moves quickly until sort finishes.
+     * @param {boolean} [properties.iosCompatibility = false] - optional if true, splats are compatible with recent ios versions.
      */
     constructor(properties) {
         super();
         const self = this;
         self.splatsMesh = properties.splatsMesh;
+        self.iosCompatibility = properties.iosCompatibility
         self.splatsQuality = properties.splatsQuality != undefined ? properties.splatsQuality : 0.75;
-        self.splatsCPUCulling = properties.splatsCPUCulling != undefined ? properties.splatsQuality : false;
+        self.splatsCPUCulling = properties.splatsCPUCulling != undefined ? properties.splatsCPUCulling : false;
         this.contentURL = [];
         if (!!properties.domWidth && !!properties.domHeight) {
             this.rendererSize = new THREE.Vector2(properties.domWidth, properties.domHeight);
@@ -342,7 +345,7 @@ class OGC3DTile extends THREE.Object3D {
 
         if (properties.json.extensionsRequired) {
             if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats") || properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats_V2")) {
-                self.splatsMesh = new SplatsMesh(self.tileLoader.renderer)
+                self.splatsMesh = self.iosCompatibility? new SplatsMeshCompatibility(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer)
                 self.splatsMesh.setQuality(self.splatsQuality);
                 self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                 self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)

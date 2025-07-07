@@ -4,7 +4,7 @@ import {
     NearestFilter, Data3DTexture, DataTexture, UnsignedByteType, BufferAttribute, InstancedBufferAttribute, DynamicDrawUsage,
     LinearSRGBColorSpace, InstancedBufferGeometry,
     WebGL3DRenderTarget, OrthographicCamera, Scene,
-    NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor, Matrix4
+    NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor, Matrix4, RGBAFormat, RGBFormat
 } from "three";
 import { gamma } from 'mathjs';
 import {
@@ -27,10 +27,8 @@ zUpToYUpMatrix3x3.set(
         0, 0,  0, 1
     );
 
-function packHalf2x16(x, y) {
-    return (DataUtils.toHalfFloat(x) | (DataUtils.toHalfFloat(y) << 16)) >>> 0;
-}
-class SplatsMesh extends Mesh {
+
+class SplatsMeshCompatibility extends Mesh {
     constructor(renderer, isStatic, fragShader) {
 
         const textureSize = 1024;
@@ -41,34 +39,62 @@ class SplatsMesh extends Mesh {
         maxSplats = Math.floor(maxSplats / batchSize) * batchSize;
 
 
-        const positionColorRenderTarget = new WebGL3DRenderTarget(textureSize, textureSize, numTextures, {
+        const positionRenderTarget = new WebGL3DRenderTarget(textureSize, textureSize, numTextures, { //changed
             magFilter: NearestFilter,
             minFilter: NearestFilter,
-            type: UnsignedIntType,
-            format: RGBAIntegerFormat,
+            type: HalfFloatType, //changed
+            format: RGBAFormat, //changed
             anisotropy: 0,
             depthBuffer: false,
             resolveDepthBuffer: false,
         })
-        positionColorRenderTarget.texture.type = UnsignedIntType;
-        positionColorRenderTarget.texture.format = RGBAIntegerFormat;
-        positionColorRenderTarget.texture.internalFormat = 'RGBA32UI';
-        renderer.initRenderTarget(positionColorRenderTarget);
+        positionRenderTarget.texture.type = HalfFloatType; //changed
+        positionRenderTarget.texture.format = RGBAFormat; //changed
+        positionRenderTarget.texture.internalFormat = 'RGBA16F'; //changed
+        renderer.initRenderTarget(positionRenderTarget);
 
-
-        const covarianceRenderTarget = new WebGL3DRenderTarget(textureSize, textureSize, numTextures, {
+        const colorRenderTarget = new WebGL3DRenderTarget(textureSize, textureSize, numTextures, { //changed
             magFilter: NearestFilter,
             minFilter: NearestFilter,
+            type: UnsignedByteType, //changed
+            format: RGBAFormat, //changed
             anisotropy: 0,
-            type: UnsignedIntType,
-            format: RGBAIntegerFormat,
             depthBuffer: false,
             resolveDepthBuffer: false,
         })
-        covarianceRenderTarget.texture.type = UnsignedIntType;
-        covarianceRenderTarget.texture.format = RGBAIntegerFormat;
-        covarianceRenderTarget.texture.internalFormat = 'RGBA32UI';
-        renderer.initRenderTarget(covarianceRenderTarget);
+        colorRenderTarget.texture.type = UnsignedByteType; //changed
+        colorRenderTarget.texture.format = RGBAFormat; //changed
+        colorRenderTarget.texture.internalFormat = 'RGBA8'; //changed
+        renderer.initRenderTarget(colorRenderTarget);
+
+
+        const covarianceRenderTarget1 = new WebGL3DRenderTarget(textureSize, textureSize, numTextures, { //changed
+            magFilter: NearestFilter,
+            minFilter: NearestFilter,
+            anisotropy: 0,
+            type: HalfFloatType, //changed
+            format: RGBAFormat, //changed
+            depthBuffer: false,
+            resolveDepthBuffer: false,
+        })
+        covarianceRenderTarget1.texture.type = HalfFloatType; //changed
+        covarianceRenderTarget1.texture.format = RGBAFormat; //changed
+        covarianceRenderTarget1.texture.internalFormat = 'RGBA16F'; //changed
+        renderer.initRenderTarget(covarianceRenderTarget1);
+
+        const covarianceRenderTarget2 = new WebGL3DRenderTarget(textureSize, textureSize, numTextures, { //changed
+            magFilter: NearestFilter,
+            minFilter: NearestFilter,
+            anisotropy: 0,
+            type: HalfFloatType, //changed
+            format: RGBAFormat, //changed
+            depthBuffer: false,
+            resolveDepthBuffer: false,
+        })
+        covarianceRenderTarget2.texture.type = HalfFloatType; //changed
+        covarianceRenderTarget2.texture.format = RGBAFormat; //changed
+        covarianceRenderTarget2.texture.internalFormat = 'RGBA16F'; //changed
+        renderer.initRenderTarget(covarianceRenderTarget2);
 
 
 
@@ -78,20 +104,22 @@ class SplatsMesh extends Mesh {
                 uniforms: {
                     textureSize: { value: textureSize },
                     numSlices: { value: numTextures },
-                    covarianceTexture: { value: covarianceRenderTarget.texture },
-                    positionColorTexture: { value: positionColorRenderTarget.texture },
+                    covarianceTexture1: { value: covarianceRenderTarget1.texture }, //changed
+                    covarianceTexture2: { value: covarianceRenderTarget2.texture }, //changed
+                    positionTexture: { value: positionRenderTarget.texture }, //changed
+                    colorTexture: { value: colorRenderTarget.texture }, //changed
                     zUpToYUpMatrix3x3: { value: zUpToYUpMatrix3x3 },
                     sizeMultiplier: { value: 1 },
                     cropRadius: { value: Number.MAX_VALUE },
-                    //cameraNear: { value: 0.01 },
-                    //cameraFar: { value: 10 },
-                    //computeLinearDepth: { value: true },
+                    cameraNear: { value: 0.01 },
+                    cameraFar: { value: 10 },
+                    computeLinearDepth: { value: true },
                     viewportPixelSize: { value: new Vector2() },
                     k: { value: 2 },
                     beta_k: { value: 2 },
                     minSplatPixelSize: { value: 0 },
                     minOpacity: { value: 0.01 },
-                    culling: {value: false},
+                    culling: {value: true},
                     antialiasingFactor: {value: 2.0}
                 },
                 vertexShader: splatsVertexShader(),
@@ -136,8 +164,10 @@ class SplatsMesh extends Mesh {
         this.maxSplats = maxSplats;
         this.numSplatsRendered = 0;
 
-        this.positionColorRenderTarget = positionColorRenderTarget;
-        this.covarianceRenderTarget = covarianceRenderTarget;
+        this.positionRenderTarget = positionRenderTarget; //changed
+        this.colorRenderTarget = colorRenderTarget; //changed
+        this.covarianceRenderTarget1 = covarianceRenderTarget1; //changed
+        this.covarianceRenderTarget2 = covarianceRenderTarget2; //changed
 
         this.renderer = renderer;
 
@@ -233,7 +263,7 @@ class SplatsMesh extends Mesh {
         this.copyScene.add(this.copyQuad);
         this.copyScene.matrixAutoUpdate = false;
         this.copyQuad.matrixAutoUpdate = false;
-        this.splatsCPUCuling = false;
+        const self = this;
 
     }
     /**
@@ -250,7 +280,7 @@ class SplatsMesh extends Mesh {
     }
     setSplatsCPUCulling(splatsCPUCuling){
         this.splatsCPUCuling = splatsCPUCuling;
-        this.material.uniforms.culling.value = splatsCPUCuling;
+        this.material.uniforms.culling.value = !splatsCPUCuling;
     }
     updateShaderParams(camera) {
         const proj = camera.projectionMatrix.elements;
@@ -269,8 +299,10 @@ class SplatsMesh extends Mesh {
         this.material.dispose();
         this.copyMaterial2D.dispose();
         this.copyMaterial3D.dispose();
-        this.covarianceRenderTarget.dispose();
-        this.positionColorRenderTarget.dispose();
+        this.positionRenderTarget.dispose(); //changed
+        this.colorRenderTarget.dispose(); //changed
+        this.covarianceRenderTarget1.dispose(); //changed
+        this.covarianceRenderTarget2.dispose(); //changed
         this.worker.terminate();
         this.worker = null;
         this.orderAttribute.array = undefined;
@@ -381,11 +413,7 @@ class SplatsMesh extends Mesh {
         // const start = performance.now();
         let raycast = () => { }
         const positionsOnly = new Float32Array((positionArray.length / stride) * 3);
-        const posU32 = new Uint32Array(
-            positionsOnly.buffer,
-            positionsOnly.byteOffset,
-            positionsOnly.length                                              // same element count
-        );
+        
 
         for (let i = 0; i < positionArray.length / 3; i++) {
             positionsOnly[i * 3] = positionArray[i * stride + offset];
@@ -422,7 +450,7 @@ class SplatsMesh extends Mesh {
             textureAddresses.push(address);
             pointManagerAddresses.push(address * 3);
             const startIndex = i * this.batchSize;
-            this.addSplatsBatch(startIndex, address, posU32, colors, cov1, cov2);
+            this.addSplatsBatch(startIndex, address, positionsOnly, colors, cov1, cov2);
         }
 
 
@@ -507,71 +535,95 @@ class SplatsMesh extends Mesh {
     }
 
 
-    addSplatsBatch(positionsStartIndex, address, positions, colors, cov1, cov2) {
+    addSplatsBatch(positionsStartIndex, address, positionsF32, colors, cov1, cov2) { //changed - positionsF32 is Float32Array
 
-
-        const positionColorArray = new Uint32Array(this.batchSize * 4);
-        const covarianceArray = new Uint32Array(this.batchSize * 4);
+        const positionData = new Uint16Array(this.batchSize * 3); //changed
+        const colorData = new Uint8Array(this.batchSize * 4); //changed
+        const covariance1Data = new Uint16Array(this.batchSize * 3); //changed
+        const covariance2Data = new Uint16Array(this.batchSize * 3); //changed
 
 
         for (let i = address; i < address + this.batchSize; i++) {
             const base = i - address;
-            const arrayIndexBase4 = base * 4;
+            const arrayIndexBase3 = base * 3; //changed
+            const arrayIndexBase4 = base * 4; //changed
 
             const positionIndex = positionsStartIndex + base;
-            const pIndex3 = 3 * (positionsStartIndex + base)
+            const pIndex3 = 3 * (positionsStartIndex + base);
 
-            if (positionIndex >= positions.count) break;
+            if (positionIndex >= (positionsF32.length / 3)) break; //changed - Check against length of positionsF32
 
-            function f32ToU32(f) {
-                return (new Uint32Array(new Float32Array([f]).buffer))[0];
-            }
-            positionColorArray[arrayIndexBase4] = positions[pIndex3];
-            positionColorArray[arrayIndexBase4 + 1] = positions[pIndex3 + 1];
-            positionColorArray[arrayIndexBase4 + 2] = positions[pIndex3 + 2];
+            positionData[arrayIndexBase3] = DataUtils.toHalfFloat(positionsF32[pIndex3]); //changed
+            positionData[arrayIndexBase3 + 1] = DataUtils.toHalfFloat(positionsF32[pIndex3 + 1]); //changed
+            positionData[arrayIndexBase3 + 2] = DataUtils.toHalfFloat(positionsF32[pIndex3 + 2]); //changed
 
 
             const r = Math.floor(colors.getX(positionIndex) * 255 + 0.5) | 0;
             const g = Math.floor(colors.getY(positionIndex) * 255 + 0.5) | 0;
             const b = Math.floor(colors.getZ(positionIndex) * 255 + 0.5) | 0;
             const a = Math.floor(colors.getW(positionIndex) * 255 + 0.5) | 0;
-            positionColorArray[arrayIndexBase4 + 3] = r | (g << 8) | (b << 16) | (a << 24)
+            colorData[arrayIndexBase4] = r; //changed
+            colorData[arrayIndexBase4 + 1] = g; //changed
+            colorData[arrayIndexBase4 + 2] = b; //changed
+            colorData[arrayIndexBase4 + 3] = a; //changed
 
+            covariance1Data[arrayIndexBase3] = DataUtils.toHalfFloat(cov1.getX(positionIndex)); //changed
+            covariance1Data[arrayIndexBase3 + 1] = DataUtils.toHalfFloat(cov1.getY(positionIndex)); //changed
+            covariance1Data[arrayIndexBase3 + 2] = DataUtils.toHalfFloat(cov1.getZ(positionIndex)); //changed
 
-            covarianceArray[arrayIndexBase4] = packHalf2x16(cov1.getX(positionIndex), cov1.getY(positionIndex))
-            covarianceArray[arrayIndexBase4 + 1] = packHalf2x16(cov1.getZ(positionIndex), cov2.getX(positionIndex))
-            covarianceArray[arrayIndexBase4 + 2] = packHalf2x16(cov2.getY(positionIndex), cov2.getZ(positionIndex))
-
-
+            covariance2Data[arrayIndexBase3] = DataUtils.toHalfFloat(cov2.getX(positionIndex)); //changed
+            covariance2Data[arrayIndexBase3 + 1] = DataUtils.toHalfFloat(cov2.getY(positionIndex)); //changed
+            covariance2Data[arrayIndexBase3 + 2] = DataUtils.toHalfFloat(cov2.getZ(positionIndex)); //changed
         }
 
         const destTextureLayer = Math.floor(address / Math.pow(this.textureSize, 2));
         const srcHeight = Math.ceil(this.batchSize / this.textureSize);
         const scissor = [0, (address / this.textureSize) - (destTextureLayer * this.textureSize), this.textureSize];
         scissor.push(scissor[1] + srcHeight);
-        const batchPositionColorTexture = new DataTexture(positionColorArray, this.textureSize, srcHeight, RGBAIntegerFormat, UnsignedIntType);
-        batchPositionColorTexture.internalFormat = 'RGBA32UI';
-        batchPositionColorTexture.generateMipmaps = false;
-        batchPositionColorTexture.magFilter = NearestFilter;
-        batchPositionColorTexture.minFilter = NearestFilter;
-        batchPositionColorTexture.anisotropy = 0;
-        batchPositionColorTexture.needsUpdate = true;
-        this.renderer.initTexture(batchPositionColorTexture)
-        this.copyTex2D(batchPositionColorTexture, this.positionColorRenderTarget, scissor, destTextureLayer)
-        batchPositionColorTexture.dispose();
 
+        const batchPositionTexture = new DataTexture(positionData, this.textureSize, srcHeight, RGBFormat, HalfFloatType); //changed
+        batchPositionTexture.internalFormat = 'RGB16F'; //changed
+        batchPositionTexture.generateMipmaps = false;
+        batchPositionTexture.magFilter = NearestFilter;
+        batchPositionTexture.minFilter = NearestFilter;
+        batchPositionTexture.anisotropy = 0;
+        batchPositionTexture.needsUpdate = true;
+        this.renderer.initTexture(batchPositionTexture);
+        this.copyTex2D(batchPositionTexture, this.positionRenderTarget, scissor, destTextureLayer); //changed
+        batchPositionTexture.dispose();
 
-        const batchCovarianceTexture = new DataTexture(covarianceArray, this.textureSize, srcHeight, RGBAIntegerFormat, UnsignedIntType);
-        batchCovarianceTexture.internalFormat = 'RGBA32UI';
-        batchCovarianceTexture.generateMipmaps = false;
-        batchCovarianceTexture.magFilter = NearestFilter;
-        batchCovarianceTexture.minFilter = NearestFilter;
-        batchCovarianceTexture.anisotropy = 0;
-        batchCovarianceTexture.needsUpdate = true;
-        this.renderer.initTexture(batchCovarianceTexture)
-        this.copyTex2D(batchCovarianceTexture, this.covarianceRenderTarget, scissor, destTextureLayer)
-        batchCovarianceTexture.dispose();
+        const batchColorTexture = new DataTexture(colorData, this.textureSize, srcHeight, RGBAFormat, UnsignedByteType); //changed
+        batchColorTexture.internalFormat = 'RGBA8'; //changed
+        batchColorTexture.generateMipmaps = false;
+        batchColorTexture.magFilter = NearestFilter;
+        batchColorTexture.minFilter = NearestFilter;
+        batchColorTexture.anisotropy = 0;
+        batchColorTexture.needsUpdate = true;
+        this.renderer.initTexture(batchColorTexture);
+        this.copyTex2D(batchColorTexture, this.colorRenderTarget, scissor, destTextureLayer); //changed
+        batchColorTexture.dispose();
 
+        const batchCovariance1Texture = new DataTexture(covariance1Data, this.textureSize, srcHeight, RGBFormat, HalfFloatType); //changed
+        batchCovariance1Texture.internalFormat = 'RGB16F'; //changed
+        batchCovariance1Texture.generateMipmaps = false;
+        batchCovariance1Texture.magFilter = NearestFilter;
+        batchCovariance1Texture.minFilter = NearestFilter;
+        batchCovariance1Texture.anisotropy = 0;
+        batchCovariance1Texture.needsUpdate = true;
+        this.renderer.initTexture(batchCovariance1Texture);
+        this.copyTex2D(batchCovariance1Texture, this.covarianceRenderTarget1, scissor, destTextureLayer); //changed
+        batchCovariance1Texture.dispose();
+
+        const batchCovariance2Texture = new DataTexture(covariance2Data, this.textureSize, srcHeight, RGBFormat, HalfFloatType); //changed
+        batchCovariance2Texture.internalFormat = 'RGB16F'; //changed
+        batchCovariance2Texture.generateMipmaps = false;
+        batchCovariance2Texture.magFilter = NearestFilter;
+        batchCovariance2Texture.minFilter = NearestFilter;
+        batchCovariance2Texture.anisotropy = 0;
+        batchCovariance2Texture.needsUpdate = true;
+        this.renderer.initTexture(batchCovariance2Texture);
+        this.copyTex2D(batchCovariance2Texture, this.covarianceRenderTarget2, scissor, destTextureLayer); //changed
+        batchCovariance2Texture.dispose();
     }
 
     growTextures() {
@@ -585,45 +637,78 @@ class SplatsMesh extends Mesh {
 
 
         const newNumTextures = this.numTextures + 1;
-        const positionColorRenderTarget = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, {
+        const positionRenderTarget = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, { //changed
             magFilter: NearestFilter,
             minFilter: NearestFilter,
-            type: UnsignedIntType,
-            format: RGBAIntegerFormat,
+            type: HalfFloatType, //changed
+            format: RGBAFormat, //changed
             anisotropy: 0,
             depthBuffer: false,
             resolveDepthBuffer: false,
         })
-        positionColorRenderTarget.texture.type = UnsignedIntType;
-        positionColorRenderTarget.texture.internalFormat = 'RGBA32UI';
-        positionColorRenderTarget.texture.format = RGBAIntegerFormat;   // ← add
+        positionRenderTarget.texture.type = HalfFloatType; //changed
+        positionRenderTarget.texture.format = RGBAFormat; //changed
+        positionRenderTarget.texture.internalFormat = 'RGBA16F'; //changed
+        this.renderer.initRenderTarget(positionRenderTarget);
+        this.copyTex3D(this.positionRenderTarget.texture, positionRenderTarget, this.numTextures); //changed
+        this.positionRenderTarget.dispose(); //changed
+        this.positionRenderTarget = positionRenderTarget; //changed
+        this.material.uniforms.positionTexture.value = this.positionRenderTarget.texture; //changed
 
-        this.renderer.initRenderTarget(positionColorRenderTarget);
-        this.copyTex3D(this.positionColorRenderTarget.texture, positionColorRenderTarget, this.numTextures);
-        this.positionColorRenderTarget.dispose();
-        this.positionColorRenderTarget = positionColorRenderTarget;
-        this.material.uniforms.positionColorTexture.value = this.positionColorRenderTarget.texture;
-
-
-        const covarianceRenderTarget = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, {
+        const colorRenderTarget = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, { //changed
             magFilter: NearestFilter,
             minFilter: NearestFilter,
+            type: UnsignedByteType, //changed
+            format: RGBAFormat, //changed
             anisotropy: 0,
-            type: UnsignedIntType,
-            format: RGBAIntegerFormat,
             depthBuffer: false,
             resolveDepthBuffer: false,
         })
+        colorRenderTarget.texture.type = UnsignedByteType; //changed
+        colorRenderTarget.texture.format = RGBAFormat; //changed
+        colorRenderTarget.texture.internalFormat = 'RGBA8'; //changed
+        this.renderer.initRenderTarget(colorRenderTarget);
+        this.copyTex3D(this.colorRenderTarget.texture, colorRenderTarget, this.numTextures); //changed
+        this.colorRenderTarget.dispose(); //changed
+        this.colorRenderTarget = colorRenderTarget; //changed
+        this.material.uniforms.colorTexture.value = this.colorRenderTarget.texture; //changed
 
-        covarianceRenderTarget.texture.type = UnsignedIntType;        // not FloatType!
-        covarianceRenderTarget.texture.internalFormat = 'RGBA32UI';
-        covarianceRenderTarget.texture.format = RGBAIntegerFormat;     // ← add
 
-        this.renderer.initRenderTarget(covarianceRenderTarget);
-        this.copyTex3D(this.covarianceRenderTarget.texture, covarianceRenderTarget, this.numTextures);
-        this.covarianceRenderTarget.dispose();
-        this.covarianceRenderTarget = covarianceRenderTarget;
-        this.material.uniforms.covarianceTexture.value = this.covarianceRenderTarget.texture;
+        const covarianceRenderTarget1 = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, { //changed
+            magFilter: NearestFilter,
+            minFilter: NearestFilter,
+            anisotropy: 0,
+            type: HalfFloatType, //changed
+            format: RGBAFormat, //changed
+            depthBuffer: false,
+            resolveDepthBuffer: false,
+        })
+        covarianceRenderTarget1.texture.type = HalfFloatType; //changed
+        covarianceRenderTarget1.texture.format = RGBAFormat; //changed
+        covarianceRenderTarget1.texture.internalFormat = 'RGBA16F'; //changed
+        this.renderer.initRenderTarget(covarianceRenderTarget1);
+        this.copyTex3D(this.covarianceRenderTarget1.texture, covarianceRenderTarget1, this.numTextures); //changed
+        this.covarianceRenderTarget1.dispose(); //changed
+        this.covarianceRenderTarget1 = covarianceRenderTarget1; //changed
+        this.material.uniforms.covarianceTexture1.value = this.covarianceRenderTarget1.texture; //changed
+
+        const covarianceRenderTarget2 = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, { //changed
+            magFilter: NearestFilter,
+            minFilter: NearestFilter,
+            anisotropy: 0,
+            type: HalfFloatType, //changed
+            format: RGBAFormat, //changed
+            depthBuffer: false,
+            resolveDepthBuffer: false,
+        })
+        covarianceRenderTarget2.texture.type = HalfFloatType; //changed
+        covarianceRenderTarget2.texture.format = RGBAFormat; //changed
+        covarianceRenderTarget2.texture.internalFormat = 'RGBA16F'; //changed
+        this.renderer.initRenderTarget(covarianceRenderTarget2);
+        this.copyTex3D(this.covarianceRenderTarget2.texture, covarianceRenderTarget2, this.numTextures); //changed
+        this.covarianceRenderTarget2.dispose(); //changed
+        this.covarianceRenderTarget2 = covarianceRenderTarget2; //changed
+        this.material.uniforms.covarianceTexture2.value = this.covarianceRenderTarget2.texture; //changed
 
 
 
@@ -633,7 +718,7 @@ class SplatsMesh extends Mesh {
         //console.log("grow " + (performance.now() - start) + " ms")
     }
 
-} export { SplatsMesh }
+} export { SplatsMeshCompatibility }
 
 function saveBuffer(pixelBuffer) {
     const canvas = document.createElement('canvas');
@@ -673,10 +758,9 @@ export function splatsVertexShader() {
     return `
 precision highp float;
 precision highp int;
-precision highp usampler3D;
+precision highp sampler3D;
 
 #include <common>
-#include <packing>
 
 uniform float textureSize;
 uniform float numSlices;
@@ -689,8 +773,10 @@ out vec3 splatPositionModel;
 out float splatDepth;
 //out float orthographicDepth;
 out float stds;
-uniform highp usampler3D positionColorTexture;
-uniform highp usampler3D covarianceTexture;
+uniform highp sampler3D positionTexture; //changed
+uniform highp sampler3D colorTexture; //changed
+uniform highp sampler3D covarianceTexture1; //changed
+uniform highp sampler3D covarianceTexture2; //changed
 uniform mat3 zUpToYUpMatrix3x3;
 uniform float logDepthBufFC;
 //uniform float cameraNear;
@@ -706,18 +792,6 @@ uniform float antialiasingFactor;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
-    /* float index = float(order)+0.1; // add small offset to avoid floating point errors with modulo
-    float pixelsPerSlice = textureSize * textureSize;
-    float sliceIndex = floor(index / pixelsPerSlice);
-    float slicePixelIndex = mod(index,pixelsPerSlice);
-
-    float x = mod(slicePixelIndex,textureSize);
-    float y = floor(slicePixelIndex / textureSize);
-
-    ivec3 coord = ivec3(
-        int( (x + 0.5) ),              // x pixel
-        int( (y + 0.5) ),              // y pixel
-        int( sliceIndex + 0.5 ) );     // z slice */
 
     
     highp uint uOrder = order; // Use a local uint copy
@@ -736,25 +810,18 @@ void getVertexData(out vec3 position, out mat3 covariance) {
     ivec3 coord = ivec3(xVal, yVal, sliceIndexVal);
 
     // Position
-    highp uvec4 positionColor = texelFetch(positionColorTexture, coord,0);
-    position = vec3(uintBitsToFloat(positionColor.r),uintBitsToFloat(positionColor.g),uintBitsToFloat(positionColor.b));
+    position = texelFetch(positionTexture, coord, 0).rgb; //changed
     
-    color = vec4( (positionColor.a & 255u),
-                  (positionColor.a >> 8)  & 255u,
-                  (positionColor.a >> 16) & 255u,
-                  (positionColor.a >> 24) ) / 255.0;
+    // Color
+    color = texelFetch(colorTexture, coord, 0); //changed
     
-    
-    highp uvec4 cov = texelFetch(covarianceTexture, coord, 0);
-    vec2 c0 = unpackHalf2x16(cov.r);
-    vec2 c1 = unpackHalf2x16(cov.g);
-    vec2 c2 = unpackHalf2x16(cov.b);
-    covariance = mat3(c0.x, c0.y, c1.x,
-              c0.y, c1.y, c2.x,
-              c1.x, c2.x, c2.y);
+    // Covariance
+    vec3 cov_comp_012 = texelFetch(covarianceTexture1, coord, 0).rgb; //changed
+    vec3 cov_comp_345 = texelFetch(covarianceTexture2, coord, 0).rgb; //changed
 
-
-    //covariance *= 16.0;
+    covariance = mat3(cov_comp_012.x, cov_comp_012.y, cov_comp_012.z, // c00, c01, c02 //changed
+                      cov_comp_012.y, cov_comp_345.x, cov_comp_345.y, // c01, c11, c12 //changed
+                      cov_comp_012.z, cov_comp_345.y, cov_comp_345.z); // c02, c12, c22 //changed
 
     mat3 modelRotation = zUpToYUpMatrix3x3*transpose(mat3(modelMatrix));
     covariance = transpose(zUpToYUpMatrix3x3) * covariance * zUpToYUpMatrix3x3;
@@ -933,10 +1000,9 @@ function fragmentCopyShader2D() {
     return `
 precision highp float;
 precision highp int;
-precision highp usampler2D;
 
-layout(location = 0) out highp uvec4 fragColor;
-uniform highp usampler2D sourceTexture;
+layout(location = 0) out highp vec4 fragColor;
+uniform highp sampler2D sourceTexture;
 
 in vec2 vUv;
 
@@ -950,10 +1016,9 @@ function fragmentCopyShader3D() {
     return `
 precision highp float;
 precision highp int;
-precision highp usampler3D;
 
-layout(location = 0) out highp uvec4 fragColor;
-uniform highp usampler3D sourceTexture;
+layout(location = 0) out highp vec4 fragColor;
+uniform highp sampler3D sourceTexture;
 uniform float w;
 
 in vec2 vUv;
