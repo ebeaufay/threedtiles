@@ -1564,7 +1564,8 @@ class OGC3DTile extends THREE.Object3D {
             tempSphere.radius = Math.sqrt(this.boundingVolume.halfSize.x*this.boundingVolume.halfSize.x+ this.boundingVolume.halfSize.y*this.boundingVolume.halfSize.y+ this.boundingVolume.halfSize.z*this.boundingVolume.halfSize.z)
             tempSphere.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
-            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near); */
+            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near);
+            console.log("distSphere " + distance) */
         } else if (this.boundingVolume instanceof THREE.Sphere) {
             //sphere
             tempSphere.copy(this.boundingVolume);
@@ -1584,7 +1585,6 @@ class OGC3DTile extends THREE.Object3D {
             return -1
 
         }
-
         /////// Apply the bias factor to the distance
         distance = Math.pow(distance, this.distanceBias);
         /////// return metric based on geometric error and distance

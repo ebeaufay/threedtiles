@@ -1,19 +1,15 @@
 import * as THREE from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 import Stats from 'three/addons/libs/stats.module.js';
-import { OGC3DTile, getOGC3DTilesCopyrightInfo } from "./tileset/OGC3DTile";
+import { OGC3DTile } from "./tileset/OGC3DTile";
 import { TileLoader } from "./tileset/TileLoader";
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { OcclusionCullingService } from "./tileset/OcclusionCullingService";
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass';
-
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
-import { Sky } from "three/addons/objects/Sky";
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
-import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 let quat = new THREE.Quaternion();
 quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.6585408946722412, 0.7520797288025427, 0.02645697580181784))
@@ -23,162 +19,94 @@ rotationMatrix.makeRotationFromQuaternion(quat);
 
 console.log(rotationMatrix);
 
-/* const manager = new PointManager();
 
-// Add some points
-const positions = new Float32Array(300);
-for(let i = 0; i<300; i++){
-    positions[i] = i;
-}
-manager.addPoints(positions, 0);
-
-// Compute distances from a reference point
-
-console.log(manager.sort(0,0,0))
-console.log(manager.sort(0,0,0))
-
-// Check if a point is used
-console.log(manager.isPointUsed(1)); // true
-
-// Remove points
-manager.removePoints(0);
-
- */
-
-let startShowing = false;
-let endShowing = false;
-let splatsShowCount = 0;
-
-let lon = -2.915;
-let t = 0;
-let lightShadowMapViewer;
 let paused = false;
-//const dirLight = new THREE.DirectionalLight(0xffFFFF, 1.0, 0, Math.PI / 5, 0.3);
-//dirLight.position.set(1,1,1);
-let cameraToLight = new THREE.Vector3(-1000, 1000, -1000);
-let lightVector = new THREE.Vector3(1000, -1000, 1000);
-let lightTarget = new THREE.Object3D();
-const occlusionCullingService = new OcclusionCullingService();
-occlusionCullingService.setSide(THREE.DoubleSide);
+
 const scene = initScene();
-// const axesHelper = new THREE.AxesHelper( 5 );
-// scene.add( axesHelper );
 
 
-/* const raycaster = new THREE.Raycaster();
-raycaster.params.Points.threshold = 0.002;
-const pointer = new THREE.Vector2();
-const geometry = new THREE.SphereGeometry(0.02, 32, 16);
-const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-const sphere = new THREE.Mesh(geometry, material);
-material.transparent = true;
-material.opacity = 0.5
-sphere.renderOrder = 1;
-scene.add(sphere);
-window.addEventListener('pointermove', (event) => {
-    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
-}); */
-
-const clock = new THREE.Clock();
-
-const infoTilesToLoad = document.getElementById("tilesToLoadValue");
-const infoTilesRendered = document.getElementById("tilesRenderedValue");
-const infoMaxLOD = document.getElementById("maxLODValue");
-const infoPercentage = document.getElementById("percentageValue");
-
-
-
-/* const m = new THREE.Mesh(new THREE.TorusGeometry(), new THREE.MeshPhongMaterial());
-m.castShadow = true;
-m.receiveShadow = true;
-m.scale.set(50,50,50)
-scene.add(m); */
 
 const domContainer = initDomContainer("screen");
 const camera = initCamera(domContainer.offsetWidth, domContainer.offsetHeight);
 const stats = initStats(domContainer);
 const renderer = initRenderer(camera, domContainer);
-const controller = initController(camera, domContainer);
 
 
+/// raycast ///
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+function onPointerMove( event ) {
+	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+}
+window.addEventListener( 'pointermove', onPointerMove );
+const geometry = new THREE.SphereGeometry( 1, 32, 16 ); 
+const material = new THREE.MeshBasicMaterial( { color: 0xffff00, transparent: true, depthTest: true, depthWrite: true } ); 
 
-const gl = renderer.getContext();
-const cropRadiusSlider = document.getElementById("cropRadius");
-const cropRadiusValue = document.getElementById("cropRadiusValue");
+const raycastSphere = new THREE.Mesh( geometry, material ); scene.add( raycastSphere );
+raycastSphere.renderOrder = 5;
+
+
+window.addEventListener( 'click', (event)=>{
+    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+    raycaster.setFromCamera( pointer, camera );
+    const intersects = raycaster.intersectObjects( scene.children );
+    let a = 0;
+    for (const layer of intersects) {
+        if (layer.type != "splat") continue;
+        a += layer.opacity * (1 - a);
+        if (a >= 0.75) {
+            raycastSphere.position.copy(intersects[0].point);
+            raycastSphere.updateMatrix()
+            raycastSphere.updateMatrixWorld(true)
+            break;
+        }
+    }
+} );
+
 initSliders();
 let tileLoader;
-let ogc3DTiles;
+let ogc3DTiles = [];
+
+setTimeout(()=>{
 tileLoader = initTileLoader();
-ogc3DTiles = [];
 ogc3DTiles = reloadTileset("INCREMENTAL", 0.5)
-// ogc3DTiles = initTilesets(scene, tileLoader, "INCREMENTAL", 1.0, 1.0);
+},1000)
 
-const matrices = [];
-window.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
+initController(camera, domContainer)
 
-        console.log(camera.position)
-    }
-});
-//let google = initGoogleTileset(scene, tileLoader, "INCREMENTAL", 0.5, 1.0);
 
 let targetFrameRate = _isMobileDevice() ? 30 : 3000;
-
-//const tileLoader = createInstancedTileLoader(scene);
-//initInstancedTilesets(tileLoader);
 
 function initSliders() {
     const lodSlider = document.getElementById("lodMultiplier");
     const lodSliderValue = document.getElementById("multiplierValue");
     const strategy = document.getElementById("strategy");
 
-
-
     strategy.addEventListener("input", e => {
         ogc3DTiles = reloadTileset(strategy.value, lodSlider.value)
     })
     lodSlider.addEventListener("input", e => {
         lodSliderValue.innerText = lodSlider.value;
+        console.log(ogc3DTiles)
         ogc3DTiles.forEach(t => t.setGeometricErrorMultiplier(Number(lodSlider.value)));
 
     })
-
-    /* distanceBiasSlider.addEventListener("input", e => {
-        distanceBiasSliderValue.innerText = distanceBiasSlider.value;
-        ogc3DTiles.setDistanceBias(distanceBiasSlider.value)
-    }) */
-
-    /* fpsSlider.addEventListener("input", e => {
-        fpsSliderValue.innerText = fpsSlider.value;
-        targetFrameRate = fpsSlider.value
-    }) */
-
-
-    /* loadingStrategyWrapper.addEventListener("click", e => {
-
-        if (loadingStrategy.value == 0) {
-            loadingStrategy.setAttribute("value", "1")
-            loadingStrategyValue.innerText = "IMMEDIATE";
-            reloadTileset("IMMEDIATE", lodSlider.value, distanceBiasSlider.value);
-        } else {
-            loadingStrategy.setAttribute("value", "0")
-            loadingStrategyValue.innerText = "INCREMENTAL";
-            reloadTileset("INCREMENTAL", lodSlider.value, distanceBiasSlider.value);
-        }
-    }) */
 }
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier) {
     scene.clear()
+    
     scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
     ogc3DTiles.forEach(tileset => {
 
         tileset.dispose();
     })
 
-    //tileLoader.clear();
     ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier)
+    scene.add(raycastSphere);
     return ogc3DTiles
 }
 
@@ -189,24 +117,13 @@ function initTileLoader() {
     const tileLoader = new TileLoader({
         downloadParallelism: 32,
         renderer: renderer,
-        //ktx2Loader:ktx2Loader,
         maxCachedItems: 500,
         meshCallback: (mesh, geometricError) => {
-            //mesh.material.vertexColors = true;
-            /* mesh.material.vertexColors = true;
-            mesh.material.fog= true; */
             mesh.material.metalness = 0;
-            /* mesh.material.wireframe = false;
-
-
-
-            mesh.material.roughness = 0.5;
-            mesh.material.side = THREE.DoubleSide; */
         },
         pointsCallback: (points, geometricError) => {
             points.material.size = Math.min(1.0, 0.03 * Math.sqrt(geometricError));
             points.material.sizeAttenuation = true;
-            //points.add(new THREE.BoxHelper( points, 0xffff00 ))
 
         }
     });
@@ -214,77 +131,14 @@ function initTileLoader() {
 
     return tileLoader;
 }
-/* const gltfLoader = new GLTFLoader();
-
-
-//gltfLoader.setKTX2Loader(ktx2Loader)
-
-
-gltfLoader.load(
-    // resource URL
-    'http://localhost:8084/LaPalmaPriness_8M_8-8K_4-4K (1).glb',
-    // called when the resource is loaded
-    function (gltf) {
-
-        scene.add(gltf.scene);
-
-    },
-    // called while loading is progressing
-    function (xhr) {
-
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-
-    },
-    // called when loading has errors
-    function (error) {
-
-        console.log('An error happened : ' + error);
-
-    }
-); */
-// Optional: Provide a DRACOLoader instance to decode compressed mesh data
 
 
 
 const composer = initComposer(scene, camera, renderer);
 let previousFrame = performance.now();
-animate();
+renderer.setAnimationLoop(animate);
 
-let sky, sun;
-//initSky();
-function initSky() {
-    sky = new Sky();
-    sky.scale.setScalar(450000);
-    scene.add(sky);
 
-    sun = new THREE.Vector3();
-
-    const effectController = {
-        turbidity: 0.1,
-        rayleigh: 0.1,
-        mieCoefficient: 0.005,
-        mieDirectionalG: 0.3,
-        elevation: 80,
-        azimuth: 20,
-        exposure: renderer.toneMappingExposure
-    };
-
-    const uniforms = sky.material.uniforms;
-    uniforms['turbidity'].value = effectController.turbidity;
-    uniforms['rayleigh'].value = effectController.rayleigh;
-    uniforms['mieCoefficient'].value = effectController.mieCoefficient;
-    uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
-
-    const phi = THREE.MathUtils.degToRad(90 - effectController.elevation);
-    const theta = THREE.MathUtils.degToRad(effectController.azimuth);
-
-    sun.setFromSphericalCoords(1, phi, theta);
-
-    uniforms['sunPosition'].value.copy(sun);
-
-    renderer.toneMappingExposure = effectController.exposure;
-    renderer.render(scene, camera);
-}
 function initComposer(scene, camera, renderer) {
     const renderScene = new RenderPass(scene, camera);
     const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.1, 0.5, 0.4);
@@ -297,46 +151,10 @@ function initComposer(scene, camera, renderer) {
 }
 function initScene() {
     const scene = new THREE.Scene();
-    scene.matrixAutoUpdate = false;
-    //scene.matrixWorldAutoUpdate = false;
-    //scene.background = new THREE.Color(0xE5E3E4);
-    scene.background = new THREE.Color(0xffffff);
+    //scene.matrixAutoUpdate = false;
+    scene.background = new THREE.Color(0x888888);
     const axesHelper = new THREE.AxesHelper(50000000);
-    //scene.add(axesHelper);
-
-
-
-    //scene.add(lightTarget)
-    //const helper = new THREE.DirectionalLightHelper(dirLight, 50);
-    //scene.add(helper);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
-    //scene.fog = new THREE.FogExp2( 0xcccccc, 0.01 );
-    //const directionalLight = new THREE.DirectionalLight( 0xffffff, 2.0 );
-    //scene.add( directionalLight );
-
-    //scene.add(dirLight)
-
-    /* lightShadowMapViewer = new ShadowMapViewer(dirLight);
-    lightShadowMapViewer.position.x = 10;
-    lightShadowMapViewer.position.y = 110;
-    lightShadowMapViewer.size.width = 400;
-    lightShadowMapViewer.size.height = 400;
-    lightShadowMapViewer.update(); */
-
-    /* const light = new THREE.PointLight(0xbbbbff, 2, 5000);
-    const sphere = new THREE.SphereGeometry(2, 16, 8);
-    light.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ color: 0xbbbbff })));
-    scene.add(light);
-    light.position.set(200, 200, 200);
-
-
-    const light2 = new THREE.PointLight(0xffbbbb, 2, 5000);
-    const sphere2 = new THREE.SphereGeometry(2, 16, 8);
-    light2.add(new THREE.Mesh(sphere2, new THREE.MeshBasicMaterial({ color: 0xffbbbb })));
-    scene.add(light2);
-    light2.position.set(200, 100, -100); */
-
-
     return scene;
 }
 
@@ -351,10 +169,12 @@ function initDomContainer(divID) {
 
 function initRenderer(camera, dom) {
 
+    //const renderer = new WebGPURenderer( { antialias: true } );
     const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: true, powerPreference: "high-performance", precision: "highp" });
     renderer.setPixelRatio(1.0);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.autoClear = false;
+    
 
     dom.appendChild(renderer.domElement);
 
@@ -384,53 +204,23 @@ function initStats(dom) {
 function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier) {
 
 
-
-    /* const ogc3DTile = new OGC3DTile({
-
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/playaSquarePack/tileset.json",
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/splatsMirai/tileset.json", //UM
-        //url: "https://vectuel-3d-models.s3.eu-west-3.amazonaws.com/DAE/SM/B/tileset.json", //UM
-        // url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
-        url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/sectorA/tileset.json", //UM
-
-        geometricErrorMultiplier: 0.4,
-        distanceBias: 1,
-        loadOutsideView: true,
-        tileLoader: tileLoader,
-        static: false,
-        centerModel: false,
-        //loadingStrategy: "IMMEDIATE",
-        distanceBias: distanceBias,
-        drawBoundingVolume: false,
-        //renderer: renderer,
-        onLoadCallback: (e) => {
-            console.log(e)
-        }
-
-    });
-    ogc3DTile.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5);
-    ogc3DTile.updateMatrices();
-    ogc3DTile.setSplatsCropRadius(500);
-    scene.add(ogc3DTile); */
-
     const ogc3DTile2 = new OGC3DTile({
 
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/splatsMirai/tileset.json", //UM
         //url: "https://vectuel-3d-models.s3.eu-west-3.amazonaws.com/DAE/SM/B/tileset.json", //UM
-        // url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
+        url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/ifc/architecture/tileset.json",
         //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/andxwv8gxi6/tileset/tileset.json", //UM
         // url: "https://pub-98728cfb3b0d40219c921782c46689b9.r2.dev/20241020_MARSHALL_LAKE_DRONE/3DTILES/tileset.json", //UM
         //url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json", //UM
         //url: "https://storage.googleapis.com/ogc-3d-tiles/house3/tileset.json", //UM
-        url: "http://localhost:8080/tileset.json", //UM
+        //url: "https://storage.googleapis.com/voluma-tiles/jack/x/dorpskerk2/tileset.json", //UM
+        //url: "http://localhost:8081/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier: geometricErrorMultiplier,
+        geometricErrorMultiplier: 0.25,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
@@ -439,6 +229,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         splatsQuality: 0.75,
         splatsCPUCulling: false,
         iosCompatibility: false,
+        drawBoundingVolume: false,
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
         loadingStrategy: loadingStrategy,
@@ -454,12 +245,15 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         } */
 
     });
-    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI)
-    const o = new THREE.Object3D();
-    o.add(ogc3DTile2);
-    scene.add(o);
-    //earthAntiGeoreferencing(ogc3DTile2, -111.534927, 35.118900, -16);
+    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI)
+    const group = new THREE.Group();
+    group.add(ogc3DTile2);
+    group.static = true;
+    scene.add(group);
     ogc3DTile2.updateMatrices();
+    //ogc3DTile2.setSplatsCropRadius(10);
+
+
     //
 
     /* const googleTiles = new OGC3DTile({
@@ -635,9 +429,9 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 20000);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 200);
 
-    camera.position.set(0.1,1,0);
+    camera.position.set(40,10,20);
 
     camera.lookAt(0, 0.01, 0);
 
@@ -670,7 +464,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0, 0.05, 0);
+    controller.target.set(0, -20, 0);
     controller.rotateSpeed = 0.5;
     controller.panSpeed = 0.5;
     controller.enableDamping = false;
@@ -692,20 +486,14 @@ function initController(camera, dom) {
 
 
 const debugDisplay = document.getElementById("debugDisplay");
-function animate() {
 
-    requestAnimationFrame(animate);
+function animate() {
     const delta = performance.now() - previousFrame;
     if (delta < 1000 / targetFrameRate) {
         return;
     }
     previousFrame = performance.now();
-    /*  lon+=0.000001;
-     t++;
-     if(t%400 == 0){
-         ogc3DTiles.position.copy(llhToCartesianFast(lon, 53.392, 0));
-         ogc3DTiles.updateMatrices();
-     } */
+    
 
 
     if (!paused) {
@@ -718,7 +506,8 @@ function animate() {
 
             ogc3DTiles.forEach(t => {
                 if (t && !t.deleted) {
-
+                    let sphere = new THREE.Sphere(camera.position, 10000)
+                    t.setClipShape(sphere)
                     const info = t.update(camera);
                     debugDisplay.innerHTML = Object.entries(info)
                         .map(([key, value]) => {

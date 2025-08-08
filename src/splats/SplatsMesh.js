@@ -99,15 +99,8 @@ class SplatsMesh extends Mesh {
                 transparent: true,
                 side: FrontSide,
                 depthTest: false,
-                depthWrite: false,
-                /* premultipliedAlpha: true,
-                blending: CustomBlending,
-                blendSrc: OneFactor,
-                blendSrcAlpha: OneFactor,
-                blendDst: OneMinusSrcAlphaFactor,
-                blendDstAlpha: OneMinusSrcAlphaFactor,
-                renderOrder: 1 */
-                //depthFunc: AlwaysDepth
+                depthWrite: true,
+                
             }
         );
         const geometry = new InstancedBufferGeometry();
@@ -396,14 +389,46 @@ class SplatsMesh extends Mesh {
         // console.log(performance.now()-start)
         raycast = (ray, intersects, threshold) => {
             const threshSquared = threshold * threshold;
-            for (let i = 0; i < positionsOnly.length; i += 3) {
-                tmpVector.set(positionsOnly[i], -positionsOnly[i + 2], positionsOnly[i + 1])
-                const dot = tmpVector2.copy(tmpVector).sub(ray.origin).dot(ray.direction);
-                if (dot > 0) {
-                    const d = ray.distanceSqToPoint(tmpVector);
-                    if (d < threshSquared) {
-                        intersects.push({ distance: dot, point: tmpVector.clone(), type: "splat" });
-                    }
+            const cropRadiusSquared = Math.pow(self.material.uniforms.cropRadius.value,2);
+            
+            // Pre-allocate temporary objects to avoid memory churn in the loop
+            const tempMatrix = new Matrix3();
+            const splatCenter = new Vector3();
+            const V = new Vector3(); // Re-used for multiple vector operations
+            const W = new Vector3();
+            const closestPointVec = new Vector3();
+
+            const numSplats = positionsOnly.length / 3;
+            for (let i = 0; i < numSplats; i++) {
+                // Set splat center, applying the same Y-up transform as the shader
+                splatCenter.set(positionsOnly[i * 3], -positionsOnly[i * 3 + 2], positionsOnly[i * 3 + 1]);
+
+                if (splatCenter.lengthSq() > cropRadiusSquared || ray.distanceSqToPoint(splatCenter) > threshSquared) {
+                    continue;
+                }
+
+                reconstructCovariance(cov1, cov2, i, tempMatrix);
+                
+                const t = V.copy(splatCenter).sub(ray.origin).dot(ray.direction);
+                if (t < 0) continue; // Splat is behind the ray's origin
+
+                closestPointVec.copy(ray.direction).multiplyScalar(t).add(ray.origin);
+
+                const vecToClosest = V.copy(closestPointVec).sub(splatCenter);
+                solve3x3LinearSystem(tempMatrix, vecToClosest, W);
+                
+                const mahalanobisSq = vecToClosest.dot(W);
+
+                const hitOpacity = colors.getW(i) * Math.exp(-0.5 * mahalanobisSq);
+
+                if (hitOpacity > 0.01) {
+                    intersects.push({
+                        distance: t,
+                        point: closestPointVec.clone(),
+                        opacity: hitOpacity,
+                        type: "splat",
+                        object: this // Reference to the batch/tile
+                    });
                 }
             }
         }
@@ -670,7 +695,7 @@ function saveBuffer(pixelBuffer) {
     }, 'image/png');
 }
 export function splatsVertexShader() {
-    return `
+    return /*glsl */`
 precision highp float;
 precision highp int;
 precision highp usampler3D;
@@ -703,6 +728,7 @@ uniform float minSplatPixelSize;
 uniform float minOpacity;
 uniform bool culling;
 uniform float antialiasingFactor;
+uniform float cropRadius;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -836,6 +862,8 @@ void main() {
     splatPositionModel = vec3(0.0);
     mat3 covariance = mat3(0.0);
     getVertexData(splatPositionModel, covariance);
+
+    if(length(splatPositionModel) > cropRadius) return;
     
     /* opacity ‑> stds */
     float maxV     = min(1.0,max(color.a, 0.0001));
@@ -882,7 +910,7 @@ void main() {
 }
 `};
 export function splatsFragmentShader() {
-    return `
+    return /* glsl */`
 precision highp float;
 precision highp int;
 
@@ -910,13 +938,13 @@ void main() {
 
     fragColor = vec4(pow(color.xyz,vec3(1.0/2.2)), alpha);
     
-    //gl_FragDepth = splatDepth;
+    gl_FragDepth = splatDepth;
     
 }`
 };
 
 function vertexCopyShader() {
-    return `
+    return /* glsl */`
 
 precision highp float;
 precision highp int;
@@ -930,7 +958,7 @@ void main() {
 };
 
 function fragmentCopyShader2D() {
-    return `
+    return /* glsl */`
 precision highp float;
 precision highp int;
 precision highp usampler2D;
@@ -947,7 +975,7 @@ void main() {
 
 
 function fragmentCopyShader3D() {
-    return `
+    return /* glsl */`
 precision highp float;
 precision highp int;
 precision highp usampler3D;
@@ -962,3 +990,57 @@ void main() {
     fragColor = texture( sourceTexture, vec3(vUv, w) );
 }`
 };
+
+/**
+ * Reconstructs the covariance matrix from cov1 and cov2 buffer attributes
+ * into a target Matrix3 object. This avoids allocating new matrices in a loop.
+ * @param {import("three").BufferAttribute | import("three").InterleavedBufferAttribute} cov1 - The buffer attribute for the first 3 covariance components.
+ * @param {import("three").BufferAttribute | import("three").InterleavedBufferAttribute} cov2 - The buffer attribute for the last 3 unique covariance components.
+ * @param {number} index - The index of the splat.
+ * @param {import("three").Matrix3} target - The target Matrix3 to store the result.
+ */
+function reconstructCovariance(cov1, cov2, index, target) {
+    const c1x = cov1.getX(index);
+    const c1y = cov1.getY(index);
+    const c1z = cov1.getZ(index);
+    const c2x = cov2.getX(index);
+    const c2y = cov2.getY(index);
+    const c2z = cov2.getZ(index);
+
+    target.set(
+        c1x, c1y, c1z, // Row 1
+        c1y, c2x, c2y, // Row 2
+        c1z, c2y, c2z  // Row 3
+    );
+}
+
+/**
+ * Solves the 3x3 linear system A*x = b for x using Cramer's rule.
+ * This is faster than computing a full matrix inverse.
+ * @param {import("three").Matrix3} A - The 3x3 matrix.
+ * @param {import("three").Vector3} b - The result vector.
+ * @param {import("three").Vector3} target - The target vector to store the solution x.
+ */
+function solve3x3LinearSystem(A, b, target) {
+    const det = A.determinant();
+    if (Math.abs(det) < 1e-12) { // Check for singularity
+        target.set(0, 0, 0);
+        return;
+    }
+    const invDet = 1.0 / det;
+
+    const t1 = new Matrix3().copy(A);
+    t1.elements[0] = b.x; t1.elements[3] = b.y; t1.elements[6] = b.z;
+    
+    const t2 = new Matrix3().copy(A);
+    t2.elements[1] = b.x; t2.elements[4] = b.y; t2.elements[7] = b.z;
+
+    const t3 = new Matrix3().copy(A);
+    t3.elements[2] = b.x; t3.elements[5] = b.y; t3.elements[8] = b.z;
+
+    target.set(
+        t1.determinant() * invDet,
+        t2.determinant() * invDet,
+        t3.determinant() * invDet
+    );
+}
