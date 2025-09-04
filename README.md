@@ -5,6 +5,7 @@
 
 
 A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support. 
+
 Oh, also it supports gaussian splats! ( currently via KHR_gaussian_splatting_compression_spz )
 
 ## sample getting started projects
