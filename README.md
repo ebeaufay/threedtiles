@@ -4,7 +4,9 @@
 # T H R E E D T I L E S : http://www.jdultra.com/
 
 
-A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support
+A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support. 
+
+Oh, also it supports gaussian splats! ( currently via KHR_gaussian_splatting_compression_spz )
 
 ## sample getting started projects
 Getting started vanilla js:    
@@ -15,7 +17,7 @@ GettingStarted RTF:
 [app](https://www.jdultra.com/threedtiles/demos/gettingStartedRTF)    
 [code](https://www.jdultra.com/threedtiles/demos/gettingStartedRTF/threedtiles-gettingStarted-rtf.zip)    
 
-## Demos
+## Demos temporarily down because of digital vandalism
 
 [Google Tiles overlay](https://www.jdultra.com/overlay/index.html)
 overlay high quality meshes over google tiles with some shader magic to avoid overlap
@@ -82,7 +84,7 @@ It is discouraged to call the update functions outside the render loop in a setI
 While that may work fine on desktop, mobile browsers tend to block an entire frame when a timeout triggers in it.
 
 
-## Mesh to 3DTiles Converter
+## Mesh, Point-cloud and 3DGS to 3DTiles Converter
 
 If you need to convert meshes to 3DTiles, from small assets to gigabytes of data, contact me for a trial on UltraMesh tool.
 It works for all types of meshes: photogrametry, BIM, colored or textured meshes with a single texture atlas or many individual textures.
