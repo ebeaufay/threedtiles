@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LinkedHashMap } from '../utils/LinkedHashMap';
 import { B3DMDecoder } from "../decoder/B3DMDecoder";
-import { SplatsDecoder } from "../decoder/SplatsDecoder";
+import { GLTFTileDecoder } from "../decoder/GLTFTileDecoder";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
@@ -40,7 +40,7 @@ class TileLoader {
      * @param {number} [options.timeout = 5000] - number of milliseconds to keep tiles in cache before clearing
      */
     constructor(options) {
-        this.downloadParallelism = options.downloadParallelism == undefined? 8 : options.downloadParallelism;
+        this.downloadParallelism = options.downloadParallelism == undefined ? 8 : options.downloadParallelism;
         this.timeout = (options.timeout != undefined) ? options.timeout : 5000;
         this.renderer = options.renderer;
         this.zUpToYUpMatrix = new THREE.Matrix4();
@@ -58,6 +58,7 @@ class TileLoader {
 
 
         this.gltfLoader = new GLTFLoader();
+        this.gltfLoader.register(parser => ({ name: 'KHR_spz_gaussian_splats_compression' }));
         if (!!options && !!options.dracoLoader) {
             this.gltfLoader.setDRACOLoader(options.dracoLoader);
             this.hasDracoLoader = true;
@@ -84,7 +85,7 @@ class TileLoader {
         this.hasMeshOptDecoder = true;
 
         this.b3dmDecoder = new B3DMDecoder(this.gltfLoader);
-        this.splatsDecoder = new SplatsDecoder(this.gltfLoader, this.renderer);
+        this.GLTFTileDecoder = new GLTFTileDecoder(this.gltfLoader, this.renderer);
 
         this.cache = new LinkedHashMap();
         this.register = {};
@@ -119,7 +120,7 @@ class TileLoader {
     }
     _download() {
 
-        do{
+        do {
             if (this.nextDownloads.length == 0) {
                 this._getNextDownloads();
                 if (this.nextDownloads.length == 0) return;
@@ -130,8 +131,8 @@ class TileLoader {
                     nextDownload.doDownload();
                 }
             }
-        }while(this.concurrentDownloads < this.downloadParallelism);
-        
+        } while (this.concurrentDownloads < this.downloadParallelism);
+
         return;
     }
     _meshReceived(cache, register, key, distanceFunction, getSiblings, level, uuid) {
@@ -154,7 +155,8 @@ class TileLoader {
                 Object.keys(register[key]).forEach(tile => {
                     const callback = register[key][tile];
                     if (!!callback) {
-                        callback(mesh);
+                        cache.put(key, callback(mesh));
+
                         register[key][tile] = null;
                     }
                 });
@@ -349,115 +351,69 @@ class TileLoader {
 
                 }
             } else if (path.includes(".glb") || path.includes(".gltf")) {
-                if (splatsMesh) {
-
-                    downloadFunction = () => {
+                downloadFunction = () => {
 
 
-                        var fetchFunction;
-                        if (!self.proxy) {
-                            fetchFunction = () => {
-                                return fetch(path, { signal: realAbortController.signal });
-                            }
-                        } else {
-                            fetchFunction = () => {
-                                return fetch(self.proxy,
-                                    {
-                                        method: 'POST',
-                                        body: path,
-                                        signal: realAbortController.signal
-                                    }
-                                );
-                            }
+                    var fetchFunction;
+                    if (!self.proxy) {
+                        fetchFunction = () => {
+                            return fetch(path, { signal: realAbortController.signal });
                         }
-                        concurrentDownloads++;
-                        fetchFunction().then(result => {
-                            if (!result.ok) {
-                                console.error("could not load tile with path : " + path)
-                                throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
-                            }
-                            return result.arrayBuffer();
-
-                        }).then(resultArrayBuffer => {
-
-                            return this.splatsDecoder.parseSplats(resultArrayBuffer, sceneZupToYup, meshZupToYup, splatsMesh);
-                        }).then(mesh => {
-                            self.cache.put(key, mesh);
-                            self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                            self._checkSize();
-                        }).catch((e) => {
-                            //console.error(e)
-                        }).finally(() => {
-                            concurrentDownloads--;
-                        });
-
-                    }
-                }
-                else {
-                    downloadFunction = () => {
-                        var fetchFunction;
-                        if (!self.proxy) {
-                            fetchFunction = () => {
-                                return fetch(path, { signal: realAbortController.signal });
-                            }
-                        } else {
-                            fetchFunction = () => {
-                                return fetch(self.proxy,
-                                    {
-                                        method: 'POST',
-                                        body: path,
-                                        signal: realAbortController.signal
-                                    }
-                                );
-                            }
-                        }
-                        concurrentDownloads++;
-                        fetchFunction().then(result => {
-                            if (!result.ok) {
-                                console.error("could not load tile with path : " + path)
-                                throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
-                            }
-                            return result.arrayBuffer();
-                        }).then(async arrayBuffer => {
-                            await _checkLoaderInitialized(this.gltfLoader);
-                            this.gltfLoader.parse(arrayBuffer, null, gltf => {
-                                if(!gltf.scene) gltf.scene =  new THREE.Object3D();
-                                gltf.scene.asset = gltf.asset;
-                                if (sceneZupToYup) {
-                                    gltf.scene.applyMatrix4(this.zUpToYUpMatrix);
+                    } else {
+                        fetchFunction = () => {
+                            return fetch(self.proxy,
+                                {
+                                    method: 'POST',
+                                    body: path,
+                                    signal: realAbortController.signal
                                 }
-                                gltf.scene.traverse((o) => {
-
-                                    if (o.isMesh) {
-                                        if (meshZupToYup) {
-                                            o.applyMatrix4(this.zUpToYUpMatrix);
-                                        }
-                                        if (!!self.meshCallback) {
-                                            self.meshCallback(o, geometricError);
-                                        }
-                                    }
-                                    if (o.isPoints) {
-
-                                        if (!!self.pointsCallback) {
-                                            self.pointsCallback(o, geometricError);
-                                        }
-                                    }
-                                });
-
-                                self.cache.put(key, gltf.scene);
-                                self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
-                                self._checkSize();
-                            });
-                        }).catch((e) => {
-                            if (e !== "user abort" && e.code !== 20) {
-                                //console.error(e);
-                            }
-                        }).finally(() => {
-                            concurrentDownloads--;
-                        });
-
-
+                            );
+                        }
                     }
+                    concurrentDownloads++;
+                    fetchFunction().then(result => {
+                        if (!result.ok) {
+                            console.error("could not load tile with path : " + path)
+                            throw new Error(`couldn't load "${path}". Request failed with status ${result.status} : ${result.statusText}`);
+                        }
+                        return result.arrayBuffer();
+
+                    }).then(resultArrayBuffer => {
+
+                        return this.GLTFTileDecoder.parseSplats(resultArrayBuffer, sceneZupToYup, meshZupToYup, splatsMesh);
+                    }).then(mesh => {
+                        if (!mesh.isSplatsData) {
+                            if (sceneZupToYup) {
+                                mesh.applyMatrix4(this.zUpToYUpMatrix);
+                            }
+                            mesh.traverse((o) => {
+
+                                if (o.isMesh) {
+                                    if (meshZupToYup) {
+                                        o.applyMatrix4(this.zUpToYUpMatrix);
+                                    }
+                                    if (!!self.meshCallback) {
+                                        self.meshCallback(o, geometricError);
+                                    }
+                                }
+                                if (o.isPoints) {
+
+                                    if (!!self.pointsCallback) {
+                                        self.pointsCallback(o, geometricError);
+                                    }
+                                }
+                            });
+                        }
+
+                        self.cache.put(key, mesh);
+                        self._meshReceived(self.cache, self.register, key, distanceFunction, getSiblings, level, tileIdentifier);
+                        self._checkSize();
+                    }).catch((e) => {
+                        //console.error(e)
+                    }).finally(() => {
+                        concurrentDownloads--;
+                    });
+
                 }
 
             } else if (path.includes(".json")) {
@@ -552,8 +508,8 @@ class TileLoader {
         this.cache.reset();
         this.cache = undefined;
         this.register = undefined;
-        if(this.dracoLoader) this.dracoLoader.dispose();
-        if(this.ktx2loader) this.ktx2loader.dispose();
+        if (this.dracoLoader) this.dracoLoader.dispose();
+        if (this.ktx2loader) this.ktx2loader.dispose();
     }
     _checkSize() {
         const self = this;
@@ -580,7 +536,7 @@ class TileLoader {
         }
     }
     _disposeEntryContent(entry) {
-        if(!entry.value) return;
+        if (!entry.value) return;
         if (entry.value.isSplatsBatch) {
             entry.value.remove();
         } else if (!!entry.value.traverse) {

@@ -20,8 +20,7 @@ class OBB {
      * @constructor
      * @memberof OBB
      * @see OBB implementation source :contentReference[oaicite:0]{index=0}
-    */
-    constructor(values) {
+    */constructor(values) {
         this.isOBB = true;
         this.center = new Vector3(values[0], values[1], values[2]);
         this.e1 = new Vector3(values[3], values[4], values[5]);
@@ -30,10 +29,21 @@ class OBB {
 
         this.halfSize = new Vector3(this.e1.length(), this.e2.length(), this.e3.length());
 
-
         this.e1.normalize();
-        this.e2.normalize();
-        this.e3.normalize();
+        // make e2 orthogonal to e1
+        const dot12 = this.e2.dot(this.e1);
+        this.e2.addScaledVector(this.e1, -dot12).normalize();
+        // e3 as cross to ensure orthonormal frame
+        this.e3.copy(this.e1).cross(this.e2);
+        if (this.e3.lengthSq() === 0) {
+            // fallback if inputs were collinear
+            this.e2.set(0, 1, 0);
+            if (Math.abs(this.e1.y) > 0.999) this.e2.set(1, 0, 0);
+            this.e2.addScaledVector(this.e1, -this.e2.dot(this.e1)).normalize();
+            this.e3.copy(this.e1).cross(this.e2);
+        } else {
+            this.e3.normalize();
+        }
 
         this.rotationMatrix = new Matrix3();
         this.rotationMatrix.set(
@@ -84,22 +94,18 @@ class OBB {
      * @returns {OBB} This instance for chaining.
      * @memberof OBB
      * @see OBB implementation source :contentReference[oaicite:3]{index=3}
-     */
-    applyMatrix4(matrix) {
+     */applyMatrix4(matrix) {
         const e = matrix.elements;
 
         let sx = tempVector3.set(e[0], e[1], e[2]).length();
-        const sy = tempVector3.set(e[4], e[5], e[6]).length();
-        const sz = tempVector3.set(e[8], e[9], e[10]).length();
-
-        const det = matrix.determinant();
-        if (det < 0) sx = - sx;
+        let sy = tempVector3.set(e[4], e[5], e[6]).length();
+        let sz = tempVector3.set(e[8], e[9], e[10]).length();
 
         tempMatrix.setFromMatrix4(matrix);
 
-        const invSX = 1 / sx;
-        const invSY = 1 / sy;
-        const invSZ = 1 / sz;
+        const invSX = sx !== 0 ? 1 / sx : 0;
+        const invSY = sy !== 0 ? 1 / sy : 0;
+        const invSZ = sz !== 0 ? 1 / sz : 0;
 
         tempMatrix.elements[0] *= invSX;
         tempMatrix.elements[1] *= invSX;
@@ -115,17 +121,13 @@ class OBB {
 
         this.rotationMatrix.premultiply(tempMatrix);
 
-        this.halfSize.x *= sx;
-        this.halfSize.y *= sy;
-        this.halfSize.z *= sz;
+        this.halfSize.x *= Math.abs(sx);
+        this.halfSize.y *= Math.abs(sy);
+        this.halfSize.z *= Math.abs(sz);
 
-        //tempVector3.setFromMatrixPosition(matrix);
         this.center.applyMatrix4(matrix);
-        //console.log(this.e1);
         this.rotationMatrix.extractBasis(this.e1, this.e2, this.e3);
-        //console.log(this.e1)
         return this;
-
     }
 
     /**
@@ -136,39 +138,23 @@ class OBB {
      * @returns {?THREE.Vector3} `result` with the hit point, or `null` if no hit.
      * @memberof OBB
      * @see OBB implementation source :contentReference[oaicite:4]{index=4}
-     */
-    intersectRay(ray, result) {
-
-        // the idea is to perform the intersection test in the local space
-        // of the OBB.
+     */intersectRay(ray, result) {
 
         this.getSize(size);
         aabb.setFromCenterAndSize(tempVector3.set(0, 0, 0), size);
 
-        // create a 4x4 transformation matrix
+        const RT = tempMatrix.copy(this.rotationMatrix).transpose();
 
-        matrix.setFromMatrix3(this.rotationMatrix);
-        matrix.setPosition(this.center);
-
-        // transform ray to the local space of the OBB
-
-        inverse.copy(matrix).invert();
-        localRay.copy(ray).applyMatrix4(inverse);
-
-        // perform ray <-> AABB intersection test
+        localRay.origin.copy(ray.origin).sub(this.center).applyMatrix3(RT);
+        localRay.direction.copy(ray.direction).applyMatrix3(RT).normalize();
 
         if (localRay.intersectBox(aabb, result)) {
-
-            // transform the intersection point back to world space
-
-            return result.applyMatrix4(matrix);
-
+            return result
+                .applyMatrix3(this.rotationMatrix)
+                .add(this.center);
         } else {
-
             return null;
-
         }
-
     }
 
     /**
@@ -338,23 +324,16 @@ class OBB {
      * @returns {boolean} `true` if any part of the OBB is inside or touching the plane.
      * @memberof OBB
      * @see OBB implementation source :contentReference[oaicite:9]{index=9}
-     */
-    insidePlane(plane) {
-        // compute the projection interval radius of this OBB onto L(t) = this->center + t * p.normal;
-
-        plane.normal.normalize();
-        const r = this.halfSize.x * Math.abs(plane.normal.dot(this.e1)) +
-            this.halfSize.y * Math.abs(plane.normal.dot(this.e2)) +
-            this.halfSize.z * Math.abs(plane.normal.dot(this.e3));
-
-        // compute distance of the OBB's center from the plane
-
-        const d = plane.distanceToPoint(this.center);
-
-        // Intersection occurs when distance d falls within [-r,+r] interval
-
-        return d > -r;
-
+     */insidePlane(plane) {
+        const n = plane.normal;
+        const nlen = n.length();
+        if (nlen === 0) return true;
+        const unit = tempVector3.copy(n).multiplyScalar(1 / nlen);
+        const r = this.halfSize.x * Math.abs(unit.dot(this.e1)) +
+                  this.halfSize.y * Math.abs(unit.dot(this.e2)) +
+                  this.halfSize.z * Math.abs(unit.dot(this.e3));
+        const d = n.dot(this.center) + plane.constant;
+        return d >= -r * nlen;
     }
 
     /**
@@ -387,14 +366,13 @@ class OBB {
      * @returns {number} Distance (≥ 0). Zero indicates the point is inside.
      * @memberof OBB
      * @see OBB implementation source :contentReference[oaicite:11]{index=11}
-     */
-    distanceToPoint(point) {
+     */distanceToPoint(point) {
 
         tempVector3.copy(point);
         tempVector3.sub(this.center);
-        tempVector3.applyMatrix3(this.rotationMatrix);
+        const R_T = tempMatrix.copy(this.rotationMatrix).transpose();
+        tempVector3.applyMatrix3(R_T);
 
-        //// point to bounds 
         let dx = Math.max(0, Math.max(-this.halfSize.x - tempVector3.x, tempVector3.x - this.halfSize.x));
         let dy = Math.max(0, Math.max(-this.halfSize.y - tempVector3.y, tempVector3.y - this.halfSize.y));
         let dz = Math.max(0, Math.max(-this.halfSize.z - tempVector3.z, tempVector3.z - this.halfSize.z));

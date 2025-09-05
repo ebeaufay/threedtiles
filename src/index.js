@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass';
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
+import { SplatsMesh } from './splats/SplatsMesh.js';
 
 let quat = new THREE.Quaternion();
 quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.6585408946722412, 0.7520797288025427, 0.02645697580181784))
@@ -34,19 +35,15 @@ const renderer = initRenderer(camera, domContainer);
 
 /// raycast ///
 const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-function onPointerMove( event ) {
-	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-}
-window.addEventListener( 'pointermove', onPointerMove );
+
+
 const geometry = new THREE.SphereGeometry( 1, 32, 16 ); 
 const material = new THREE.MeshBasicMaterial( { color: 0xffff00, transparent: true, depthTest: true, depthWrite: true } ); 
 
 const raycastSphere = new THREE.Mesh( geometry, material ); scene.add( raycastSphere );
 raycastSphere.renderOrder = 5;
 
-
+const pointer = new THREE.Vector2();
 window.addEventListener( 'click', (event)=>{
     pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
@@ -58,9 +55,7 @@ window.addEventListener( 'click', (event)=>{
         if (layer.type != "splat") continue;
         a += layer.opacity * (1 - a);
         if (a >= 0.75) {
-            raycastSphere.position.copy(intersects[0].point);
-            raycastSphere.updateMatrix()
-            raycastSphere.updateMatrixWorld(true)
+            console.log(layer.point)
             break;
         }
     }
@@ -90,7 +85,6 @@ function initSliders() {
     })
     lodSlider.addEventListener("input", e => {
         lodSliderValue.innerText = lodSlider.value;
-        console.log(ogc3DTiles)
         ogc3DTiles.forEach(t => t.setGeometricErrorMultiplier(Number(lodSlider.value)));
 
     })
@@ -106,7 +100,7 @@ function reloadTileset(loadingStrategy, geometricErrorMultiplier) {
     })
 
     ogc3DTiles = initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier)
-    scene.add(raycastSphere);
+    //scene.add(raycastSphere);
     return ogc3DTiles
 }
 
@@ -117,7 +111,8 @@ function initTileLoader() {
     const tileLoader = new TileLoader({
         downloadParallelism: 32,
         renderer: renderer,
-        maxCachedItems: 500,
+        maxCachedItems: 0,
+        timeout: 5000,
         meshCallback: (mesh, geometricError) => {
             mesh.material.metalness = 0;
         },
@@ -151,8 +146,9 @@ function initComposer(scene, camera, renderer) {
 }
 function initScene() {
     const scene = new THREE.Scene();
-    //scene.matrixAutoUpdate = false;
-    scene.background = new THREE.Color(0x888888);
+    scene.matrixAutoUpdate = false;
+    scene.matrixWorldAutoUpdate = false;
+    scene.background = new THREE.Color(0x880000);
     const axesHelper = new THREE.AxesHelper(50000000);
     scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
     return scene;
@@ -203,22 +199,37 @@ function initStats(dom) {
 
 function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier) {
 
+    const ogc3DTile1 = new OGC3DTile({
 
-    const ogc3DTile2 = new OGC3DTile({
+        
+        url: "http://localhost:8080/tileset.json", //UM
+        renderer: renderer,
+        geometricErrorMultiplier: 0.5,
+        distanceBias: 1,
+        loadOutsideView: false,
+        tileLoader: tileLoader,
+        static: true,
+        centerModel: true,
+        splatsQuality: 0.75,
+        splatsCPUCulling: false,
+        iosCompatibility: false,
+        drawBoundingVolume: true,
+        //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/a8cpnqtyjb2/tileset.json", //ION
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/ayj1tydhip1/tileset.json", //UM
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/splatsMirai/tileset.json", //UM
-        //url: "https://vectuel-3d-models.s3.eu-west-3.amazonaws.com/DAE/SM/B/tileset.json", //UM
-        url: "https://storage.googleapis.com/ogc-3d-tiles/cabinSplats/tileset.json", //UM
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/voluma/maximap/tileset.json", //UM
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/ifc/architecture/tileset.json",
-        //url: "https://s3.us-east-2.wasabisys.com/construkted-assets/andxwv8gxi6/tileset/tileset.json", //UM
-        // url: "https://pub-98728cfb3b0d40219c921782c46689b9.r2.dev/20241020_MARSHALL_LAKE_DRONE/3DTILES/tileset.json", //UM
-        //url: "https://sampleservices.luciad.com/ogc/3dtiles/marseille-mesh/tileset.json", //UM
-        //url: "https://storage.googleapis.com/ogc-3d-tiles/house3/tileset.json", //UM
-        //url: "https://storage.googleapis.com/voluma-tiles/jack/x/dorpskerk2/tileset.json", //UM
-        //url: "http://localhost:8081/tileset.json", //UM
+        loadingStrategy: loadingStrategy,
+        
+
+    });
+    ogc3DTile1.setSplatsSizeMultiplier(1.0);
+    //ogc3DTile1.setSplatsCropRadius(4.0);
+    ogc3DTile1.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI*0.5)
+    ogc3DTile1.scale.set(3,3,3)
+    
+    ogc3DTile1.updateMatrices();
+    /* const ogc3DTile2 = new OGC3DTile({
+
+        
+        url: "https://storage.googleapis.com/ogc-3d-tiles/splatsMirai/tileset.json", //UM
         renderer: renderer,
         geometricErrorMultiplier: 0.25,
         distanceBias: 1,
@@ -233,24 +244,16 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
         loadingStrategy: loadingStrategy,
-        //drawBoundingVolume: true,
-        //renderer: renderer,
-        /* onLoadCallback: (e) => {
-            console.log(e)
-            ogc3DTile2.position.sub(new THREE.Vector3(-346.6756780629181, 713.0493816934118, -1402.3649173598503))
-            ogc3DTile2.updateMatrices();
-            o.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 1.21);
-            o.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI * 0.05);
-            
-        } */
+        
 
     });
-    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI)
+    ogc3DTile2.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI) */
     const group = new THREE.Group();
-    group.add(ogc3DTile2);
+    
+    group.add(ogc3DTile1);
     group.static = true;
     scene.add(group);
-    ogc3DTile2.updateMatrices();
+    //ogc3DTile2.updateMatrices();
     //ogc3DTile2.setSplatsCropRadius(10);
 
 
@@ -279,7 +282,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     //const axesHelper = new THREE.AxesHelper( 5000 );
     //scene.add( axesHelper );
 
-    return [ogc3DTile2];
+    return [ogc3DTile1];
 }
 
 
@@ -429,7 +432,7 @@ function initInstancedTilesets(instancedTileLoader) {
 
 
 function initCamera(width, height) {
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 200);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 10000);
 
     camera.position.set(40,10,20);
 
@@ -506,17 +509,17 @@ function animate() {
 
             ogc3DTiles.forEach(t => {
                 if (t && !t.deleted) {
-                    let sphere = new THREE.Sphere(camera.position, 10000)
-                    t.setClipShape(sphere)
+                    //let sphere = new THREE.Sphere(camera.position, 10000)
+                    //t.setClipShape(sphere)
                     const info = t.update(camera);
-                    debugDisplay.innerHTML = Object.entries(info)
+                    /* debugDisplay.innerHTML = Object.entries(info)
                         .map(([key, value]) => {
                             if (typeof value === 'number') {
                                 value = Math.round(value * 100) / 100;
                             }
                             return `${key}: ${value}`;
                         })
-                        .join('<br>');
+                        .join('<br>'); */
                 }
             })
         }

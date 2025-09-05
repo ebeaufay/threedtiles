@@ -4,14 +4,15 @@ import {
     NearestFilter, Data3DTexture, DataTexture, UnsignedByteType, BufferAttribute, InstancedBufferAttribute, DynamicDrawUsage,
     LinearSRGBColorSpace, InstancedBufferGeometry,
     WebGL3DRenderTarget, OrthographicCamera, Scene,
-    NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor, Matrix4
+    NeverDepth, MathUtils, GLSL3, DataUtils, CustomBlending, OneMinusSrcAlphaFactor, OneFactor, Matrix4,
+    NormalBlending
 } from "three";
 import { gamma } from 'mathjs';
 import {
     MinPriorityQueue
 } from 'data-structure-typed';
 import { SplatsCollider } from "./SplatsColider";
-import WorkerConstructor from './PointsManager.worker.js?worker';
+import WorkerConstructor from './PointsManager.worker.js?worker&inline';
 
 const tmpVector = new Vector3();
 const tmpVector2 = new Vector3();
@@ -99,10 +100,12 @@ class SplatsMesh extends Mesh {
                 transparent: true,
                 side: FrontSide,
                 depthTest: false,
-                depthWrite: true,
-                
+                depthWrite: false,
+                blending: NormalBlending,
             }
         );
+
+        
         const geometry = new InstancedBufferGeometry();
         const vertices = new Float32Array([-0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0]);
         const indices = [0, 2, 1, 2, 3, 1];
@@ -141,7 +144,7 @@ class SplatsMesh extends Mesh {
             this.freeAddresses.add(i);
         }
 
-        this.worker = new WorkerConstructor({ type: 'module' });
+        this.worker = new WorkerConstructor();
 
         this.sortListeners = [];
         this.worker.onmessage = message => {
@@ -712,15 +715,12 @@ out vec2 vUv;
 out vec3 splatPositionWorld;
 out vec3 splatPositionModel;
 out float splatDepth;
-//out float orthographicDepth;
 out float stds;
+out vec2 viewZW;
 uniform highp usampler3D positionColorTexture;
 uniform highp usampler3D covarianceTexture;
 uniform mat3 zUpToYUpMatrix3x3;
 uniform float logDepthBufFC;
-//uniform float cameraNear;
-//uniform float cameraFar;
-//uniform bool computeLinearDepth;
 uniform vec2 viewportPixelSize;        // vec2(width , height)
 uniform float k;
 uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
@@ -732,18 +732,6 @@ uniform float cropRadius;
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
-    /* float index = float(order)+0.1; // add small offset to avoid floating point errors with modulo
-    float pixelsPerSlice = textureSize * textureSize;
-    float sliceIndex = floor(index / pixelsPerSlice);
-    float slicePixelIndex = mod(index,pixelsPerSlice);
-
-    float x = mod(slicePixelIndex,textureSize);
-    float y = floor(slicePixelIndex / textureSize);
-
-    ivec3 coord = ivec3(
-        int( (x + 0.5) ),              // x pixel
-        int( (y + 0.5) ),              // y pixel
-        int( sliceIndex + 0.5 ) );     // z slice */
 
     
     highp uint uOrder = order; // Use a local uint copy
@@ -800,8 +788,9 @@ bool modelTransform(in vec3 splatWorld, in mat3 covariance, inout vec3 vertexPos
     vec3 j1 = vec3(0.0,  fy * invZ, -fy * posCam.y * invZ2);
 
     mat3 viewRotT = transpose(mat3(viewMatrix));
-    vec3 j0W = viewRotT * j0;
-    vec3 j1W = viewRotT * j1;
+    //viewRotT *= 2.0;
+    vec3 j0W = viewRotT * j0*4.0;
+    vec3 j1W = viewRotT * j1*4.0;
 
     vec3 tmp0 = covariance * j0W;
     vec3 tmp1 = covariance * j1W;
@@ -863,6 +852,8 @@ void main() {
     mat3 covariance = mat3(0.0);
     getVertexData(splatPositionModel, covariance);
 
+    covariance *=sizeMultiplier*sizeMultiplier;
+
     if(length(splatPositionModel) > cropRadius) return;
     
     /* opacity ‑> stds */
@@ -885,7 +876,7 @@ void main() {
     }
     
 
-    vec3 offsetWorld = vec3(position)*sizeMultiplier*0.5*stds;
+    vec3 offsetWorld = vec3(position)*0.5*stds;
     
     bool valid = modelTransform(splatPositionWorld, covariance, offsetWorld);
     if(!valid) return;
@@ -895,6 +886,7 @@ void main() {
     
     
     gl_Position = outPosition;
+    viewZW = outPosition.zw;
     /* if(computeLinearDepth){
         orthographicDepth = viewZToOrthographicDepth( -gl_Position.w, cameraNear, cameraFar );
     } */

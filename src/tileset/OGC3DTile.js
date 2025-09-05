@@ -86,12 +86,12 @@ class OGC3DTile extends THREE.Object3D {
      * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
      * @param {number} [properties.splatsQuality = 0.75] - optional pass a visual quality for splats between 0 and 1. Lower quality improves performance at the cost of visual approximations.
      * @param {boolean} [properties.splatsCPUCulling = false] - optional if true, splats are culled on CPU asynchronously. Better frame-rate and faster sorting but splats are absent when camera moves quickly until sort finishes.
-     * @param {boolean} [properties.iosCompatibility = false] - optional if true, splats are compatible with recent ios versions.
      */
     constructor(properties) {
         super();
         const self = this;
         self.splatsMesh = properties.splatsMesh;
+        self.oldUltraMeshSplats = properties.oldUltraMeshSplats;
         self.iosCompatibility = properties.iosCompatibility
         self.splatsQuality = properties.splatsQuality != undefined ? properties.splatsQuality : 0.75;
         self.splatsCPUCulling = properties.splatsCPUCulling != undefined ? properties.splatsCPUCulling : false;
@@ -254,18 +254,18 @@ class OGC3DTile extends THREE.Object3D {
         else {
             clipShape = undefined;
         }
-        if(this.childrenTiles){
-            this.childrenTiles.forEach(ct=>{
+        if (this.childrenTiles) {
+            this.childrenTiles.forEach(ct => {
                 ct._setClipShape(this.clipShape);
             })
         }
-        
+
     }
 
-    _setClipShape(clipShape){
+    _setClipShape(clipShape) {
         this.clipShape = clipShape;
-        if(this.childrenTiles){
-            this.childrenTiles.forEach(ct=>{
+        if (this.childrenTiles) {
+            this.childrenTiles.forEach(ct => {
                 ct._setClipShape(this.clipShape);
             })
         }
@@ -345,15 +345,7 @@ class OGC3DTile extends THREE.Object3D {
 
         if (properties.json.extensionsRequired) {
             if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats") || properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats_V2")) {
-                self.splatsMesh = self.iosCompatibility? new SplatsMeshCompatibility(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer)
-                self.splatsMesh.setQuality(self.splatsQuality);
-                self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
-                self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
-                self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
-                if (self.static) self.splatsMesh.matrixWorldAutoUpdate = false;
-                self.add(self.splatsMesh);
-                self.updateMatrices();
-
+                self.oldUltraMeshSplats = true;
             }
         }
         if (!!properties.json.root) {
@@ -574,7 +566,9 @@ class OGC3DTile extends THREE.Object3D {
                     url = self.rootPath + path.sep + url;
                 }
             }
-            url = self._extractQueryParams(url, self.queryParams);
+            if(!url.startsWith("/local-tiles")){
+                url = self._extractQueryParams(url, self.queryParams);
+            }
             if (self.queryParams) {
                 var props = "";
                 for (let key in self.queryParams) {
@@ -600,6 +594,8 @@ class OGC3DTile extends THREE.Object3D {
                             if (!!self.deleted) {
                                 return;
                             }
+
+
                             if (mesh.asset && mesh.asset.copyright) {
                                 mesh.asset.copyright.split(';').forEach(s => {
                                     if (!!copyright[s]) {
@@ -613,8 +609,29 @@ class OGC3DTile extends THREE.Object3D {
                                 }
                             }
 
-                            self.meshContent.push(mesh);
-                            if (!self.splatsMesh) {
+                            if (mesh.isSplatsData) {
+                                if (!self.splatsMesh) {
+
+                                    self.splatsMesh = new SplatsMesh(self.tileLoader.renderer);
+                                    self.splatsMesh.setQuality(self.splatsQuality);
+                                    self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
+                                    self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
+                                    self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
+                                    if (self.static) {
+                                        self.splatsMesh.matrixAutoUpdate = false;
+                                        self.splatsMesh.matrixWorldAutoUpdate = false;
+                                    }
+                                    self.add(self.splatsMesh);
+                                    self.updateMatrices();
+                                }
+                                mesh = self.splatsMesh.addSplatsTile(mesh.positions, mesh.colors, mesh.cov0, mesh.cov1)
+                                
+
+                            }
+                            
+                            if (!mesh.isSplatsBatch){
+                                
+
                                 mesh.traverse((o) => {
                                     if (o.isMesh || o.isPoints) {
                                         o.layers.disable(0);
@@ -637,8 +654,11 @@ class OGC3DTile extends THREE.Object3D {
                                 });
                                 self.add(mesh);
                                 self.updateMatrices();
+                                
                             }
 
+                            self.meshContent.push(mesh);
+                            return mesh;
 
                         }, !self.cameraOnLoad ? () => 0 : () => {
                             /* if (self.parentTile && (self.parentTile.metric != undefined && self.parentTile.metric < 0) || self.parentTile.deleted) {
@@ -684,7 +704,7 @@ class OGC3DTile extends THREE.Object3D {
                             !!self.json.boundingVolume.region ? false : true,
                             !!self.json.boundingVolume.region,
                             self.geometricError,
-                            self.splatsMesh
+                            self.oldUltraMeshSplats
                         );
                     } catch (e) {
                         if (self.displayErrors) _showError(e)
@@ -1335,6 +1355,7 @@ class OGC3DTile extends THREE.Object3D {
                 drawBoundingVolume: self.drawBoundingVolume,
                 splatsMesh: self.splatsMesh,
                 clipShape: self.clipShape,
+                oldUltraMeshSplats: self.oldUltraMeshSplats
             });
             self.childrenTiles.push(childTile);
             self.add(childTile);
@@ -1557,15 +1578,15 @@ class OGC3DTile extends THREE.Object3D {
                 }
             }
 
-            
+
             distance = Math.max(0, tempOBB.distanceToPoint(camera.position) - camera.near);
 
             /* tempSphere.center.copy(this.boundingVolume.center);
             tempSphere.radius = Math.sqrt(this.boundingVolume.halfSize.x*this.boundingVolume.halfSize.x+ this.boundingVolume.halfSize.y*this.boundingVolume.halfSize.y+ this.boundingVolume.halfSize.z*this.boundingVolume.halfSize.z)
             tempSphere.applyMatrix4(this.matrixWorld);
             if (!frustum.intersectsSphere(tempSphere)) return -1;
-            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near);
-            console.log("distSphere " + distance) */
+            distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near); */
+            //console.log("distSphere " + distance)
         } else if (this.boundingVolume instanceof THREE.Sphere) {
             //sphere
             tempSphere.copy(this.boundingVolume);
@@ -1577,7 +1598,7 @@ class OGC3DTile extends THREE.Object3D {
                     return Number.MAX_VALUE;
                 }
             }
-            
+
             if (!frustum.intersectsSphere(tempSphere)) return -1;
             distance = Math.max(0, camera.position.distanceTo(tempSphere.center) - tempSphere.radius - camera.near);
         } else {
@@ -1605,7 +1626,6 @@ class OGC3DTile extends THREE.Object3D {
         }
 
         let lambda = 2.0 * Math.tan(0.5 * fov * 0.01745329251994329576923690768489) * distance;
-
         return (16 * lambda) / (s * scale);
     }
 
