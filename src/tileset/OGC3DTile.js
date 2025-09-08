@@ -537,7 +537,7 @@ class OGC3DTile extends THREE.Object3D {
     async _load(loadJson = true, loadMesh = true) {
 
         var self = this;
-        if (self.deleted) return;
+        if (self.deleted && loadMesh) return;
         if (!!self.json.content) {
             await loadContent(self.json.content, null, loadJson, loadMesh);
         } else if (!!self.json.contents) {
@@ -715,7 +715,7 @@ class OGC3DTile extends THREE.Object3D {
                     self.jsonRequested = url;
                     self.tileLoader.get(self.abortController, self.uuid, url, async json => {
                         self.jsonReceived = true;
-                        if (!!self.deleted) return;
+                        //if (!!self.deleted) return;
 
                         json.rootPath = path.dirname(url);
                         self.json.children.push(json);
@@ -732,6 +732,7 @@ class OGC3DTile extends THREE.Object3D {
                             self.parentTile.updateMatrixWorld(true);
                             //self.parentTile.updateWorldMatrix(true, true);
                         } */
+                       //return json;
                     });
 
                 }
