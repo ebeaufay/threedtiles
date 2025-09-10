@@ -24,6 +24,10 @@ console.log(rotationMatrix);
 let paused = false;
 
 const scene = initScene();
+const geom = new THREE.SphereGeometry(15, 32, 16 ); 
+const mat = new THREE.MeshBasicMaterial(  ); 
+const sphere = new THREE.Mesh( geom, mat ); 
+scene.add( sphere );
 
 
 
@@ -91,7 +95,7 @@ function initSliders() {
 }
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier) {
-    scene.clear()
+    //scene.clear()
     
     scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
     ogc3DTiles.forEach(tileset => {
@@ -166,7 +170,7 @@ function initDomContainer(divID) {
 function initRenderer(camera, dom) {
 
     //const renderer = new WebGPURenderer( { antialias: true } );
-    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: true, powerPreference: "high-performance", precision: "highp" });
+    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: false, powerPreference: "high-performance", precision: "highp" });
     renderer.setPixelRatio(1.0);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.autoClear = false;
@@ -210,10 +214,10 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         tileLoader: tileLoader,
         static: true,
         centerModel: true,
-        splatsQuality: 0.75,
+        splatsQuality: 0.25,
         splatsCPUCulling: false,
         iosCompatibility: false,
-        drawBoundingVolume: true,
+        drawBoundingVolume: false,
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
         loadingStrategy: loadingStrategy,

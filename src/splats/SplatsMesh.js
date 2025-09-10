@@ -99,7 +99,7 @@ class SplatsMesh extends Mesh {
                 fragmentShader: fragShader ? fragShader : splatsFragmentShader(),
                 transparent: true,
                 side: FrontSide,
-                depthTest: false,
+                depthTest: true,
                 depthWrite: false,
                 blending: NormalBlending,
             }
@@ -736,7 +736,6 @@ void getVertexData(out vec3 position, out mat3 covariance) {
     
     highp uint uOrder = order; // Use a local uint copy
 
-    // It's good practice to ensure textureSize is treated as uint for these calcs
     uint uTextureSize = uint(textureSize); // textureSize uniform is float
     uint uPixelsPerSlice = uTextureSize * uTextureSize;
 
@@ -887,11 +886,8 @@ void main() {
     
     gl_Position = outPosition;
     viewZW = outPosition.zw;
-    /* if(computeLinearDepth){
-        orthographicDepth = viewZToOrthographicDepth( -gl_Position.w, cameraNear, cameraFar );
-    } */
     
-    #if defined( USE_LOGDEPTHBUF )
+    #if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
 	    float isPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
         splatDepth = isPerspective == 0.0 ? splatPositionProjected.z : log2( 1.0 + splatPositionProjected.w ) * logDepthBufFC * 0.5;
     #else
@@ -929,7 +925,6 @@ void main() {
     float alpha = color.w * exp(-beta_k * rk);
 
     fragColor = vec4(pow(color.xyz,vec3(1.0/2.2)), alpha);
-    
     gl_FragDepth = splatDepth;
     
 }`
