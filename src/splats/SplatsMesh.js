@@ -93,7 +93,8 @@ class SplatsMesh extends Mesh {
                     minSplatPixelSize: { value: 0 },
                     minOpacity: { value: 0.01 },
                     culling: {value: false},
-                    antialiasingFactor: {value: 2.0}
+                    antialiasingFactor: {value: 2.0},
+                    depthBias: {value: 0.0}
                 },
                 vertexShader: splatsVertexShader(),
                 fragmentShader: fragShader ? fragShader : splatsFragmentShader(),
@@ -247,6 +248,10 @@ class SplatsMesh extends Mesh {
     setSplatsCPUCulling(splatsCPUCuling){
         this.splatsCPUCuling = splatsCPUCuling;
         this.material.uniforms.culling.value = splatsCPUCuling;
+    }
+    setDepthBias(depthBias){
+        this.depthBias = depthBias;
+        this.material.uniforms.depthBias.value = this.depthBias;
     }
     updateShaderParams(camera) {
         const proj = camera.projectionMatrix.elements;
@@ -729,6 +734,7 @@ uniform float minOpacity;
 uniform bool culling;
 uniform float antialiasingFactor;
 uniform float cropRadius;
+uniform float depthBias; // depth bias in meters
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -864,7 +870,10 @@ void main() {
     
 
     splatPositionWorld = (modelMatrix * vec4(splatPositionModel, 1.0)).xyz;
-    vec4 splatPositionProjected = projectionMatrix * viewMatrix * vec4(splatPositionWorld, 1.0);
+    vec4 splatProjectionView = viewMatrix * vec4(splatPositionWorld, 1.0);
+    vec4 splatPositionProjected = projectionMatrix * splatProjectionView;
+    splatProjectionView.z += depthBias;
+    vec4 splatPositionProjectedWithBias = projectionMatrix * splatProjectionView;
 
     if(culling){
         float clip = 1.2 * splatPositionProjected.w;
@@ -889,9 +898,9 @@ void main() {
     
     #if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
 	    float isPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
-        splatDepth = isPerspective == 0.0 ? splatPositionProjected.z : log2( 1.0 + splatPositionProjected.w ) * logDepthBufFC * 0.5;
+        splatDepth = isPerspective == 0.0 ? splatPositionProjectedWithBias.z : log2( 1.0 + splatPositionProjectedWithBias.w ) * logDepthBufFC * 0.5;
     #else
-        splatDepth = (splatPositionProjected.z / splatPositionProjected.w)* 0.5 + 0.5;
+        splatDepth = (splatPositionProjectedWithBias.z / splatPositionProjectedWithBias.w)* 0.5 + 0.5;
     #endif
 
     

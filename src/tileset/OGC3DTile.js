@@ -292,6 +292,17 @@ class OGC3DTile extends THREE.Object3D {
     }
 
     /**
+     * set a depth bias to render splats in front of other objects even when they are marginally behind. (avoids overlap issues when overlaying on mesh)
+     * @param {number} depthBias 
+     */
+    setSplatsDepthBias(depthBias) {
+        this.splatsDepthBias = depthBias;
+        if (this.splatsMesh) {
+            this.splatsMesh.setDepthBias(this.splatsDepthBias)
+        }
+    }
+
+    /**
      * Set the splats to use CPU culling. Faster sort and better frame rate at the cost of splats being absent when camera moves quickly.
      * @param {boolean} splatsCPUCulling 
      */
