@@ -24,7 +24,7 @@ console.log(rotationMatrix);
 let paused = false;
 
 const scene = initScene();
-const geom = new THREE.SphereGeometry(15, 32, 16 ); 
+const geom = new THREE.SphereGeometry(10, 32, 16 ); 
 const mat = new THREE.MeshBasicMaterial(  ); 
 const sphere = new THREE.Mesh( geom, mat ); 
 scene.add( sphere );
@@ -206,7 +206,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     const ogc3DTile1 = new OGC3DTile({
 
         
-        url: "http://localhost:8080/tileset.json", //UM
+        url: "http://localhost:8082/tileset.json", //UM
         renderer: renderer,
         geometricErrorMultiplier: 0.5,
         distanceBias: 1,

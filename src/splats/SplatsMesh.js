@@ -149,7 +149,6 @@ class SplatsMesh extends Mesh {
 
         this.sortListeners = [];
         this.worker.onmessage = message => {
-            //console.log(message.data.sortPerf)
             const newOrder = new Uint32Array(message.data.order);
             this.numSplatsRendered = newOrder.length;
             //console.log(newOrder.length)
@@ -720,6 +719,7 @@ out vec2 vUv;
 out vec3 splatPositionWorld;
 out vec3 splatPositionModel;
 out float splatDepth;
+out float splatDepthWithBias;
 out float stds;
 out vec2 viewZW;
 uniform highp usampler3D positionColorTexture;
@@ -898,9 +898,11 @@ void main() {
     
     #if defined( USE_LOGARITHMIC_DEPTH_BUFFER )
 	    float isPerspective = float( isPerspectiveMatrix( projectionMatrix ) );
-        splatDepth = isPerspective == 0.0 ? splatPositionProjectedWithBias.z : log2( 1.0 + splatPositionProjectedWithBias.w ) * logDepthBufFC * 0.5;
+        splatDepthWithBias = isPerspective == 0.0 ? splatPositionProjectedWithBias.z : log2( 1.0 + splatPositionProjectedWithBias.w ) * logDepthBufFC * 0.5;
+        splatDepth = isPerspective == 0.0 ? splatPositionProjected.z : log2( 1.0 + splatPositionProjected.w ) * logDepthBufFC * 0.5;
     #else
-        splatDepth = (splatPositionProjectedWithBias.z / splatPositionProjectedWithBias.w)* 0.5 + 0.5;
+        splatDepthWithBias = (splatPositionProjectedWithBias.z / splatPositionProjectedWithBias.w)* 0.5 + 0.5;
+        splatDepth = (splatPositionProjected.z / splatPositionProjected.w)* 0.5 + 0.5;
     #endif
 
     
@@ -917,6 +919,7 @@ in vec2 vUv;
 in vec3 splatPositionModel;
 in vec3 splatPositionWorld;
 in float splatDepth;
+in float splatDepthWithBias;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -934,7 +937,7 @@ void main() {
     float alpha = color.w * exp(-beta_k * rk);
 
     fragColor = vec4(pow(color.xyz,vec3(1.0/2.2)), alpha);
-    gl_FragDepth = splatDepth;
+    gl_FragDepth = splatDepthWithBias;
     
 }`
 };
