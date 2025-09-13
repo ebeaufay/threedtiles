@@ -221,7 +221,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         drawBoundingVolume: false,
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
-        loadingStrategy: loadingStrategy,
+        loadingStrategy: "INCREMENTAL",
         
 
     });

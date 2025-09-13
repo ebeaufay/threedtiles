@@ -131,7 +131,7 @@ class TileLoader {
                     nextDownload.doDownload();
                 }
             }
-        } while (this.concurrentDownloads < this.downloadParallelism);
+        } while (concurrentDownloads < this.downloadParallelism);
 
         return;
     }

@@ -989,19 +989,20 @@ class OGC3DTile extends THREE.Object3D {
 
 
     _trimTreeImmediate() {
-        if (this.metric == undefined) return;
-
-        else if (this.hasMeshContent && ((this.shouldBeVisible && this.materialVisibility))) {
+        const self = this;
+        if (self.metric == undefined) return;
+    
+        if (self.hasMeshContent && ((self.shouldBeVisible && self.materialVisibility))) {
             if (self.splatsMesh && !self.splatsReady) {
                 return;
             }
-            this._disposeChildren();
+            self._disposeChildren();
         } else {
-            this.childrenTiles.forEach(child => {
+            self.childrenTiles.forEach(child => {
                 child._trimTreeImmediate();
             })
         }
-
+    
     }
     _updateNodeVisibilityImmediate(parentDisplaysMesh = false) {
         //updateNodeVisibilityCount++;
