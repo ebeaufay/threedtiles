@@ -27,7 +27,7 @@ const scene = initScene();
 const geom = new THREE.SphereGeometry(10, 32, 16 ); 
 const mat = new THREE.MeshBasicMaterial(  ); 
 const sphere = new THREE.Mesh( geom, mat ); 
-scene.add( sphere );
+//scene.add( sphere );
 
 
 
@@ -44,7 +44,8 @@ const raycaster = new THREE.Raycaster();
 const geometry = new THREE.SphereGeometry( 1, 32, 16 ); 
 const material = new THREE.MeshBasicMaterial( { color: 0xffff00, transparent: true, depthTest: true, depthWrite: true } ); 
 
-const raycastSphere = new THREE.Mesh( geometry, material ); scene.add( raycastSphere );
+const raycastSphere = new THREE.Mesh( geometry, material ); 
+//scene.add( raycastSphere );
 raycastSphere.renderOrder = 5;
 
 const pointer = new THREE.Vector2();
@@ -206,7 +207,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     const ogc3DTile1 = new OGC3DTile({
 
         
-        url: "http://localhost:8082/tileset.json", //UM
+        url: "http://localhost:8080/tileset.json", //UM
         renderer: renderer,
         geometricErrorMultiplier: 0.5,
         distanceBias: 1,
@@ -392,7 +393,7 @@ function initInstancedTilesets(instancedTileLoader) {
                 url: "https://storage.googleapis.com/ogc-3d-tiles/playaETC1S/tileset.json",
                 //url: "https://storage.googleapis.com/ogc-3d-tiles/nyc/tileset.json",
                 geometricErrorMultiplier: 0.01,
-                loadOutsideView: false,
+                loadOutsideView: true,
                 tileLoader: instancedTileLoader,
                 static: true,
                 renderer: renderer,
@@ -516,14 +517,14 @@ function animate() {
                     //let sphere = new THREE.Sphere(camera.position, 10000)
                     //t.setClipShape(sphere)
                     const info = t.update(camera);
-                    /* debugDisplay.innerHTML = Object.entries(info)
+                    debugDisplay.innerHTML = Object.entries(info)
                         .map(([key, value]) => {
                             if (typeof value === 'number') {
                                 value = Math.round(value * 100) / 100;
                             }
                             return `${key}: ${value}`;
                         })
-                        .join('<br>'); */
+                        .join('<br>');
                 }
             })
         }

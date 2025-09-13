@@ -1311,8 +1311,8 @@ class OGC3DTile extends THREE.Object3D {
                 self.meshContent.length > 0 &&
                 self.materialVisibility &&
                 self._areAllChildrenLoadedAndHidden()) {
-
-                if (self.splatsMesh && this.materialVisibility && !self.splatsReady) {
+    
+                if (self.splatsMesh && self.materialVisibility && !self.splatsReady) {
                     return;
                 }
                 self._disposeChildren();
@@ -1385,9 +1385,9 @@ class OGC3DTile extends THREE.Object3D {
                     allLoadedAndHidden = false;
                     return false;
                 }
-                if (!child.metric < 0) {
+                if (child.metric < 0) {
                     return true;
-                };
+                }
                 if (child.materialVisibility && (!self.splatsMesh || !!self.splatsReady)) {
                     allLoadedAndHidden = false;
                     return false;
