@@ -587,9 +587,7 @@ class OGC3DTile extends THREE.Object3D {
                     url = self._assembleURL(self.rootPath, url);
                 }
             } else { //path
-                if (path.isAbsolute(self.rootPath)) {
-                    url = self.rootPath + path.sep + url;
-                }
+                url = self.rootPath + path.sep + url;
             }
             if(!url.startsWith("/local-tiles")){
                 url = self._extractQueryParams(url, self.queryParams);
