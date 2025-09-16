@@ -508,42 +508,56 @@ class OGC3DTile extends THREE.Object3D {
             root += '/';
         }
 
-        const rootUrl = new URL(root);
-        let rootParts = rootUrl.pathname.split('/').filter(p => p !== '');
-        let relativeParts = relative.split('/').filter(p => p !== '');
+        try {
+            const rootUrl = new URL(root);
+            let rootParts = rootUrl.pathname.split('/').filter(p => p !== '');
+            let relativeParts = relative.split('/').filter(p => p !== '');
 
-        for (let i = 1; i <= rootParts.length; i++) {
-            if (i >= relativeParts.length) break;
-            const rootToken = rootParts.slice(rootParts.length - i, rootParts.length).join('/');
-            const relativeToken = relativeParts.slice(0, i).join('/');
-            if (rootToken === relativeToken) {
-                for (let j = 0; j < i; j++) {
-                    rootParts.pop();
+            for (let i = 1; i <= rootParts.length; i++) {
+                if (i >= relativeParts.length) break;
+                const rootToken = rootParts.slice(rootParts.length - i, rootParts.length).join('/');
+                const relativeToken = relativeParts.slice(0, i).join('/');
+                if (rootToken === relativeToken) {
+                    for (let j = 0; j < i; j++) {
+                        rootParts.pop();
+                    }
+                    break;
                 }
-                break;
+            }
+
+            while (relativeParts.length > 0 && relativeParts[0] === '..') {
+                rootParts.pop();
+                relativeParts.shift();
+            }
+
+            return `${rootUrl.protocol}//${rootUrl.host}/${[...rootParts, ...relativeParts].join('/')}`;
+        } catch (e) {
+            // If URL construction fails (likely a local path), fall back to simple concatenation.
+            // Ensure we don't accidentally produce double slashes.
+            if (!root.endsWith('/') && !relative.startsWith('/')) {
+                return root + '/' + relative;
+            } else {
+                return root + relative;
             }
         }
-
-
-        while (relativeParts.length > 0 && relativeParts[0] === '..') {
-            rootParts.pop();
-            relativeParts.shift();
-        }
-
-        return `${rootUrl.protocol}//${rootUrl.host}/${[...rootParts, ...relativeParts].join('/')}`;
     }
 
     _extractQueryParams(url, params) {
-        const urlObj = new URL(url);
+        try {
+            const urlObj = new URL(url);
 
-        // Iterate over all the search parameters
-        for (let [key, value] of urlObj.searchParams) {
-            params[key] = value;
+            // Iterate over all the search parameters
+            for (let [key, value] of urlObj.searchParams) {
+                params[key] = value;
+            }
+
+            // Remove the query string
+            urlObj.search = '';
+            return urlObj.toString();
+        } catch (e) {
+            // If URL construction fails (e.g. local file paths), return the original input URL unchanged.
+            return url;
         }
-
-        // Remove the query string
-        urlObj.search = '';
-        return urlObj.toString();
     }
     async _load(loadJson = true, loadMesh = true) {
 
