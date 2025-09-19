@@ -146,6 +146,13 @@ class SplatsMesh extends Mesh {
         }
 
         this.worker = new WorkerConstructor();
+        // send public wasm URL to inlined worker so it can fetch the .wasm
+        try {
+            const wasmUrl = new URL('./radix/wasm_sorter_bg.wasm', import.meta.url).toString();
+            this.worker.postMessage({ type: 'wasmUrl', url: wasmUrl });
+        } catch (e) {
+            // ignore if resolution fails in some environments
+        }
 
         this.sortListeners = [];
         this.worker.onmessage = message => {

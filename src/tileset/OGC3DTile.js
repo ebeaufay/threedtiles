@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as path from "path-browserify"
 import { resolveImplicite } from './implicit/ImplicitTileResolver.js';
 import { SplatsMesh } from '../splats/SplatsMesh';
-import { SplatsMeshCompatibility } from '../splats/SplatsMeshCompatibility';
+import { SplatsMeshWebGPU } from '../splats/SplatsMeshWebGPU';
 var averageTime = 0;
 
 
@@ -635,7 +635,7 @@ class OGC3DTile extends THREE.Object3D {
                             if (mesh.isSplatsData) {
                                 if (!self.splatsMesh) {
 
-                                    self.splatsMesh = new SplatsMesh(self.tileLoader.renderer);
+                                    self.splatsMesh = self.tileLoader.renderer.isWebGPURenderer? new SplatsMeshWebGPU(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer);
                                     self.splatsMesh.setQuality(self.splatsQuality);
                                     self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                                     self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)

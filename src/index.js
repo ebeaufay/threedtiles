@@ -207,7 +207,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     const ogc3DTile1 = new OGC3DTile({
 
         
-        url: "http://localhost:8080/tileset.json", //UM
+        url: "http://localhost:8087/tileset.json", //UM
         renderer: renderer,
         geometricErrorMultiplier: 0.5,
         distanceBias: 1,

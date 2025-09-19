@@ -214,7 +214,9 @@ class PointsManager {
     // Asynchronous loop to process sort requests sequentially
     async processSortQueue() {
         if (!this.initialized) {
-            await init();
+            // Prefer an explicit wasm URL provided by the main thread when the worker is inlined.
+            const wasmUrl = (typeof globalThis !== 'undefined' && globalThis.__WASM_SORTER_URL__) ? globalThis.__WASM_SORTER_URL__ : undefined;
+            await init(wasmUrl);
             this.initialized = true;
         }
         while (this.pendingSort) {

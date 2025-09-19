@@ -11,8 +11,14 @@ const sortCallback = ((array, numUsed, id, sortPerf)=>{
 })
 let pointsManager;
 self.onmessage = function (e) {
-
-    try {
+ 
+     // Accept the wasm URL from the main thread (required when worker is inlined).
+     if (e.data && e.data.type === 'wasmUrl') {
+         globalThis.__WASM_SORTER_URL__ = e.data.url;
+         return;
+     }
+ 
+     try {
 
         switch (e.data.method) {
             

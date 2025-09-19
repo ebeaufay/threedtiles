@@ -39,7 +39,7 @@
     "meshoptimizer": "^0.25.0",
     "path-browserify": "^1.0.1",
     "spz-js": "^1.2.5",
-    "uuid": "^11.1.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@laynezh/vite-plugin-lib-assets": "^2.1.2",
@@ -54,7 +54,7 @@
     "process": "^0.11.10",
     "rollup-plugin-polyfill-node": "^0.13.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.4",
+    "vite": "^7.1.6",
     "vite-plugin-static-copy": "^3.1.0",
     "vitest": "^3.2.4"
   }
