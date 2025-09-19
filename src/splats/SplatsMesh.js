@@ -12,7 +12,7 @@ import {
     MinPriorityQueue
 } from 'data-structure-typed';
 import { SplatsCollider } from "./SplatsColider";
-import WorkerConstructor from './PointsManager.worker.js?worker&inline';
+import WorkerConstructor from './PointsManager.worker.js?worker';
 
 const tmpVector = new Vector3();
 const tmpVector2 = new Vector3();
@@ -146,13 +146,6 @@ class SplatsMesh extends Mesh {
         }
 
         this.worker = new WorkerConstructor();
-        // send public wasm URL to inlined worker so it can fetch the .wasm
-        try {
-            const wasmUrl = new URL('./radix/wasm_sorter_bg.wasm', import.meta.url).toString();
-            this.worker.postMessage({ type: 'wasmUrl', url: wasmUrl });
-        } catch (e) {
-            // ignore if resolution fails in some environments
-        }
 
         this.sortListeners = [];
         this.worker.onmessage = message => {
