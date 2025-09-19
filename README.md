@@ -7,6 +7,7 @@
 A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support. 
 
 Oh, also it supports gaussian splats! ( currently via KHR_gaussian_splatting_compression_spz )
+Here's a free app to convert various splat formats to OGC3DTiles directly in your browser : [contextsplat](https://contextsplat.xyz) 
 
 ## sample getting started projects
 Getting started vanilla js:    
