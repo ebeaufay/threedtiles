@@ -12,7 +12,7 @@ import {
     MinPriorityQueue
 } from 'data-structure-typed';
 import { SplatsCollider } from "./SplatsColider";
-import WorkerConstructor from './PointsManager.worker.js?worker';
+import WorkerConstructor from './PointsManager.worker.js?worker&inline';
 
 const tmpVector = new Vector3();
 const tmpVector2 = new Vector3();
