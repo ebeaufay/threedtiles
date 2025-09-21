@@ -8,7 +8,7 @@ A faster 3DTiles viewer for three.js, now with OGC3DTiles 1.1 support.
 
 Oh, also it supports gaussian splats! ( currently via KHR_gaussian_splatting_compression_spz )
 
-[https://contextsplat.xyz](contextsplat) is a web tool that let's you convert 3dgs to OGC3DTILES directly in the browser, view them in a geospatial context and download them or a starter three.js app.
+[contextsplat.xyz](https://contextsplat.xyz) is a web tool that let's you convert 3dgs to OGC3DTILES directly in the browser, view them in a geospatial context and download them or a starter three.js app.
 
 ## sample getting started projects
 Getting started vanilla js:    
