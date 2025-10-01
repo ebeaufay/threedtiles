@@ -209,7 +209,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         
         url: "http://localhost:8087/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier: 0.5,
+        geometricErrorMultiplier: 0.1,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,

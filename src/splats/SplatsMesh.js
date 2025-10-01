@@ -888,8 +888,8 @@ void main() {
     
     bool valid = modelTransform(splatPositionWorld, covariance, offsetWorld);
     if(!valid) return;
-    
-    vec4 outPosition = projectionMatrix * viewMatrix * vec4(offsetWorld+splatPositionWorld,1.0);
+    splatPositionWorld+=offsetWorld;
+    vec4 outPosition = projectionMatrix * viewMatrix * vec4(splatPositionWorld,1.0);
     
     
     
