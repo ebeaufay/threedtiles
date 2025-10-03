@@ -1,14 +1,21 @@
 import { PointsManager } from "./PointsManager";
 
-const sortCallback = ((array, numUsed, id, sortPerf)=>{
-    const copy = new Uint32Array(array)
+/**
+ * Important: radix_sort_indices returns a Uint32Array view into WebAssembly.Memory.
+ * You cannot transfer a view backed by WASM memory (detaching it would break the module).
+ * Therefore we must copy into a standalone ArrayBuffer before postMessage with transfer.
+ */
+const sortCallback = ((array, numUsed, id, sortPerf) => {
+    // Copy only the used portion (array should already be length==numUsed)
+    const copy = new Uint32Array(array.length);
+    copy.set(array);
     postMessage({
         order: copy.buffer,
         count: numUsed,
         id: id,
         sortPerf: sortPerf
     }, [copy.buffer]);
-})
+});
 let pointsManager;
 self.onmessage = function (e) {
 

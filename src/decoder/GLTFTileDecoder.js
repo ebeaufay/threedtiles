@@ -4,7 +4,7 @@ import { loadSpz } from '@spz-loader/core';
 // Import a module worker for SPZ decoding. When compiled/bundled by tooling such as Vite,
 // the '?worker' suffix ensures a proper Worker constructor is generated. If the bundler
 // does not support this convention the import will silently fail and fall back to main‑thread decoding.
-import SPZWorkerConstructor from './SPZ.worker.js?worker&inline';
+import GLTFTileWorkerConstructor from './GLTFTileDecoder.worker.js?worker&inline';
 
 class GLTFTileDecoder {
   constructor(gltfLoader, renderer) {
@@ -13,32 +13,31 @@ class GLTFTileDecoder {
     if (this.gltfLoader?.register) {
       this.gltfLoader.register(() => ({ name: 'KHR_spz_gaussian_splats_compression' }));
     }
-    // Create a dedicated SPZ decoding worker. This worker runs the heavy
-    // decoding and attribute construction off the main thread. If the import
-    // failed or workers are not supported, this.spzWorker will be undefined
-    // and the decoder falls back to synchronous decoding.
+    // Create a dedicated worker that will handle the heavy numeric work
+    // (SPZ decoding and KHR processing). If worker creation fails we fall
+    // back to main-thread decoding logic.
     try {
-      this.spzWorker = new SPZWorkerConstructor();
-      this.spzWorkerJobId = 0;
-      this.spzWorkerCallbacks = new Map();
-      this.spzWorker.onmessage = (e) => {
+      this.worker = new GLTFTileWorkerConstructor();
+      this.workerJobId = 0;
+      this.workerCallbacks = new Map();
+      this.worker.onmessage = (e) => {
         const { id, pos, col, c0, c1, error } = e.data || {};
-        const cb = this.spzWorkerCallbacks.get(id);
+        const cb = this.workerCallbacks.get(id);
         if (!cb) return;
-        this.spzWorkerCallbacks.delete(id);
+        this.workerCallbacks.delete(id);
         if (error) cb.reject(new Error(error));
         else cb.resolve({ pos, col, c0, c1 });
       };
-      this.spzWorker.onerror = (err) => {
+      this.worker.onerror = (err) => {
         // propagate worker errors to all outstanding callbacks
-        for (const [, cb] of this.spzWorkerCallbacks) {
+        for (const [, cb] of this.workerCallbacks) {
           cb.reject(err instanceof Error ? err : new Error(String(err)));
         }
-        this.spzWorkerCallbacks.clear();
+        this.workerCallbacks.clear();
       };
     } catch (_) {
-      // Worker creation failed; leave spzWorker undefined to trigger fallback.
-      this.spzWorker = undefined;
+      // Worker creation failed; leave worker undefined to trigger fallback.
+      this.worker = undefined;
     }
   }
 
@@ -100,24 +99,23 @@ class GLTFTileDecoder {
 
   async #handleSPZ(parser, loc, gltf) {
     // Read the SPZ buffer view into its own ArrayBuffer so it can be
-    // transferred to a worker without retaining the original glTF buffers.
+    // transferred to the worker without retaining the original glTF buffers.
     let ab = await parser.getDependency('bufferView', loc.bv);
     if (ab?.buffer?.byteLength) ab = ab.buffer.slice(ab.byteOffset, ab.byteLength + ab.byteOffset);
-    // If a worker is available use it to offload SPZ decoding. The worker
-    // will return transferable ArrayBuffers for each attribute. Otherwise
-    // perform decoding on the main thread.
-    if (this.spzWorker) {
-      const jobId = this.spzWorkerJobId++;
+    // If our worker is available offload decoding to it. Otherwise fall back
+    // to the original main-thread SPZ decoding logic.
+    if (this.worker) {
+      const jobId = this.workerJobId++;
       const p = new Promise((resolve, reject) => {
-        this.spzWorkerCallbacks.set(jobId, { resolve, reject });
+        this.workerCallbacks.set(jobId, { resolve, reject });
       });
       try {
         // transfer the SPZ buffer to the worker; the ArrayBuffer is detached
         // from the main thread immediately.
-        this.spzWorker.postMessage({ id: jobId, spz: ab }, [ab]);
+        this.worker.postMessage({ id: jobId, op: 'decodeSPZ', spz: ab }, [ab]);
       } catch (err) {
         // Posting can throw if the worker is broken; reject immediately.
-        this.spzWorkerCallbacks.delete(jobId);
+        this.workerCallbacks.delete(jobId);
         throw err;
       }
       const { pos, col, c0, c1 } = await p;
@@ -177,19 +175,64 @@ class GLTFTileDecoder {
       if (Number.isInteger(idx)) return parser.getDependency('accessor', idx);
       return null;
     };
-
-    let pos = await getAcc('POSITION');
-    if (!pos) return this.#handleULTRA(gltf);
+  
+    // Obtain accessor objects (may contain .buffer and byte offsets)
+    let posAcc = await getAcc('POSITION');
+    if (!posAcc) return this.#handleULTRA(gltf);
+    let colAcc = await getAcc('COLOR_0');
+    let rotAcc = (await getAcc('ROTATION')) || (await getAcc('_ROTATION'));
+    let sclAcc = (await getAcc('SCALE')) || (await getAcc('_SCALE'));
+  
+    // Build ArrayBuffer slices for transfer to the worker (if available)
+    const posBuf = posAcc?.buffer ? posAcc.buffer.slice(posAcc.byteOffset, posAcc.byteOffset + posAcc.byteLength) : null;
+    const colBuf = colAcc?.buffer ? colAcc.buffer.slice(colAcc.byteOffset, colAcc.byteOffset + colAcc.byteLength) : null;
+    const rotBuf = rotAcc?.buffer ? rotAcc.buffer.slice(rotAcc.byteOffset, rotAcc.byteOffset + rotAcc.byteLength) : null;
+    const sclBuf = sclAcc?.buffer ? sclAcc.buffer.slice(sclAcc.byteOffset, sclAcc.byteOffset + sclAcc.byteLength) : null;
+  
+    if (this.worker) {
+      const jobId = this.workerJobId++;
+      const p = new Promise((resolve, reject) => {
+        this.workerCallbacks.set(jobId, { resolve, reject });
+      });
+      try {
+        const transfer = [];
+        const payload = { pos: posBuf, col: colBuf, rot: rotBuf, scl: sclBuf };
+        if (posBuf) transfer.push(posBuf);
+        if (colBuf) transfer.push(colBuf);
+        if (rotBuf) transfer.push(rotBuf);
+        if (sclBuf) transfer.push(sclBuf);
+        this.worker.postMessage({ id: jobId, op: 'handleKHR', payload }, transfer);
+      } catch (err) {
+        this.workerCallbacks.delete(jobId);
+        throw err;
+      }
+      const { pos, col, c0, c1 } = await p;
+      const positions = new Float32Array(pos);
+      const colors = new Float32Array(col);
+      const cov0 = new Float32Array(c0);
+      const cov1 = new Float32Array(c1);
+      const posAttr = new THREE.BufferAttribute(positions, 3);
+      const colAttr = new THREE.BufferAttribute(colors, 4);
+      const cov0Attr = new THREE.BufferAttribute(cov0, 3);
+      const cov1Attr = new THREE.BufferAttribute(cov1, 3);
+      gltf.scene.traverse((o) => o.dispose && o.dispose());
+      return {
+        isSplatsData: true, positions: posAttr, colors: colAttr, cov0: cov0Attr, cov1: cov1Attr
+      }
+    }
+  
+    // Fallback: perform the same processing on the main thread (preserve existing logic)
+    let pos = posAcc;
     if (pos?.buffer) pos = new Float32Array(pos.buffer, pos.byteOffset, pos.count * 3);
-
-    let col = await getAcc('COLOR_0');
+  
+    let col = colAcc;
     if (col?.buffer) col = new Float32Array(col.buffer, col.byteOffset, (col.itemSize || 4) * col.count);
-
-    let rot = (await getAcc('ROTATION')) || (await getAcc('_ROTATION'));
-    let scl = (await getAcc('SCALE')) || (await getAcc('_SCALE'));
+  
+    let rot = rotAcc;
+    let scl = sclAcc;
     if (rot?.buffer) rot = new Float32Array(rot.buffer, rot.byteOffset, rot.count * 4);
     if (scl?.buffer) scl = new Float32Array(scl.buffer, scl.byteOffset, scl.count * 3);
-
+  
     const n = pos.length / 3;
     const colors = new Float32Array(n * 4);
     if (col) {
@@ -202,14 +245,14 @@ class GLTFTileDecoder {
     } else {
       for (let i = 0; i < n; i++) colors.set([1, 1, 1, 1], i * 4);
     }
-
+  
     const cov = this.#covFromRotScale(rot, scl);
-
+  
     const posAttr = new THREE.BufferAttribute(pos, 3);
     const colAttr = new THREE.BufferAttribute(colors, 4);
     const cov0Attr = new THREE.BufferAttribute(cov.c0, 3);
     const cov1Attr = new THREE.BufferAttribute(cov.c1, 3);
-
+  
     gltf.scene.traverse((o) => o.dispose && o.dispose());
     return {
       isSplatsData: true, positions: posAttr, colors: colAttr, cov0: cov0Attr, cov1: cov1Attr

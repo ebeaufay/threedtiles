@@ -8,6 +8,7 @@ class PointsManager {
     constructor(sortCallback) {
         this.points = new Float32Array(4096 * 3);
         this.distances = new Uint32Array(4096);
+        this.indexes = new Uint32Array(4096);
         this.pointSets = new Map(); // Map<number, object>
         this.numUsed = 0;
         this.sortOngoing = false;
@@ -135,25 +136,36 @@ class PointsManager {
     }
 
     computeDistances(x, y, z,vpm) {
-
-        this.distances.fill(0);
+ 
+        // Determine how many points are used across visible sets to size working arrays
         const keys = Array.from(this.pointSets.keys());
         const numKeys = keys.length;
         let planes;
         if(!!vpm){
             planes = this.getFrustumPlanes(vpm);
         }
-        this.numUsed = 0;
+        let needed = 0;
         for (let i = 0; i < numKeys; i++) {
             const key = keys[i];
             const pointSet = this.pointSets.get(key);
             if (!pointSet.used) continue;
-            const length = Math.floor(pointSet.length / 3);
-            this.numUsed += length
+            needed += Math.floor(pointSet.length / 3);
         }
-        //console.log("num used : "+this.numUsed);
-        this.indexes = new Uint32Array(this.numUsed);
-        this.distances = new Uint32Array(this.numUsed);
+ 
+        // Ensure capacity without excessive reallocation (grow to next power-of-two)
+        const ensureCapacity = (arr, min) => {
+            if (!arr || arr.length < min) {
+                let cap = arr ? arr.length : 0;
+                cap = Math.max(1024, cap);
+                while (cap < min) cap <<= 1;
+                return new Uint32Array(cap);
+            }
+            return arr;
+        };
+        this.indexes = ensureCapacity(this.indexes, needed);
+        this.distances = ensureCapacity(this.distances, needed);
+ 
+        // Fill working arrays for actually visible points
         let c = 0;
         for (let i = 0; i < numKeys; i++) {
             const key = keys[i];
@@ -161,13 +173,13 @@ class PointsManager {
             const pointSet = this.pointSets.get(key);
             if (!pointSet.used) continue;
             const length = Math.floor(pointSet.length / 3);
-            //this.numUsed += length
+ 
             for (let j = 0; j < length; j++) {
                 const idx = key + (j * 3);
                 const vx = this.points[idx];
                 const vy = this.points[idx + 1];
                 const vz = this.points[idx + 2];
-
+ 
                 // frustum culling //
                 if(planes){
                     let visible = true;
@@ -175,7 +187,7 @@ class PointsManager {
                         if (vx * planes[p] +
                             vy * planes[p + 1] +
                             vz * planes[p + 2] +
-                            planes[p + 3] < 0) {    // outside this plane
+                            planes[p + 3] < 0) {
                             visible = false;
                             break;
                         }
@@ -193,9 +205,7 @@ class PointsManager {
             }
         }
         this.numUsed = c;
-        
-        this.indexes = this.indexes.subarray(0, c);
-        this.distances = this.distances.subarray(0, c);
+        // Note: keep full-capacity arrays; we will pass subarray views during sort to avoid reallocations.
     }
 
     sort(xyz, vpm, id) {
@@ -238,12 +248,17 @@ class PointsManager {
 
             //console.log(this.indexes.length)
             const start = performance.now();
-            this.indexes = radix_sort_indices(this.indexes, this.distances);
+            // Sort only the used portion to minimize memory and avoid allocating giant arrays
+            const sorted = radix_sort_indices(
+                this.indexes.subarray(0, this.numUsed),
+                this.distances.subarray(0, this.numUsed)
+            );
+            this.indexes = sorted;
             
-
+ 
             const duration = performance.now() - start;
             //console.log(`Sort with ID: ${currentID} completed in ${duration.toFixed(2)}ms`);
-
+ 
             // Callback after sorting is done
             this.sortCallback(this.indexes, this.numUsed, currentID, duration);
 

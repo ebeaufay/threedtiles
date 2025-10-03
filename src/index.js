@@ -24,9 +24,9 @@ console.log(rotationMatrix);
 let paused = false;
 
 const scene = initScene();
-const geom = new THREE.SphereGeometry(10, 32, 16 ); 
-const mat = new THREE.MeshBasicMaterial(  ); 
-const sphere = new THREE.Mesh( geom, mat ); 
+const geom = new THREE.SphereGeometry(10, 32, 16);
+const mat = new THREE.MeshBasicMaterial();
+const sphere = new THREE.Mesh(geom, mat);
 //scene.add( sphere );
 
 
@@ -41,20 +41,20 @@ const renderer = initRenderer(camera, domContainer);
 const raycaster = new THREE.Raycaster();
 
 
-const geometry = new THREE.SphereGeometry( 1, 32, 16 ); 
-const material = new THREE.MeshBasicMaterial( { color: 0xffff00, transparent: true, depthTest: true, depthWrite: true } ); 
+const geometry = new THREE.SphereGeometry(1, 32, 16);
+const material = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, depthTest: true, depthWrite: true });
 
-const raycastSphere = new THREE.Mesh( geometry, material ); 
+const raycastSphere = new THREE.Mesh(geometry, material);
 //scene.add( raycastSphere );
 raycastSphere.renderOrder = 5;
 
 const pointer = new THREE.Vector2();
-window.addEventListener( 'click', (event)=>{
-    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+window.addEventListener('click', (event) => {
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
-    raycaster.setFromCamera( pointer, camera );
-    const intersects = raycaster.intersectObjects( scene.children );
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
     let a = 0;
     for (const layer of intersects) {
         if (layer.type != "splat") continue;
@@ -64,16 +64,16 @@ window.addEventListener( 'click', (event)=>{
             break;
         }
     }
-} );
+});
 
 initSliders();
 let tileLoader;
 let ogc3DTiles = [];
 
-setTimeout(()=>{
-tileLoader = initTileLoader();
-ogc3DTiles = reloadTileset("INCREMENTAL", 0.5)
-},1000)
+setTimeout(() => {
+    tileLoader = initTileLoader();
+    ogc3DTiles = reloadTileset("INCREMENTAL", 0.5)
+}, 1000)
 
 initController(camera, domContainer)
 
@@ -97,7 +97,7 @@ function initSliders() {
 
 function reloadTileset(loadingStrategy, geometricErrorMultiplier) {
     //scene.clear()
-    
+
     scene.add(new THREE.AmbientLight(0xFFFFFF, 3.0));
     ogc3DTiles.forEach(tileset => {
 
@@ -136,7 +136,86 @@ function initTileLoader() {
 
 const composer = initComposer(scene, camera, renderer);
 let previousFrame = performance.now();
-renderer.setAnimationLoop(animate);
+// GPU timer-query instrumentation (measures GPU time for composer.render)
+const gl = renderer.getContext();
+const extTimer = gl.getExtension('EXT_disjoint_timer_query_webgl2') || gl.getExtension('EXT_disjoint_timer_query');
+let gpuTimingSupported = !!extTimer;
+if (!gpuTimingSupported) {
+    console.warn('EXT_disjoint_timer_query not supported; GPU timing disabled');
+}
+const gpuQueries = [];
+let gpuAccumMs = 0.0;
+let gpuSamples = 0;
+let gpuPolledFrames = 0;
+const GPU_LOG_INTERVAL = 300; // log averaged result after this many polled samples
+
+function beginGPUTimer() {
+    if (!gpuTimingSupported) return null;
+    const q = gl.createQuery();
+    try {
+        gl.beginQuery(extTimer.TIME_ELAPSED_EXT, q);
+    } catch (e) {
+        // Some drivers may throw; disable on error
+        gpuTimingSupported = false;
+        console.warn('beginQuery failed, disabling GPU timing', e);
+        return null;
+    }
+    return q;
+}
+function endGPUTimer(q) {
+    if (!gpuTimingSupported || !q) return;
+    try {
+        gl.endQuery(extTimer.TIME_ELAPSED_EXT);
+        gpuQueries.push(q);
+    } catch (e) {
+        gpuTimingSupported = false;
+        console.warn('endQuery failed, disabling GPU timing', e);
+    }
+}
+function pollGPUTimers() {
+    if (!gpuTimingSupported) return;
+    // Poll oldest queries for availability
+    while (gpuQueries.length > 0) {
+        const q = gpuQueries[0];
+        const available = gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE);
+        const disjoint = gl.getParameter(extTimer.GPU_DISJOINT_EXT);
+        if (!available) break; // not ready yet
+        const elapsed = gl.getQueryParameter(q, gl.QUERY_RESULT);
+        gl.deleteQuery(q);
+        gpuQueries.shift();
+        if (disjoint) {
+            // If disjoint happened, results are invalid for this sample
+            continue;
+        }
+        const ms = elapsed / 1e6; // nanoseconds -> milliseconds
+        gpuAccumMs += ms;
+        gpuSamples++;
+        gpuPolledFrames++;
+        if (gpuPolledFrames >= GPU_LOG_INTERVAL) {
+            const avg = gpuSamples ? (gpuAccumMs / gpuSamples) : 0;
+            console.log(`GPU time avg over ${gpuSamples} samples: ${avg.toFixed(3)} ms (polled ${gpuPolledFrames} frames)`);
+            gpuAccumMs = 0;
+            gpuSamples = 0;
+            gpuPolledFrames = 0;
+        }
+    }
+}
+
+// Wrap composer.render so existing animate() call doesn't need modification
+if (composer && typeof composer.render === 'function') {
+    composer._origRender = composer.render.bind(composer);
+    composer.render = function(...args) {
+        const q = beginGPUTimer();
+        // call original composer render
+        const result = composer._origRender(...args);
+        endGPUTimer(q);
+        // Poll in JS (will only report when queries ready)
+        pollGPUTimers();
+        return result;
+    };
+}
+//renderer.setAnimationLoop(animate);
+requestAnimationFrame(animate);
 
 
 function initComposer(scene, camera, renderer) {
@@ -175,7 +254,7 @@ function initRenderer(camera, dom) {
     renderer.setPixelRatio(1.0);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.autoClear = false;
-    
+
 
     dom.appendChild(renderer.domElement);
 
@@ -206,10 +285,10 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
     const ogc3DTile1 = new OGC3DTile({
 
-        
-        url: "http://localhost:8087/tileset.json", //UM
+
+        url: "https://storage.googleapis.com/demo-tiles/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier: 0.1,
+        geometricErrorMultiplier: 0.5,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
@@ -222,14 +301,14 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
         loadingStrategy: "INCREMENTAL",
-        
+
 
     });
     ogc3DTile1.setSplatsSizeMultiplier(1.0);
     //ogc3DTile1.setSplatsCropRadius(4.0);
-    ogc3DTile1.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI*0.5)
-    ogc3DTile1.scale.set(3,3,3)
-    
+    ogc3DTile1.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5)
+    ogc3DTile1.scale.set(3, 3, 3)
+
     ogc3DTile1.updateMatrices();
     /* const ogc3DTile2 = new OGC3DTile({
 
@@ -254,7 +333,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     });
     ogc3DTile2.rotateOnAxis(new THREE.Vector3(1,0,0), -Math.PI) */
     const group = new THREE.Group();
-    
+
     group.add(ogc3DTile1);
     group.static = true;
     scene.add(group);
@@ -439,13 +518,13 @@ function initInstancedTilesets(instancedTileLoader) {
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 10000);
 
-    camera.position.set(40,10,20);
+    camera.position.set(4000, 1000, 2000);
 
     camera.lookAt(0, 0.01, 0);
 
     camera.matrixAutoUpdate = true;
 
-    /* document.addEventListener('keydown', function (event) {
+    document.addEventListener('keydown', function (event) {
         if (event.key === 'p') {
             paused = !paused;
         }
@@ -464,7 +543,7 @@ function initCamera(width, height) {
             tileLoader = undefined;
         }
         
-    }); */
+    });
 
     return camera;
 }
@@ -494,14 +573,16 @@ function initController(camera, dom) {
 
 
 const debugDisplay = document.getElementById("debugDisplay");
-
+let averageDelta = 0;
+let deltaCount = 0;
 function animate() {
+    requestAnimationFrame(animate);
     const delta = performance.now() - previousFrame;
     if (delta < 1000 / targetFrameRate) {
         return;
     }
-    previousFrame = performance.now();
     
+    previousFrame = performance.now();
 
 
     if (!paused) {
@@ -510,6 +591,7 @@ function animate() {
             tileLoader.update();
 
         }
+
         if (ogc3DTiles) {
 
             ogc3DTiles.forEach(t => {
@@ -530,51 +612,12 @@ function animate() {
         }
 
 
-
-        /* const info = ogc3DTiles.update(camera);
-        infoTilesToLoad.innerText = info.numTilesLoaded
-        infoTilesRendered.innerText = info.numTilesRendered
-        infoMaxLOD.innerText = info.maxLOD
-        infoPercentage.innerText = (info.percentageLoaded * 100).toFixed(1); */
-        //controller.update();
-
-        /* raycaster.setFromCamera(pointer, camera);
-
-        // calculate objects intersecting the picking ray
-        const a = [];
-        let intersects = raycaster.intersectObject(ogc3DTiles, true, a);
-
-        if(intersects.length>0){
-            sphere.position.copy(intersects[0].point);
-            
-        } *//* else{
-            intersects = raycaster.intersectObject(ogc3DTiles[1], true, a);
-            if(intersects.length>0){
-                sphere.position.copy(intersects[0].point);
-            }
-        } */
-        /* for (let i = 0; i < intersects.length; i++) {
-            console.log(intersects[i]);
-            sphere.position.set()
-        } */
     }
 
 
-
-    /* let c = 0;
-    google.traverse(e=>{
-        if(!!e.geometry){
-            c++;
-        }
-    })
-    console.log("jhgkjgh " + c)
-    if(!paused){
-        console.log(google.update(camera));
-    }
-    console.log(getOGC3DTilesCopyrightInfo()) */
     composer.render();
-    stats.update();
 
+    stats.update();
 }
 
 
