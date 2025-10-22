@@ -32,7 +32,7 @@ function packHalf2x16(x, y) {
     return (DataUtils.toHalfFloat(x) | (DataUtils.toHalfFloat(y) << 16)) >>> 0;
 }
 class SplatsMesh extends Mesh {
-    constructor(renderer, isStatic, fragShader) {
+    constructor(renderer, isStatic, fragShader, scaleMultiplier) {
 
         const textureSize = 1024;
 
@@ -82,7 +82,7 @@ class SplatsMesh extends Mesh {
                     covarianceTexture: { value: covarianceRenderTarget.texture },
                     positionColorTexture: { value: positionColorRenderTarget.texture },
                     zUpToYUpMatrix3x3: { value: zUpToYUpMatrix3x3 },
-                    sizeMultiplier: { value: 1 },
+                    sizeMultiplier: { value: 1*(scaleMultiplier||1) },
                     cropRadius: { value: Number.MAX_VALUE },
                     //cameraNear: { value: 0.01 },
                     //cameraFar: { value: 10 },
@@ -123,6 +123,7 @@ class SplatsMesh extends Mesh {
 
 
         super(geometry, material);
+        this.scaleMultiplier = scaleMultiplier;
         this.matrixAutoUpdate = false;
         this.numBatches = 0;
         this.numVisibleBatches = 0;
@@ -322,7 +323,7 @@ class SplatsMesh extends Mesh {
      * @param {number} sizeMultiplier 
      */
     setSplatsSizeMultiplier(sizeMultiplier) {
-        this.material.uniforms.sizeMultiplier.value = sizeMultiplier;
+        this.material.uniforms.sizeMultiplier.value = sizeMultiplier*(this.scaleMultiplier || 1);
     }
     /**
      * specify a crop radius for splats

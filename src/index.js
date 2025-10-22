@@ -120,6 +120,7 @@ function initTileLoader() {
         timeout: 5000,
         meshCallback: (mesh, geometricError) => {
             mesh.material.metalness = 0;
+            mesh.material.side = THREE.FrontSide
         },
         pointsCallback: (points, geometricError) => {
             points.material.size = Math.min(1.0, 0.03 * Math.sqrt(geometricError));
@@ -250,7 +251,7 @@ function initDomContainer(divID) {
 function initRenderer(camera, dom) {
 
     //const renderer = new WebGPURenderer( { antialias: true } );
-    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: false, powerPreference: "high-performance", precision: "highp" });
+    const renderer = new THREE.WebGLRenderer({ antialias: false, logarithmicDepthBuffer: true, powerPreference: "high-performance", precision: "highp" });
     renderer.setPixelRatio(1.0);
     renderer.setSize(dom.offsetWidth, dom.offsetHeight);
     renderer.autoClear = false;
@@ -286,7 +287,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     const ogc3DTile1 = new OGC3DTile({
 
 
-        url: "https://storage.googleapis.com/demo-tiles/tileset.json", //UM
+        url: "https://storage.googleapis.com/ogc-3d-tiles/splats/church/tileset.json", //UM
         renderer: renderer,
         geometricErrorMultiplier: 0.5,
         distanceBias: 1,
@@ -304,7 +305,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
 
 
     });
-    ogc3DTile1.setSplatsSizeMultiplier(1.0);
+    ogc3DTile1.setSplatsSizeMultiplier(1);
     //ogc3DTile1.setSplatsCropRadius(4.0);
     ogc3DTile1.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5)
     ogc3DTile1.scale.set(3, 3, 3)

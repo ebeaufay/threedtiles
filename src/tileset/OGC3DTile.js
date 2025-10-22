@@ -635,7 +635,7 @@ class OGC3DTile extends THREE.Object3D {
                             if (mesh.isSplatsData) {
                                 if (!self.splatsMesh) {
 
-                                    self.splatsMesh = self.tileLoader.renderer.isWebGPURenderer? new SplatsMeshWebGPU(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer);
+                                    self.splatsMesh = self.tileLoader.renderer.isWebGPURenderer? new SplatsMeshWebGPU(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats?0.25:1);
                                     self.splatsMesh.setQuality(self.splatsQuality);
                                     self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                                     self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)

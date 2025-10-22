@@ -1,6 +1,6 @@
 {
   "name": "@jdultra/threedtiles",
-  "version": "14.0.15",
+  "version": "14.0.16",
   "author": "Emeric Beaufays",
   "description": "An OGC 3DTiles viewer for Three.js",
   "main": "dist/threedtiles.cjs.js",
