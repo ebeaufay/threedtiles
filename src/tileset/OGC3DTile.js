@@ -86,6 +86,11 @@ class OGC3DTile extends THREE.Object3D {
      * @param {String} [properties.splatsFragmentShader = undefined] - optional pass a custom fragment shader for rendering splats
      * @param {number} [properties.splatsQuality = 0.75] - optional pass a visual quality for splats between 0 and 1. Lower quality improves performance at the cost of visual approximations.
      * @param {boolean} [properties.splatsCPUCulling = false] - optional if true, splats are culled on CPU asynchronously. Better frame-rate and faster sorting but splats are absent when camera moves quickly until sort finishes.
+     *
+     * @param {number} [properties.splatsExposureEV = 0.0] - optional exposure compensation in EV (stops). Typical useful range: -6 → +6. Positive brightens, negative darkens.
+     * @param {number} [properties.splatsSaturation = 1.0] - optional saturation multiplier. Typical useful range: 0.0 → 2.0 (1.0 = unchanged).
+     * @param {number} [properties.splatsContrast = 1.0] - optional contrast multiplier. Typical useful range: 0.0 → 2.0 (1.0 = unchanged).
+     * @param {Array|Object} [properties.splatsTempTint = [0.0, 0.0]] - optional temperature and tint pair for simple white-balance adjustment. Values: temperature ∈ [-100,100], tint ∈ [-100,100]. Default [0,0].
      */
     constructor(properties) {
         super();
@@ -140,6 +145,14 @@ class OGC3DTile extends THREE.Object3D {
         this.geometricErrorMultiplier = !!properties.geometricErrorMultiplier ? properties.geometricErrorMultiplier : 1.0;
         this.splatsCropRadius = Number.MAX_VALUE;
         this.splatsSizeMultiplier = 1;
+
+        // Visual tuning defaults for splats (may be overridden by constructor properties)
+        /** @type {number} */ this.splatsExposureEV = (properties && typeof properties.splatsExposureEV !== "undefined") ? properties.splatsExposureEV : 0.0;
+        /** @type {number} */ this.splatsSaturation = (properties && typeof properties.splatsSaturation !== "undefined") ? properties.splatsSaturation : 1.0;
+        /** @type {number} */ this.splatsContrast = (properties && typeof properties.splatsContrast !== "undefined") ? properties.splatsContrast : 1.0;
+        // allow passing an array [temp,tint] or an object; normalize to [temp, tint]
+        const _tt = (properties && typeof properties.splatsTempTint !== "undefined") ? properties.splatsTempTint : [0.0, 0.0];
+        this.splatsTempTint = Array.isArray(_tt) ? [Number(_tt[0] || 0.0), Number(_tt[1] || 0.0)] : [Number(_tt.temp || 0.0), Number(_tt.tint || 0.0)];
 
         this.renderer = properties.renderer;
         this.meshCallback = properties.meshCallback;
@@ -314,6 +327,51 @@ class OGC3DTile extends THREE.Object3D {
     setSplatsQuality(splatsQuality) {
         this.splatsQuality = splatsQuality;
         if (this.splatsMesh) this.splatsMesh.setQuality(splatsQuality)
+    }
+
+    /**
+     * Set exposure compensation (EV stops) for splats in this tile.
+     * @param {number} splatsExposureEV exposure in EV (stops). Useful range: -6 → +6. Positive brightens, negative darkens.
+     */
+    setSplatsExposureEV(splatsExposureEV) {
+        this.splatsExposureEV = splatsExposureEV;
+        if (this.splatsMesh && typeof this.splatsMesh.setExposureEV === "function") {
+            this.splatsMesh.setExposureEV(splatsExposureEV);
+        }
+    }
+
+    /**
+     * Set saturation multiplier for splats in this tile.
+     * @param {number} splatsSaturation saturation multiplier. Useful range: 0.0 → 2.0 (1.0 = unchanged).
+     */
+    setSplatsSaturation(splatsSaturation) {
+        this.splatsSaturation = splatsSaturation;
+        if (this.splatsMesh && typeof this.splatsMesh.setSaturation === "function") {
+            this.splatsMesh.setSaturation(splatsSaturation);
+        }
+    }
+
+    /**
+     * Set contrast multiplier for splats in this tile.
+     * @param {number} splatsContrast contrast multiplier. Useful range: 0.0 → 2.0 (1.0 = unchanged).
+     */
+    setSplatsContrast(splatsContrast) {
+        this.splatsContrast = splatsContrast;
+        if (this.splatsMesh && typeof this.splatsMesh.setContrast === "function") {
+            this.splatsMesh.setContrast(splatsContrast);
+        }
+    }
+
+    /**
+     * Set temperature and tint for splats in this tile.
+     * @param {number} splatsTemperature temperature adjustment in range [-100,100] (warm/cool).
+     * @param {number} splatsTint tint adjustment in range [-100,100] (green/magenta).
+     */
+    setSplatsTempTint(splatsTemperature, splatsTint) {
+        this.splatsTempTint = [splatsTemperature, splatsTint];
+        if (this.splatsMesh && typeof this.splatsMesh.setTempTint === "function") {
+            this.splatsMesh.setTempTint(splatsTemperature, splatsTint);
+        }
     }
 
     /**
@@ -635,11 +693,28 @@ class OGC3DTile extends THREE.Object3D {
                             if (mesh.isSplatsData) {
                                 if (!self.splatsMesh) {
 
-                                    self.splatsMesh = self.tileLoader.renderer.isWebGPURenderer? new SplatsMeshWebGPU(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats?0.25:1);
+                                    //self.splatsMesh = self.tileLoader.renderer.isWebGPURenderer? new SplatsMeshWebGPU(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats?0.25:1);
+                                    self.splatsMesh = new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats?0.25:1);
                                     self.splatsMesh.setQuality(self.splatsQuality);
                                     self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                                     self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
                                     self.splatsMesh.setSplatsSizeMultiplier(self.splatsSizeMultiplier)
+
+                                    // Apply any visual tuning parameters that might have been set on the OGC3DTile
+                                    if (typeof self.splatsExposureEV !== "undefined" && typeof self.splatsMesh.setExposureEV === "function") {
+                                        self.splatsMesh.setExposureEV(self.splatsExposureEV);
+                                    }
+                                    if (typeof self.splatsSaturation !== "undefined" && typeof self.splatsMesh.setSaturation === "function") {
+                                        self.splatsMesh.setSaturation(self.splatsSaturation);
+                                    }
+                                    if (typeof self.splatsContrast !== "undefined" && typeof self.splatsMesh.setContrast === "function") {
+                                        self.splatsMesh.setContrast(self.splatsContrast);
+                                    }
+                                    if (typeof self.splatsTempTint !== "undefined" && typeof self.splatsMesh.setTempTint === "function") {
+                                        const tt = self.splatsTempTint || [0.0,0.0];
+                                        self.splatsMesh.setTempTint(tt[0], tt[1]);
+                                    }
+
                                     if (self.static) {
                                         self.splatsMesh.matrixAutoUpdate = false;
                                         self.splatsMesh.matrixWorldAutoUpdate = false;

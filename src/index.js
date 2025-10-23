@@ -519,9 +519,9 @@ function initInstancedTilesets(instancedTileLoader) {
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 10000);
 
-    camera.position.set(4000, 1000, 2000);
+    camera.position.set(10, 10, 10);
 
-    camera.lookAt(0, 0.01, 0);
+    camera.lookAt(0, 100, 0);
 
     camera.matrixAutoUpdate = true;
 
@@ -552,7 +552,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0, -20, 0);
+    controller.target.set(0, 0, 0);
     controller.rotateSpeed = 0.5;
     controller.panSpeed = 0.5;
     controller.enableDamping = false;
