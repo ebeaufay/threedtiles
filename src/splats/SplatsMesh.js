@@ -149,41 +149,28 @@ class SplatsMesh extends Mesh {
         this.worker = new WorkerConstructor();
 
         this.sortListeners = [];
+        // Pending updates coming from the worker are stored here and applied
+        // later by calling update() from the render loop. This avoids mutating
+        // three.js geometry/attributes from arbitrary message timing.
+        this._pendingOrder = null;
+        this._pendingInstanceCount = 0;
+        this._pendingSortIDs = [];
+        // Pending texture copy tasks (both 2D per-batch uploads and 3D grow ops).
+        // Each entry is applied by update() in the render loop before geometry updates.
+        this._pendingTextureCopies = []; // items: { array, textureSize, srcHeight, scissor, destTextureLayer, kind: 'position'|'covariance' }
+        this._pendingGrowOperations = []; // items: { newPositionColorRenderTarget, newCovarianceRenderTarget, oldPositionColorRenderTarget, oldCovarianceRenderTarget, oldNumTextures, newNumTextures }
         this.worker.onmessage = message => {
-            const newOrder = new Uint32Array(message.data.order);
-            this.numSplatsRendered = newOrder.length;
-            //console.log(newOrder.length)
-            if (newOrder.length > this.orderAttribute.count) {
-                const geometry = new InstancedBufferGeometry();
-                const vertices = new Float32Array([-0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0]);
-                const indices = [0, 2, 1, 2, 3, 1];
-
-                geometry.setIndex(indices);
-                geometry.setAttribute('position', new BufferAttribute(vertices, 3));
-                const order = new Uint32Array(this.maxSplats);
-
-                const orderAttribute = new InstancedBufferAttribute(order, 1, false);
-                orderAttribute.needsUpdate = true
-                orderAttribute.setUsage(DynamicDrawUsage);
-                geometry.setAttribute('order', orderAttribute);
-                geometry.instanceCount = 0;
-
-                this.geometry.dispose();
-                this.geometry = geometry;
-                this.orderAttribute = orderAttribute;
+            // Only stage the incoming data here. The render loop will call update()
+            // to apply these changes at a deterministic point.
+            try {
+                this._pendingOrder = new Uint32Array(message.data.order);
+            } catch (e) {
+                // fallback: if message.data.order is already a typed array
+                this._pendingOrder = message.data.order;
             }
-            this.orderAttribute.clearUpdateRanges();
-            this.orderAttribute.set(newOrder);
-            this.orderAttribute.addUpdateRange(0, newOrder.length);
-            this.orderAttribute.needsUpdate = true;
-            this.geometry.instanceCount = message.data.count;
-            //console.log(this.geometry.instanceCount)
-            this.geometry.needsUpdate = true;
-            for (let i = this.sortListeners.length - 1; i >= 0; i--) {
-                const done = this.sortListeners[i](message.data.id);
-                if (done) {
-                    this.sortListeners.splice(i, 1);
-                }
+            this._pendingInstanceCount = message.data.count || 0;
+            if (typeof message.data.id !== "undefined") {
+                this._pendingSortIDs.push(message.data.id);
             }
         }
         this.cameraPosition = new Vector3(0, 0, 0);
@@ -360,6 +347,106 @@ class SplatsMesh extends Mesh {
                 vpm: this.viewProjModel && this.splatsCPUCuling?this.viewProjModel.toArray():undefined,
                 id: this.sortID++
             })
+        }
+    }
+
+    /**
+     * Apply any pending updates produced by the worker. This method should be
+     * called from the render loop (or just before renderer.render) to ensure all
+     * GPU / geometry mutations happen at a deterministic point in the frame.
+     */
+    update() {
+        // If there is nothing staged (textures, grows, or geometry) do nothing.
+        if (!this._pendingOrder && this._pendingTextureCopies.length === 0 && this._pendingGrowOperations.length === 0) return;
+
+        // 1) Process pending grow operations (3D texture array expansion) first.
+        while (this._pendingGrowOperations.length > 0) {
+            const op = this._pendingGrowOperations.shift();
+            const oldNum = op.oldNumTextures;
+            // Initialize new render targets on the renderer and copy old content into them.
+            this.renderer.initRenderTarget(op.newPositionColorRenderTarget);
+            // copy existing slices (oldNum) into the new target
+            this.copyTex3D(op.oldPositionColorRenderTarget.texture, op.newPositionColorRenderTarget, oldNum);
+            op.oldPositionColorRenderTarget.dispose();
+            this.positionColorRenderTarget = op.newPositionColorRenderTarget;
+            this.material.uniforms.positionColorTexture.value = this.positionColorRenderTarget.texture;
+
+            this.renderer.initRenderTarget(op.newCovarianceRenderTarget);
+            this.copyTex3D(op.oldCovarianceRenderTarget.texture, op.newCovarianceRenderTarget, oldNum);
+            op.oldCovarianceRenderTarget.dispose();
+            this.covarianceRenderTarget = op.newCovarianceRenderTarget;
+            this.material.uniforms.covarianceTexture.value = this.covarianceRenderTarget.texture;
+
+            // finalize counts/uniforms
+            this.numTextures = op.newNumTextures;
+            this.material.uniforms.numSlices.value = this.numTextures;
+        }
+
+        // 2) Process pending 2D batch texture uploads (these write into 3D textures using copyTex2D).
+        while (this._pendingTextureCopies.length > 0) {
+            const item = this._pendingTextureCopies.shift();
+            // Create DataTexture from raw array and perform the existing init+copy+dispose flow.
+            const dt = new DataTexture(item.array, item.textureSize, item.srcHeight, RGBAFormat, FloatType);
+            dt.internalFormat = 'RGBA32F';
+            dt.generateMipmaps = false;
+            dt.magFilter = NearestFilter;
+            dt.minFilter = NearestFilter;
+            dt.anisotropy = 0;
+            dt.needsUpdate = true;
+            this.renderer.initTexture(dt);
+
+            // determine destination render target
+            const dst = (item.kind === 'positionColor') ? this.positionColorRenderTarget : this.covarianceRenderTarget;
+            this.copyTex2D(dt, dst, item.scissor, item.destTextureLayer);
+            dt.dispose();
+        }
+
+        // 3) Apply geometry / order updates (if any)
+        if (this._pendingOrder) {
+            const newOrder = this._pendingOrder;
+            this.numSplatsRendered = newOrder.length;
+
+            if (newOrder.length > this.orderAttribute.count) {
+                const geometry = new InstancedBufferGeometry();
+                const vertices = new Float32Array([-0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0]);
+                const indices = [0, 2, 1, 2, 3, 1];
+
+                geometry.setIndex(indices);
+                geometry.setAttribute('position', new BufferAttribute(vertices, 3));
+                const order = new Uint32Array(this.maxSplats);
+
+                const orderAttribute = new InstancedBufferAttribute(order, 1, false);
+                orderAttribute.needsUpdate = true
+                orderAttribute.setUsage(DynamicDrawUsage);
+                geometry.setAttribute('order', orderAttribute);
+                geometry.instanceCount = 0;
+
+                this.geometry.dispose();
+                this.geometry = geometry;
+                this.orderAttribute = orderAttribute;
+            }
+
+            this.orderAttribute.clearUpdateRanges();
+            this.orderAttribute.set(newOrder);
+            this.orderAttribute.addUpdateRange(0, newOrder.length);
+            this.orderAttribute.needsUpdate = true;
+            this.geometry.instanceCount = this._pendingInstanceCount;
+            this.geometry.needsUpdate = true;
+
+            // Notify listeners for all pending sort ids.
+            for (const sid of this._pendingSortIDs) {
+                for (let i = this.sortListeners.length - 1; i >= 0; i--) {
+                    const done = this.sortListeners[i](sid);
+                    if (done) {
+                        this.sortListeners.splice(i, 1);
+                    }
+                }
+            }
+
+            // Clear order-related staging buffers
+            this._pendingOrder = null;
+            this._pendingInstanceCount = 0;
+            this._pendingSortIDs.length = 0;
         }
     }
     raycast(raycaster, intersects) {
@@ -605,27 +692,25 @@ class SplatsMesh extends Mesh {
         const scissor = [0, (address / this.textureSize) - (destTextureLayer * this.textureSize), this.textureSize];
         scissor.push(scissor[1] + srcHeight);
         
-        const batchPositionColorTexture = new DataTexture(positionColorArray, this.textureSize, srcHeight, RGBAFormat, FloatType);
-        batchPositionColorTexture.internalFormat = 'RGBA32F';
-        batchPositionColorTexture.generateMipmaps = false;
-        batchPositionColorTexture.magFilter = NearestFilter;
-        batchPositionColorTexture.minFilter = NearestFilter;
-        batchPositionColorTexture.anisotropy = 0;
-        batchPositionColorTexture.needsUpdate = true;
-        this.renderer.initTexture(batchPositionColorTexture);
-        this.copyTex2D(batchPositionColorTexture, this.positionColorRenderTarget, scissor, destTextureLayer);
-        batchPositionColorTexture.dispose();
-        
-        const batchCovarianceTexture = new DataTexture(covarianceArray, this.textureSize, srcHeight, RGBAFormat, FloatType);
-        batchCovarianceTexture.internalFormat = 'RGBA32F';
-        batchCovarianceTexture.generateMipmaps = false;
-        batchCovarianceTexture.magFilter = NearestFilter;
-        batchCovarianceTexture.minFilter = NearestFilter;
-        batchCovarianceTexture.anisotropy = 0;
-        batchCovarianceTexture.needsUpdate = true;
-        this.renderer.initTexture(batchCovarianceTexture);
-        this.copyTex2D(batchCovarianceTexture, this.covarianceRenderTarget, scissor, destTextureLayer);
-        batchCovarianceTexture.dispose();
+        // Stage texture uploads for the render loop. We transfer the raw arrays and
+        // parameters; actual DataTexture creation, initTexture and GPU copy will be
+        // performed in update() (so they happen at a deterministic time).
+        this._pendingTextureCopies.push({
+            kind: 'positionColor',
+            array: positionColorArray,
+            textureSize: this.textureSize,
+            srcHeight: srcHeight,
+            scissor: scissor,
+            destTextureLayer: destTextureLayer
+        });
+        this._pendingTextureCopies.push({
+            kind: 'covariance',
+            array: covarianceArray,
+            textureSize: this.textureSize,
+            srcHeight: srcHeight,
+            scissor: scissor,
+            destTextureLayer: destTextureLayer
+        });
 
     }
 
@@ -640,6 +725,9 @@ class SplatsMesh extends Mesh {
 
 
         const newNumTextures = this.numTextures + 1;
+
+        // Create new render target objects but defer the GPU initialization and
+        // the copy operation to the render loop via _pendingGrowOperations.
         const positionColorRenderTarget = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, {
             magFilter: NearestFilter,
             minFilter: NearestFilter,
@@ -652,13 +740,6 @@ class SplatsMesh extends Mesh {
         positionColorRenderTarget.texture.type = FloatType;
         positionColorRenderTarget.texture.internalFormat = 'RGBA32F';
         positionColorRenderTarget.texture.format = RGBAFormat;
-        
-        this.renderer.initRenderTarget(positionColorRenderTarget);
-        this.copyTex3D(this.positionColorRenderTarget.texture, positionColorRenderTarget, this.numTextures);
-        this.positionColorRenderTarget.dispose();
-        this.positionColorRenderTarget = positionColorRenderTarget;
-        this.material.uniforms.positionColorTexture.value = this.positionColorRenderTarget.texture;
-
 
         const covarianceRenderTarget = new WebGL3DRenderTarget(this.textureSize, this.textureSize, newNumTextures, {
             magFilter: NearestFilter,
@@ -669,21 +750,22 @@ class SplatsMesh extends Mesh {
             depthBuffer: false,
             resolveDepthBuffer: false,
         })
-        
         covarianceRenderTarget.texture.type = FloatType;
         covarianceRenderTarget.texture.internalFormat = 'RGBA32F';
         covarianceRenderTarget.texture.format = RGBAFormat;
-        
-        this.renderer.initRenderTarget(covarianceRenderTarget);
-        this.copyTex3D(this.covarianceRenderTarget.texture, covarianceRenderTarget, this.numTextures);
-        this.covarianceRenderTarget.dispose();
-        this.covarianceRenderTarget = covarianceRenderTarget;
-        this.material.uniforms.covarianceTexture.value = this.covarianceRenderTarget.texture;
 
+        // Stage a grow operation to be handled in update().
+        this._pendingGrowOperations.push({
+            newPositionColorRenderTarget: positionColorRenderTarget,
+            newCovarianceRenderTarget: covarianceRenderTarget,
+            oldPositionColorRenderTarget: this.positionColorRenderTarget,
+            oldCovarianceRenderTarget: this.covarianceRenderTarget,
+            oldNumTextures: this.numTextures,
+            newNumTextures: newNumTextures
+        });
 
-
-        this.numTextures = newNumTextures;
-        this.material.uniforms.numSlices.value = this.numTextures;
+        // freeAddresses and maxSplats already updated above; actual texture swap
+        // will be finalized in update(), where uniforms and this.numTextures are set.
 
         //console.log("grow " + (performance.now() - start) + " ms")
     }

@@ -912,7 +912,7 @@ class OGC3DTile extends THREE.Object3D {
      */
     update(camera) {
         if (this.splatsMesh) {
-            this.splatsMesh.updateShaderParams(camera, this.renderer)
+            this.splatsMesh.updateShaderParams(camera, this.renderer);
         }
         const frustum = new THREE.Frustum();
         frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
@@ -953,6 +953,10 @@ class OGC3DTile extends THREE.Object3D {
             }
 
 
+        }
+
+        if (this.splatsMesh) {
+            this.splatsMesh.update();
         }
 
         return { numTilesLoaded: numTiles[0], numTilesRendered: numTilesRendered[0], maxLOD: maxLOD[0], percentageLoaded: percentageLoaded[0] }
