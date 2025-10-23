@@ -874,6 +874,7 @@ out float splatDepth;
 out float splatDepthWithBias;
 out float stds;
 out vec2 viewZW;
+out vec3 adjustedColor;
 uniform highp sampler3D positionColorTexture;
 uniform highp sampler3D covarianceTexture;
 uniform mat3 zUpToYUpMatrix3x3;
@@ -887,6 +888,11 @@ uniform bool culling;
 uniform float antialiasingFactor;
 uniform float cropRadius;
 uniform float depthBias; // depth bias in meters
+
+uniform float exposureEV;    // stops
+uniform float saturation;    // linear saturation multiplier
+uniform float contrast;      // linear contrast multiplier
+uniform vec2 tempTint;       // temperature, tint (approximation)
 
 
 void getVertexData(out vec3 position, out mat3 covariance) {
@@ -1067,7 +1073,27 @@ void main() {
         splatDepth = (splatPositionProjected.z / splatPositionProjected.w)* 0.5 + 0.5;
     #endif
 
-    
+    // Work in linear color space
+    adjustedColor = color.xyz;
+
+    // Exposure (stops)
+    float exposureMul = exp2(exposureEV);
+
+    // Temp/Tint -> simple RGB gains approximation
+    float t = clamp(tempTint.x / 100.0, -1.0, 1.0); // temperature -100..100
+    float ti = clamp(tempTint.y / 100.0, -1.0, 1.0); // tint -100..100
+    // approximate mapping: warm -> increase R and B in different amounts, tint adjusts G
+    vec3 wbGain = vec3(1.0 + 0.15 * t, 1.0 + 0.05 * ti, 1.0 - 0.25 * t);
+
+    adjustedColor *= exposureMul * wbGain;
+
+    // Saturation (linear)
+    const vec3 lumaWeights = vec3(0.2126,0.7152,0.0722);
+    float L = dot(adjustedColor, lumaWeights);
+    adjustedColor = mix(vec3(L), adjustedColor, saturation);
+
+    // Contrast (linear, pivot around 0.5)
+    adjustedColor = (adjustedColor - 0.5) * contrast + 0.5;
 }
 `};
 export function splatsFragmentShader() {
@@ -1077,6 +1103,7 @@ precision highp int;
 
 in float stds;
 in vec4 color;
+in vec3 adjustedColor; // saturation/contrast/exposure/temperature adjusted
 in vec2 vUv;
 in vec3 splatPositionModel;
 in vec3 splatPositionWorld;
@@ -1090,12 +1117,6 @@ uniform float textureSize;
 uniform float k;
 uniform float beta_k; // pow((4.0 * gamma(2.0/k)) /k, k/2)
 
-// Visual tuning uniforms
-uniform float exposureEV;    // stops
-uniform float saturation;    // linear saturation multiplier
-uniform float contrast;      // linear contrast multiplier
-uniform vec2 tempTint;       // temperature, tint (approximation)
-
 void main() {
     float l = dot(vUv, vUv);
     if (l > 0.25) discard;           // early out unchanged
@@ -1104,30 +1125,7 @@ void main() {
     float rk  = pow(r2, 0.5 * k);    // r^{k}
     float alpha = color.w * exp(-beta_k * rk);
 
-    // Work in linear color space
-    vec3 col = color.xyz;
-
-    // Exposure (stops)
-    float exposureMul = exp2(exposureEV);
-
-    // Temp/Tint -> simple RGB gains approximation
-    float t = clamp(tempTint.x / 100.0, -1.0, 1.0); // temperature -100..100
-    float ti = clamp(tempTint.y / 100.0, -1.0, 1.0); // tint -100..100
-    // approximate mapping: warm -> increase R and B in different amounts, tint adjusts G
-    vec3 wbGain = vec3(1.0 + 0.15 * t, 1.0 + 0.05 * ti, 1.0 - 0.25 * t);
-
-    col *= exposureMul * wbGain;
-
-    // Saturation (linear)
-    const vec3 lumaWeights = vec3(0.2126,0.7152,0.0722);
-    float L = dot(col, lumaWeights);
-    col = mix(vec3(L), col, saturation);
-
-    // Contrast (linear, pivot around 0.5)
-    col = (col - 0.5) * contrast + 0.5;
-
-    // Final gamma to display - keep previous behavior (sRGB-ish gamma 2.2)
-    vec3 display = pow(clamp(col, 0.0, 1.0), vec3(1.0/2.2));
+    vec3 display = pow(clamp(adjustedColor, 0.0, 1.0), vec3(1.0/2.2));
 
     fragColor = vec4(display, alpha);
     gl_FragDepth = splatDepthWithBias;

@@ -299,6 +299,7 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
         splatsCPUCulling: false,
         iosCompatibility: false,
         drawBoundingVolume: false,
+        splatsTempTint: [+5000,100],
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
         loadingStrategy: "INCREMENTAL",
