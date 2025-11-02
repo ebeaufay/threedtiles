@@ -6,6 +6,7 @@ import * as path from "path-browserify"
 import { resolveImplicite } from './implicit/ImplicitTileResolver.js';
 import { SplatsMesh } from '../splats/SplatsMesh';
 import { SplatsMeshWebGPU } from '../splats/SplatsMeshWebGPU';
+import {ColliderShape} from '../simulation/ColliderShape';
 var averageTime = 0;
 
 
@@ -91,10 +92,73 @@ class OGC3DTile extends THREE.Object3D {
      * @param {number} [properties.splatsSaturation = 1.0] - optional saturation multiplier. Typical useful range: 0.0 → 2.0 (1.0 = unchanged).
      * @param {number} [properties.splatsContrast = 1.0] - optional contrast multiplier. Typical useful range: 0.0 → 2.0 (1.0 = unchanged).
      * @param {Array|Object} [properties.splatsTempTint = [0.0, 0.0]] - optional temperature and tint pair for simple white-balance adjustment. Values: temperature ∈ [-100,100], tint ∈ [-100,100]. Default [0,0].
+     * @param {Object} [properties.physics.sim = undefined] - physics sim helper {@link physics.js}
+     * @param {String} [properties.physics.type = fixed] - type: 'dynamic' | 'kinematic' | 'fixed' (default 'fixed')
+     * @param {String} [properties.physics.shape = none] - LEGACY single collider shape: 'none' | 'mesh' | 'bounds' | 'hull'. Used only when no advanced collider rules are provided.
+     * @param {number} [properties.physics.mass = 1] - mass
+     * @param {number} [properties.physics.maxLOD = infinity] - LEGACY global max LOD for constructing colliders. Higher is more accurate and more costly. Only the currently loaded LODs are used.
+     * @param {Array|Vector3} [properties.physics.velocity = [0,0,0]] - velocity vector
+     * @param {Array|Vector3} [properties.physics.angularVelocity = [0,0,0]] - angular velocity
+     *
+     * @param {Object} [properties.physics.colliders] - ADVANCED rules to mix different collider types by geometricError or by level (LOD).
+     * @param {number} [properties.physics.colliders.maxLOD] - Global LOD cap for colliders. If omitted, falls back to properties.physics.maxLOD, else Infinity.
+     * @param {string[]} [properties.physics.colliders.priority=["mesh","hull","bounds"]] - Priority when multiple rules match the same tile. First entry wins.
+     * @param {Object[]} [properties.physics.colliders.byGeometricError] - Preferred criterion when provided. Inclusive ranges on geometricError.
+     * @param {("mesh"|"hull"|"bounds")} properties.physics.colliders.byGeometricError[].shape - Collider type to use in this range.
+     * @param {number} properties.physics.colliders.byGeometricError[].min - Inclusive minimum geometricError for the rule (defaults to -Infinity if omitted).
+     * @param {number} properties.physics.colliders.byGeometricError[].max - Exclusive maximum geometricError for the rule (defaults to +Infinity if omitted).
+     * @param {Object[]} [properties.physics.colliders.byLevel] - Fallback criterion when byGeometricError is absent/empty. Inclusive ranges on integer level (LOD).
+     * @param {("mesh"|"hull"|"bounds")} properties.physics.colliders.byLevel[].shape - Collider type to use in this LOD interval.
+     * @param {number} properties.physics.colliders.byLevel[].min - Inclusive minimum LOD (integer).
+     * @param {number} properties.physics.colliders.byLevel[].max - Inclusive maximum LOD (integer).
+     * @param {("mesh"|"hull"|"bounds")} [properties.physics.colliders.defaultShape] - Optional fallback shape when no rule matches. If omitted, legacy properties.physics.shape is used. If neither present, no collider is created.
+     *
+     * Selection rules:
+     *  - If colliders.byGeometricError has entries, it is used exclusively. Otherwise, byLevel is used when present.
+     *  - If multiple rules match, the first in colliders.priority is chosen (default priority is ["mesh","hull","bounds"]).
+     *  - If no rule matches, defaultShape is used; if absent, falls back to legacy properties.physics.shape; otherwise no collider is created.
+     *  - The colliders.maxLOD (or legacy maxLOD) acts as a global cap. Tiles with level > maxLOD never get colliders.
+     *  - When a tile becomes invisible, existing colliders at level === maxLOD are retained if the tile has children (as a fallback for deeper LODs), identical to legacy behavior.
+     * e.g. (physics.colliders):
+     * {
+     *   "maxLOD": 4,
+     *   "priority": ["mesh", "hull", "bounds"],
+     *   "byLevel": [
+     *     { "shape": "mesh",   "min": 4, "max": 4 },
+     *     { "shape": "hull",   "min": 3,  "max": 3 },
+     *     { "shape": "bounds", "min": 0,  "max": 2  }
+     *   ],
+     *   "defaultShape": "bounds"
+     * }
      */
     constructor(properties) {
         super();
         const self = this;
+        self.physics = properties.physics || {};
+        const p = self.physics;
+        if (p && typeof p === 'object') {
+            if (!p.type) p.type = 'fixed';
+            if (p.shape == null) p.shape = 'none';
+            if (p.mass == null) p.mass = 1;
+            if (!Array.isArray(p.velocity) && !(p.velocity && p.velocity.isVector3)) p.velocity = [0, 0, 0];
+            if (!Array.isArray(p.angularVelocity) && !(p.angularVelocity && p.angularVelocity.isVector3)) p.angularVelocity = [0, 0, 0];
+            if (p.maxLOD == null) p.maxLOD = Infinity;
+
+            // Normalize advanced colliders API if provided
+            if (p.colliders && typeof p.colliders === 'object') {
+                const c = p.colliders;
+                if (c.maxLOD == null) c.maxLOD = (Number.isFinite(p.maxLOD) ? p.maxLOD : Infinity);
+                if (!Array.isArray(c.priority)) c.priority = ["mesh", "hull", "bounds"];
+                else {
+                    c.priority = c.priority.filter(x => x === "mesh" || x === "hull" || x === "bounds");
+                    if (c.priority.length === 0) c.priority = ["mesh", "hull", "bounds"];
+                }
+                if (!Array.isArray(c.byGeometricError)) c.byGeometricError = [];
+                if (!Array.isArray(c.byLevel)) c.byLevel = [];
+            }
+        }
+
+
         self.splatsMesh = properties.splatsMesh;
         self.oldUltraMeshSplats = properties.oldUltraMeshSplats;
         self.iosCompatibility = properties.iosCompatibility
@@ -412,6 +476,7 @@ class OGC3DTile extends THREE.Object3D {
     async _setup(properties) {
         const self = this;
 
+
         if (properties.json.extensionsRequired) {
             if (properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats") || properties.json.extensionsRequired.includes("JDULTRA_gaussian_splats_V2")) {
                 self.oldUltraMeshSplats = true;
@@ -537,7 +602,23 @@ class OGC3DTile extends THREE.Object3D {
             self.updateMatrices();
             //self.updateMatrixWorld(true);
         }
-        if (self.onLoadCallback) self.onLoadCallback(self);
+        if (self.onLoadCallback) {
+            self.onLoadCallback(self);
+        }
+        if (!self.parentTile && self.physics && self.physics.sim) {
+            self.physics.rigidBodyID = self.physics.sim.addObject({
+                object: self,
+                type: self.physics.type,
+                mass: self.physics.mass,
+                position: self.position,
+                rotation: self.quaternion,
+                velocity: self.physics.velocity,
+                angularVelocity: self.physics.angularVelocity
+            });
+
+
+
+        }
         self.isSetup = true;
 
 
@@ -647,7 +728,7 @@ class OGC3DTile extends THREE.Object3D {
             } else { //path
                 url = self.rootPath + path.sep + url;
             }
-            if(!url.startsWith("/local-tiles")){
+            if (!url.startsWith("/local-tiles")) {
                 url = self._extractQueryParams(url, self.queryParams);
             }
             if (self.queryParams) {
@@ -694,7 +775,7 @@ class OGC3DTile extends THREE.Object3D {
                                 if (!self.splatsMesh) {
 
                                     //self.splatsMesh = self.tileLoader.renderer.isWebGPURenderer? new SplatsMeshWebGPU(self.tileLoader.renderer): new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats?0.25:1);
-                                    self.splatsMesh = new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats?0.25:1);
+                                    self.splatsMesh = new SplatsMesh(self.tileLoader.renderer, undefined, undefined, self.oldUltraMeshSplats ? 0.25 : 1);
                                     self.splatsMesh.setQuality(self.splatsQuality);
                                     self.splatsMesh.setSplatsCPUCulling(self.splatsCPUCulling)
                                     self.splatsMesh.setSplatsCropRadius(self.splatsCropRadius)
@@ -711,7 +792,7 @@ class OGC3DTile extends THREE.Object3D {
                                         self.splatsMesh.setContrast(self.splatsContrast);
                                     }
                                     if (typeof self.splatsTempTint !== "undefined" && typeof self.splatsMesh.setTempTint === "function") {
-                                        const tt = self.splatsTempTint || [0.0,0.0];
+                                        const tt = self.splatsTempTint || [0.0, 0.0];
                                         self.splatsMesh.setTempTint(tt[0], tt[1]);
                                     }
 
@@ -723,12 +804,12 @@ class OGC3DTile extends THREE.Object3D {
                                     self.updateMatrices();
                                 }
                                 mesh = self.splatsMesh.addSplatsTile(mesh.positions, mesh.colors, mesh.cov0, mesh.cov1)
-                                
+
 
                             }
-                            
-                            if (!mesh.isSplatsBatch){
-                                
+
+                            if (!mesh.isSplatsBatch) {
+
 
                                 mesh.traverse((o) => {
                                     if (o.isMesh || o.isPoints) {
@@ -752,7 +833,7 @@ class OGC3DTile extends THREE.Object3D {
                                 });
                                 self.add(mesh);
                                 self.updateMatrices();
-                                
+
                             }
 
                             self.meshContent.push(mesh);
@@ -830,7 +911,7 @@ class OGC3DTile extends THREE.Object3D {
                             self.parentTile.updateMatrixWorld(true);
                             //self.parentTile.updateWorldMatrix(true, true);
                         } */
-                       //return json;
+                        //return json;
                     });
 
                 }
@@ -852,6 +933,18 @@ class OGC3DTile extends THREE.Object3D {
     dispose() {
         const self = this;
 
+        if (self.physics && self.physics.sim) {
+            if (self.colliderUUID) {
+                self.physics.sim.detachCollider({ colliderId: self.colliderUUID });
+                self.colliderUUID = undefined;
+            }
+            if (Array.isArray(self.colliderUUIDs) && self.colliderUUIDs.length) {
+                for (const colId of self.colliderUUIDs) {
+                    self.physics.sim.detachCollider({ colliderId: colId });
+                }
+                self.colliderUUIDs = [];
+            }
+        }
 
         self.meshContent.forEach(mc => {
             if (!!mc && !!mc.asset && mc.asset.copyright) {
@@ -1082,7 +1175,7 @@ class OGC3DTile extends THREE.Object3D {
     _trimTreeImmediate() {
         const self = this;
         if (self.metric == undefined) return;
-    
+
         if (self.hasMeshContent && ((self.shouldBeVisible && self.materialVisibility))) {
             if (self.splatsMesh && !self.splatsReady) {
                 return;
@@ -1093,7 +1186,7 @@ class OGC3DTile extends THREE.Object3D {
                 child._trimTreeImmediate();
             })
         }
-    
+
     }
     _updateNodeVisibilityImmediate(parentDisplaysMesh = false) {
         //updateNodeVisibilityCount++;
@@ -1403,7 +1496,7 @@ class OGC3DTile extends THREE.Object3D {
                 self.meshContent.length > 0 &&
                 self.materialVisibility &&
                 self._areAllChildrenLoadedAndHidden()) {
-    
+
                 if (self.splatsMesh && self.materialVisibility && !self.splatsReady) {
                     return;
                 }
@@ -1459,7 +1552,8 @@ class OGC3DTile extends THREE.Object3D {
                 drawBoundingVolume: self.drawBoundingVolume,
                 splatsMesh: self.splatsMesh,
                 clipShape: self.clipShape,
-                oldUltraMeshSplats: self.oldUltraMeshSplats
+                oldUltraMeshSplats: self.oldUltraMeshSplats,
+                physics: self.physics,
             });
             self.childrenTiles.push(childTile);
             self.add(childTile);
@@ -1604,6 +1698,7 @@ class OGC3DTile extends THREE.Object3D {
 
     _changeContentVisibility(visibility) {
         const self = this;
+        if (self.materialVisibility == visibility) return;
         if (self.bbox) {
 
             self.bbox.material.visible = visibility;
@@ -1661,10 +1756,352 @@ class OGC3DTile extends THREE.Object3D {
             self.materialVisibility = visibility
         }
 
+        self._updateCollider();
+        
 
 
 
+    }
 
+    /**
+     * Set the world-space pose of this tileset.
+     *
+     * IMPORTANT: When a physics simulation is attached (this.physics && this.physics.sim && this.physics.rigidBodyID),
+     * you MUST use this method to transform the object. Do NOT modify transforms using THREE.Object3D core methods
+     * (e.g. position.set, quaternion.set, applyQuaternion, setRotationFromEuler, etc.) because the physics engine
+     * is authoritative for the object's transform. This method keeps the physics rigid body in sync and updates colliders.
+     *
+     * @param {THREE.Vector3} position - New world-space position. Must be an instance of THREE.Vector3.
+     * @param {THREE.Euler|THREE.Quaternion} rotation - Rotation can be either a THREE.Euler or a THREE.Quaternion.
+     * @param {THREE.Vector3} scale - New scale. Must be an instance of THREE.Vector3.
+     * @throws {TypeError} If position or scale are not THREE.Vector3, or if rotation is not THREE.Euler/THREE.Quaternion.
+     */
+    setPose(position, rotation, scale) {
+        // Validate required argument types
+        if (!(position.isVector3)) {
+            throw new TypeError("OGC3DTile.setPose: 'position' must be an instance of THREE.Vector3");
+        }
+        if (!(scale.isVector3)) {
+            throw new TypeError("OGC3DTile.setPose: 'scale' must be an instance of THREE.Vector3");
+        }
+        if (!(rotation.isEuler) && !(rotation.isQuaternion)) {
+            throw new TypeError("OGC3DTile.setPose: 'rotation' must be a THREE.Euler or THREE.Quaternion");
+        }
+        if (this.physics && this.physics.sim && this.physics.rigidBodyID) {
+            
+
+            // Sync pose with physics simulation (position and rotation)
+            this.physics.sim.setPose({
+                bodyId: this.physics.rigidBodyID,
+                position: position,
+                rotation: rotation
+            });
+
+            // If scale changed, update local scale and colliders
+            if (scale && !scale.equals(this.scale)) {
+                this.scale.copy(scale);
+                this.updateMatrices();
+                this.traverse(child => {
+                    if (child._updateCollider) child._updateCollider();
+                });
+            }
+        } else {
+            // No physics -> directly update the THREE.Object3D transform.
+            this.scale.copy(scale);
+
+            if (rotation.isQuaternion) {
+                this.setRotationFromQuaternion(rotation);
+            } else { // instance of THREE.Euler (validated above)
+                this.setRotationFromEuler(rotation);
+            }
+
+            this.position.copy(position);
+            this.updateMatrices();
+        }
+    }
+    _updateCollider() {
+        const self = this;
+        if (!self.physics || !self.physics.sim) return;
+    
+        const rbId = self.physics.rigidBodyID;
+        const level = Math.floor(self.level || 0);
+        const isVisible = !!self.materialVisibility;
+        const hasChildrenTiles = Array.isArray(self.childrenTiles) && self.childrenTiles.length > 0;
+
+        // Advanced colliders configuration (optional)
+        const coll = (self.physics && self.physics.colliders && typeof self.physics.colliders === 'object') ? self.physics.colliders : null;
+
+        // Global LOD cap: colliders.maxLOD > legacy physics.maxLOD > Infinity
+        const maxLOD = Number.isFinite(coll?.maxLOD) ? coll.maxLOD
+            : (Number.isFinite(self.physics.maxLOD) ? self.physics.maxLOD : Infinity);
+
+        // Selection helpers
+        const pickByPriority = (candidates, priority) => {
+            const list = Array.isArray(priority) && priority.length ? priority : ["mesh", "hull", "bounds"];
+            for (const s of list) if (candidates.includes(s)) return s;
+            return null;
+        };
+        const chooseColliderShape = () => {
+            // If advanced rules present, use them
+            const priority = coll?.priority || ["mesh", "hull", "bounds"];
+            if (coll && (Array.isArray(coll.byGeometricError) && coll.byGeometricError.length)) {
+                const ge = self.geometricError;
+                if (typeof ge === "number") {
+                    const candidates = [];
+                    for (const r of coll.byGeometricError) {
+                        if (!r || !r.shape) continue;
+                        const min = (typeof r.min === "number") ? r.min : -Infinity;
+                        const max = (typeof r.max === "number") ? r.max : Infinity;
+                        if (ge >= min && ge < max) candidates.push(r.shape);
+                    }
+                    const picked = pickByPriority(candidates, priority);
+                    if (picked) return picked;
+                }
+                // No match on geometricError -> fallback default
+                if (coll.defaultShape) return coll.defaultShape;
+                if (self.physics.shape) return self.physics.shape;
+                return "none";
+            } else if (coll && (Array.isArray(coll.byLevel) && coll.byLevel.length)) {
+                const lvl = Math.floor(self.level || 0);
+                const candidates = [];
+                for (const r of coll.byLevel) {
+                    if (!r || !r.shape) continue;
+                    const min = (typeof r.min === "number") ? r.min : -Infinity;
+                    const max = (typeof r.max === "number") ? r.max : Infinity;
+                    if (lvl >= min && lvl <= max) candidates.push(r.shape);
+                }
+                const picked = pickByPriority(candidates, priority);
+                if (picked) return picked;
+                if (coll.defaultShape) return coll.defaultShape;
+                if (self.physics.shape) return self.physics.shape;
+                return "none";
+            } else {
+                // Legacy behavior: use top-level shape
+                return self.physics.shape || "none";
+            }
+        };
+        const effectiveShape = chooseColliderShape();
+
+        // helpers
+        const detachBoundsCollider = () => {
+            if (self.colliderUUID) {
+                self.physics.sim.detachCollider({ colliderId: self.colliderUUID });
+                self.colliderUUID = undefined;
+            }
+        };
+        const detachMeshColliders = () => {
+            if (Array.isArray(self.colliderUUIDs) && self.colliderUUIDs.length) {
+                for (const colId of self.colliderUUIDs) {
+                    self.physics.sim.detachCollider({ colliderId: colId });
+                }
+                self.colliderUUIDs = [];
+            }
+        };
+        const detachAll = () => {
+            detachBoundsCollider();
+            detachMeshColliders();
+            self._activeColliderShape = undefined;
+        };
+
+        // If no body or shape is "none", clear any existing colliders and abort
+        if (!rbId || !effectiveShape || effectiveShape === "none") {
+            detachAll();
+            self._activeColliderShape = undefined;
+            return;
+        }
+
+        // Tiles strictly above maxLOD must never have colliders
+        if (level > maxLOD) {
+            detachAll();
+            self._activeColliderShape = undefined;
+            return;
+        }
+
+        // Desired creation state for this frame
+        const wantsColliderNow = isVisible && level <= maxLOD;
+
+        // Handle shape switching (detach previous type when rules change),
+        // except when we retain at maxLOD while invisible.
+        const prevShape = self._activeColliderShape || "none";
+        const atRetention = (!isVisible && level === maxLOD && hasChildrenTiles);
+        if (prevShape !== effectiveShape && !atRetention) {
+            if ((prevShape === "mesh" || prevShape === "hull") && effectiveShape === "bounds") {
+                detachMeshColliders();
+            } else if (prevShape === "bounds" && (effectiveShape === "mesh" || effectiveShape === "hull")) {
+                detachBoundsCollider();
+            } else if ((prevShape === "mesh" && effectiveShape === "hull") || (prevShape === "hull" && effectiveShape === "mesh")) {
+                // switching between mesh and hull -> rebuild
+                detachMeshColliders();
+            } else {
+                // any other change -> remove all
+                detachAll();
+            }
+            self._activeColliderShape = (effectiveShape && effectiveShape !== "none") ? effectiveShape : undefined;
+        }
+    
+        // Common root transforms (RB owner with RT only - ignore root scale)
+        let rbOwner = self;
+        while (rbOwner && rbOwner.parentTile) rbOwner = rbOwner.parentTile;
+        const rootP = new THREE.Vector3(), rootQ = new THREE.Quaternion(), rootS = new THREE.Vector3();
+        if (rbOwner && rbOwner.matrixWorld) rbOwner.matrixWorld.decompose(rootP, rootQ, rootS);
+        const rootRT = new THREE.Matrix4().compose(rootP, rootQ, new THREE.Vector3(1, 1, 1));
+        const invRootRT = new THREE.Matrix4().copy(rootRT).invert();
+    
+        // Shape-specific handling
+        if (effectiveShape === "bounds") {
+            
+            // Make sure no stray mesh colliders remain if shape switched
+            detachMeshColliders();
+    
+            if (wantsColliderNow) {
+                // Create only if not already present
+                if (!self.colliderUUID) {
+                    if (self.boundingVolume instanceof OBB || self.boundingVolume?.isOBB) {
+                        // Center (tile-local) -> world -> body-local
+                        const centerWorld = self.localToWorld(self.boundingVolume.center.clone());
+                        const centerInBody = centerWorld.clone().applyMatrix4(invRootRT);
+    
+                        // Origin (tile-local 0,0,0) in world/body
+                        const originWorld = self.localToWorld(new THREE.Vector3(0, 0, 0));
+                        const originBody = originWorld.clone().applyMatrix4(invRootRT);
+    
+                        // Half-axis vectors in tile-local
+                        const a1Local = self.boundingVolume.e1.clone().multiplyScalar(self.boundingVolume.halfSize.x);
+                        const a2Local = self.boundingVolume.e2.clone().multiplyScalar(self.boundingVolume.halfSize.y);
+                        const a3Local = self.boundingVolume.e3.clone().multiplyScalar(self.boundingVolume.halfSize.z);
+    
+                        // Map to body space
+                        const a1BodyEnd = self.localToWorld(a1Local.clone()).applyMatrix4(invRootRT);
+                        const a2BodyEnd = self.localToWorld(a2Local.clone()).applyMatrix4(invRootRT);
+                        const a3BodyEnd = self.localToWorld(a3Local.clone()).applyMatrix4(invRootRT);
+    
+                        const v1Body = a1BodyEnd.clone().sub(originBody);
+                        const v2Body = a2BodyEnd.clone().sub(originBody);
+                        const v3Body = a3BodyEnd.clone().sub(originBody);
+    
+                        const hx = v1Body.length();
+                        const hy = v2Body.length();
+                        const hz = v3Body.length();
+    
+                        const v1n = hx > 0 ? v1Body.clone().multiplyScalar(1 / hx) : new THREE.Vector3(1, 0, 0);
+                        const v2n = hy > 0 ? v2Body.clone().multiplyScalar(1 / hy) : new THREE.Vector3(0, 1, 0);
+                        const v3n = hz > 0 ? v3Body.clone().multiplyScalar(1 / hz) : new THREE.Vector3(0, 0, 1);
+    
+                        const basisMat = new THREE.Matrix4().makeBasis(v1n, v2n, v3n);
+                        const localQuat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
+    
+                        self.colliderUUID = self.physics.sim.attachShapeCollider({
+                            bodyId: rbId,
+                            shape: ColliderShape.createBox(hx, hy, hz),
+                            localPosition: [centerInBody.x, centerInBody.y, centerInBody.z],
+                            localRotation: localQuat
+                        });
+                        self._activeColliderShape = "bounds";
+                    } else if (self.boundingVolume instanceof THREE.Sphere || self.boundingVolume?.isSphere) {
+                        const centerWorld = self.localToWorld(self.boundingVolume.center.clone());
+                        const centerInBody = centerWorld.clone().applyMatrix4(invRootRT);
+    
+                        const originWorld = self.localToWorld(new THREE.Vector3(0, 0, 0));
+                        const originBody = originWorld.clone().applyMatrix4(invRootRT);
+    
+                        // Axis unit lengths in body space
+                        const exBody = self.localToWorld(new THREE.Vector3(1, 0, 0)).applyMatrix4(invRootRT).sub(originBody).length();
+                        const eyBody = self.localToWorld(new THREE.Vector3(0, 1, 0)).applyMatrix4(invRootRT).sub(originBody).length();
+                        const ezBody = self.localToWorld(new THREE.Vector3(0, 0, 1)).applyMatrix4(invRootRT).sub(originBody).length();
+    
+                        const sMax = Math.max(exBody, eyBody, ezBody);
+                        const radiusScaled = self.boundingVolume.radius * sMax;
+    
+                        self.colliderUUID = self.physics.sim.attachShapeCollider({
+                            bodyId: rbId,
+                            shape: ColliderShape.createBall(radiusScaled),
+                            localPosition: [centerInBody.x, centerInBody.y, centerInBody.z],
+                        });
+                        self._activeColliderShape = "bounds";
+                    }
+                }
+            } else {
+                // Invisible: apply maxLOD retention rule
+                if (level === maxLOD && hasChildrenTiles) {
+                    // keep any existing collider as fallback for deeper LODs
+                } else {
+                    // detach if exists
+                    detachBoundsCollider();
+                    self._activeColliderShape = undefined;
+                }
+            }
+            return;
+        }
+    
+        if (effectiveShape === "mesh" || effectiveShape === "hull") {
+            console.log(effectiveShape+"  "+this.level)
+            // Make sure no stray bounds collider remains if shape switched
+            detachBoundsCollider();
+    
+            if (wantsColliderNow) {
+                // Only create when tile mesh is fully loaded
+                if (!(self.hasMeshContent && self.meshContent.length === self.hasMeshContent)) return;
+    
+                // Avoid duplicate creation
+                if (!Array.isArray(self.colliderUUIDs) || self.colliderUUIDs.length === 0) {
+                    self.colliderUUIDs = [];
+                    const attachMethod = (effectiveShape === "hull") ? "addConvexHullCollider" : "attachTrimeshCollider";
+
+                    const addMeshCollider = (meshObj) => {
+                        if (!meshObj || !meshObj.isMesh || !meshObj.geometry || !meshObj.geometry.isBufferGeometry) return;
+    
+                        // Transform from RB local (root RT) to mesh's world transform
+                        const m = new THREE.Matrix4().multiplyMatrices(invRootRT, meshObj.matrixWorld);
+                        const lp = new THREE.Vector3();
+                        const lq = new THREE.Quaternion();
+                        const lsTmp = new THREE.Vector3();
+                        m.decompose(lp, lq, lsTmp);
+    
+                        // Use true world scale for baking (positive, includes root scale)
+                        const worldS = new THREE.Vector3();
+                        meshObj.getWorldScale(worldS);
+                        worldS.set(Math.abs(worldS.x), Math.abs(worldS.y), Math.abs(worldS.z));
+    
+                        self.physics.sim[attachMethod]({
+                            bodyId: rbId,
+                            geometry: meshObj.geometry,
+                            localPosition: [lp.x, lp.y, lp.z],
+                            localRotation: lq,
+                            localScale: [worldS.x, worldS.y, worldS.z]
+                        }).then((colId) => {
+                            // If this tile ceases to be eligible, drop the collider immediately
+                            const currentShape = chooseColliderShape();
+                            const stillEligible = !self.deleted && (currentShape === "mesh" || currentShape === "hull");
+                            const stillWithinLOD = Math.floor(self.level || 0) <= maxLOD;
+                            const stillKeepWhenInvisible = (Math.floor(self.level || 0) === maxLOD && (Array.isArray(self.childrenTiles) && self.childrenTiles.length > 0));
+                            const shouldKeep = stillEligible && (self.materialVisibility ? stillWithinLOD : stillWithinLOD && stillKeepWhenInvisible);
+
+                            if (!shouldKeep) {
+                                if (colId) self.physics.sim.detachCollider({ colliderId: colId });
+                                return;
+                            }
+                            if (colId) self.colliderUUIDs.push(colId);
+                            self._activeColliderShape = effectiveShape;
+                        }).catch(() => { /* worker may have been disposed */ });
+                    };
+    
+                    // Iterate over all mesh contents and their children
+                    for (const mc of self.meshContent) {
+                        if (!mc || mc.isSplatsBatch) continue;
+                        if (mc.isMesh) addMeshCollider(mc);
+                        if (mc.traverse) mc.traverse(o => { if (o.isMesh) addMeshCollider(o); });
+                    }
+                }
+            } else {
+                // Invisible: apply maxLOD retention rule
+                if (level === maxLOD && hasChildrenTiles) {
+                    // keep existing colliders as fallback for deeper LODs
+                } else {
+                    detachMeshColliders();
+                    self._activeColliderShape = undefined;
+                }
+            }
+        }
     }
     _calculateUpdateMetric(camera, frustum) {
         ////// return -1 if not in frustum

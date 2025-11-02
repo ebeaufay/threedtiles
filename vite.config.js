@@ -1,6 +1,8 @@
 // vite.config.js
 import { defineConfig } from 'vite';
 import path from 'path';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 // If you installed any Vite plugins, import them here
 // Example: import glsl from 'vite-plugin-glsl';
 
@@ -18,6 +20,8 @@ export default defineConfig({
   // Define plugins if any
   plugins: [
     // Example: glsl(), // If using GLSL shaders
+    wasm(), 
+    topLevelAwait(),
   ],
 
   // Configure the development server

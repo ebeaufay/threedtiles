@@ -161,9 +161,9 @@ class TileLoader {
                     }
                 });
             }
-            if (this.nextReady.length == 0) {
+            /* if (this.nextReady.length == 0) {
                 this._getNextReady();
-            }
+            } */
         }
 
         return;

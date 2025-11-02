@@ -4,6 +4,8 @@ import path from 'path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import terser from '@rollup/plugin-terser';
 import libAssetsPlugin from '@laynezh/vite-plugin-lib-assets'
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 
 export default defineConfig({
@@ -50,6 +52,8 @@ export default defineConfig({
     include: ['three'],
   },
   plugins: [
+    wasm(), 
+    topLevelAwait(),
     terser({
       maxWorkers: 4
     }),

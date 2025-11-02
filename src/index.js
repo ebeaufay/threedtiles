@@ -10,7 +10,8 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass';
 import { InstancedOGC3DTile } from "./tileset/instanced/InstancedOGC3DTile.js"
 import { InstancedTileLoader } from "./tileset/instanced/InstancedTileLoader.js"
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader";
-import { SplatsMesh } from './splats/SplatsMesh.js';
+import { Physics } from './simulation/physics.js';
+import { ColliderShape } from './simulation/ColliderShape.js';
 
 let quat = new THREE.Quaternion();
 quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.6585408946722412, 0.7520797288025427, 0.02645697580181784))
@@ -21,6 +22,9 @@ rotationMatrix.makeRotationFromQuaternion(quat);
 console.log(rotationMatrix);
 
 
+const sim = new Physics({
+    gravity: [0, 0, 0]
+})
 let paused = false;
 
 const scene = initScene();
@@ -65,6 +69,48 @@ window.addEventListener('click', (event) => {
         }
     }
 });
+
+// BEGIN TEST: press "f" to shoot ball (easy to remove)
+// Fires from 2 units below the camera position along world Y
+document.addEventListener('keydown', function shootBallOnF(event) {
+    if (event.key && event.key.toLowerCase() !== 'f') return;
+    try {
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir).normalize();
+
+        // Spawn point: 2 units below the camera in world space, with a small forward offset
+        const start = camera.position.clone().add(new THREE.Vector3(0, -10, 0)).add(dir.clone().multiplyScalar(0.5));
+        const radius = 3;     // visual + collider radius
+        const speed = 100;    // initial speed along camera forward
+
+        // Visual for the physics ball
+        const ballGeom = new THREE.SphereGeometry(radius, 16, 12);
+        const ballMat = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+        const ballMesh = new THREE.Mesh(ballGeom, ballMat);
+        ballMesh.matrixAutoUpdate = true;
+        scene.add(ballMesh);
+
+        // Create physics rigid body linked to the mesh
+        const bodyId = sim.addObject({
+            object: ballMesh,
+            type: 'dynamic',
+            mass: 100,
+            position: [start.x, start.y, start.z],
+            rotation: [0, 0, 0, 1],
+            velocity: [dir.x * speed, dir.y * speed, dir.z * speed],
+            angularVelocity: [0, 0, 0],
+        });
+
+        // Attach a matching sphere collider
+        sim.attachShapeCollider({
+            bodyId,
+            shape: ColliderShape.createBall(radius),
+        });
+    } catch (err) {
+        console.warn('shootBallOnF failed', err);
+    }
+});
+// END TEST: press "f" to shoot ball
 
 initSliders();
 let tileLoader;
@@ -194,7 +240,7 @@ function pollGPUTimers() {
         gpuPolledFrames++;
         if (gpuPolledFrames >= GPU_LOG_INTERVAL) {
             const avg = gpuSamples ? (gpuAccumMs / gpuSamples) : 0;
-            console.log(`GPU time avg over ${gpuSamples} samples: ${avg.toFixed(3)} ms (polled ${gpuPolledFrames} frames)`);
+            //console.log(`GPU time avg over ${gpuSamples} samples: ${avg.toFixed(3)} ms (polled ${gpuPolledFrames} frames)`);
             gpuAccumMs = 0;
             gpuSamples = 0;
             gpuPolledFrames = 0;
@@ -205,7 +251,7 @@ function pollGPUTimers() {
 // Wrap composer.render so existing animate() call doesn't need modification
 if (composer && typeof composer.render === 'function') {
     composer._origRender = composer.render.bind(composer);
-    composer.render = function(...args) {
+    composer.render = function (...args) {
         const q = beginGPUTimer();
         // call original composer render
         const result = composer._origRender(...args);
@@ -284,22 +330,45 @@ function initStats(dom) {
 
 function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultiplier) {
 
+
+
     const ogc3DTile1 = new OGC3DTile({
 
 
-        url: "https://storage.googleapis.com/ogc-3d-tiles/splats/church/tileset.json", //UM
+        url: "https://storage.googleapis.com/ogc-3d-tiles/christChurch2/tileset.json", //UM
         renderer: renderer,
-        geometricErrorMultiplier: 0.5,
+        geometricErrorMultiplier: 0.01,
         distanceBias: 1,
         loadOutsideView: false,
         tileLoader: tileLoader,
-        static: true,
+        static: false,
         centerModel: true,
         splatsQuality: 0.25,
         splatsCPUCulling: false,
         iosCompatibility: false,
-        drawBoundingVolume: false,
-        splatsTempTint: [+5000,100],
+        drawBoundingVolume: true,
+        onLoadCallback: (t) => {
+            console.log("mlhjmlkj");
+        },
+        physics: {
+            sim: sim,
+            type: "fixed",
+            //shape: "hull",
+            mass: 1,
+            velocity: [0, 0, 0],
+            angularVelocity: [0.0, 0, 0],
+            //maxLOD: 25,
+            colliders:{
+  "maxLOD": 3,
+  "priority": ["mesh", "hull", "bounds"],
+  "byLevel": [
+    { "shape": "mesh",   "min": 3, "max": 3 },
+    { "shape": "hull",   "min": 2,  "max": 2 },
+    { "shape": "bounds", "min": 1,  "max": 1  }
+  ],
+  "defaultShape": "bounds"
+}
+        },
         //clipShape: new THREE.Sphere(new THREE.Vector3(0,0,0), 0.1),
 
         loadingStrategy: "INCREMENTAL",
@@ -308,10 +377,14 @@ function initTilesets(scene, tileLoader, loadingStrategy, geometricErrorMultipli
     });
     ogc3DTile1.setSplatsSizeMultiplier(1);
     //ogc3DTile1.setSplatsCropRadius(4.0);
-    ogc3DTile1.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5)
-    ogc3DTile1.scale.set(3, 3, 3)
+    //ogc3DTile1.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 0.5)
+    // ogc3DTile1.scale.set(0.5,0.5,0.5)
 
-    ogc3DTile1.updateMatrices();
+    // ogc3DTile1.updateMatrices();
+    ogc3DTile1.setPose(new THREE.Vector3(0,0,0), new THREE.Euler(-Math.PI,0,0), new THREE.Vector3(1,1,1))
+    /* setTimeout(()=>{
+        ogc3DTile1.setPose(new THREE.Vector3(10,0,0), new THREE.Euler(1,0,0), new THREE.Vector3(3,3,1))
+    },4500); */
     /* const ogc3DTile2 = new OGC3DTile({
 
         
@@ -520,7 +593,7 @@ function initInstancedTilesets(instancedTileLoader) {
 function initCamera(width, height) {
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 10000);
 
-    camera.position.set(10, 10, 10);
+    camera.position.set(3, 8, 3);
 
     camera.lookAt(0, 100, 0);
 
@@ -535,16 +608,16 @@ function initCamera(width, height) {
             ogc3DTiles = initTilesets(scene, tileLoader, "INCREMENTAL", 1.0, 1.0);
         }
         if (event.key === 'z') {
-            ogc3DTiles.forEach(t=>{
+            ogc3DTiles.forEach(t => {
                 scene.remove(t)
                 t.dispose();
             })
-            
+
             ogc3DTiles = undefined;
             tileLoader.dispose();
             tileLoader = undefined;
         }
-        
+
     });
 
     return camera;
@@ -553,7 +626,7 @@ function initController(camera, dom) {
     const controller = new OrbitControls(camera, dom);
 
     //controller.target.set(4629210.73133627, 435359.7901640832, 4351492.357788198);
-    controller.target.set(0, 0, 0);
+    controller.target.set(0, 2, 0);
     controller.rotateSpeed = 0.5;
     controller.panSpeed = 0.5;
     controller.enableDamping = false;
@@ -583,7 +656,7 @@ function animate() {
     if (delta < 1000 / targetFrameRate) {
         return;
     }
-    
+
     previousFrame = performance.now();
 
 
